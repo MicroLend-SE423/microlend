@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+  MicroLend coding standard.
+  Recorded in SQAP section 4.4 (Standards, Practices and Conventions).
+
+  Rule 1 is the project's hard constraint: money is never represented as a
+  binary floating-point type. 0.1 + 0.2 != 0.3 in IEEE 754, so a penalty or
+  instalment computed in double can disagree with the ledger by fractions of a
+  rupee that accumulate across a portfolio. All monetary values use BigDecimal
+  inside the Money value object, with an explicit RoundingMode.
+-->
+<module name="Checker">
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <module name="TreeWalker">
+
+    <!-- ===== CONSTRAINT C-01: no binary floating point, anywhere ===== -->
+    <module name="IllegalType">
+      <property name="id" value="NoFloatingPointMoney"/>
+      <property name="illegalClassNames" value="double, float, Double, Float"/>
+      <property name="validateAbstractClassNames" value="true"/>
+      <property name="memberModifiers" value="LITERAL_PUBLIC, LITERAL_PROTECTED, LITERAL_PRIVATE, LITERAL_STATIC, FINAL"/>
+      <message key="illegal.type"
+               value="Constraint C-01: ''{0}'' is a binary floating-point type and must not be used. Use BigDecimal via the Money value object; see SQAP 4.4."/>
+    </module>
+
+    <!-- Catches literals such as 1500.0 and 0.05 that slip past IllegalType -->
+    <module name="Regexp">
+      <property name="id" value="NoDoubleLiteral"/>
+      <property name="format" value="\b\d+\.\d+(?![0-9A-Za-z_])"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="ignoreComments" value="true"/>
+      <property name="message"
+               value="Constraint C-01: decimal literal found. Money and rates must be constructed as BigDecimal (e.g. new BigDecimal(&quot;0.05&quot;)), never as a double literal."/>
+    </module>
+
+    <!-- BigDecimal.equals compares scale as well as value: 2.50 != 2.5.
+         Comparisons must use compareTo. Flagged for review, not blocked. -->
+    <module name="Regexp">
+      <property name="id" value="NoBigDecimalEquals"/>
+      <property name="format" value="\.equals\s*\(\s*[A-Za-z_][A-Za-z0-9_.]*\s*\)\s*;?\s*//\s*BigDecimal"/>
+      <property name="illegalPattern" value="true"/>
+      <property name="severity" value="warning"/>
+      <property name="message"
+               value="Use compareTo() == 0 for BigDecimal value comparison; equals() also compares scale."/>
+    </module>
+
+    <!-- ===== Complexity limits (quality requirement QR-04) ===== -->
+    <module name="CyclomaticComplexity">
+      <property name="max" value="15"/>
+    </module>
+    <module name="MethodLength">
+      <property name="max" value="60"/>
+    </module>
+    <module name="ParameterNumber">
+      <property name="max" value="6"/>
+    </module>
+
+    <!-- ===== Defensive programming ===== -->
+    <module name="EmptyCatchBlock">
+      <property name="exceptionVariableName" value="expected|ignored"/>
+    </module>
+    <module name="IllegalCatch"/>
+    <module name="IllegalThrows"/>
+    <module name="EqualsHashCode"/>
+    <module name="StringLiteralEquality"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="FallThrough"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+
+    <!-- ===== Encapsulation (Parnas: hide the decision most likely to change) ===== -->
+    <module name="VisibilityModifier">
+      <property name="protectedAllowed" value="false"/>
+      <property name="packageAllowed" value="false"/>
+    </module>
+    <module name="FinalClass"/>
+    <module name="HideUtilityClassConstructor"/>
+
+    <!-- ===== Naming and layout ===== -->
+    <module name="TypeName"/>
+    <module name="MethodName"/>
+    <module name="MemberName"/>
+    <module name="ConstantName"/>
+    <module name="LocalVariableName"/>
+    <module name="PackageName"/>
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <module name="NeedBraces"/>
+    <module name="LeftCurly"/>
+    <module name="RightCurly"/>
+    <module name="WhitespaceAround">
+      <property name="allowEmptyConstructors" value="true"/>
+      <property name="allowEmptyMethods" value="true"/>
+    </module>
+
+    <!-- ===== Documentation on the public API ===== -->
+    <module name="JavadocType">
+      <property name="scope" value="public"/>
+    </module>
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="public"/>
+      <property name="minLineCount" value="4"/>
+      <property name="allowMissingPropertyJavadoc" value="true"/>
+    </module>
+  </module>
+
+  <module name="FileLength">
+    <property name="max" value="400"/>
+  </module>
+  <module name="NewlineAtEndOfFile"/>
+  <module name="FileTabCharacter"/>
+</module>
