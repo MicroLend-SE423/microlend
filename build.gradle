@@ -1,0 +1,100 @@
+// MicroLend build.
+//
+// Everything here is free and runs locally: no paid services, no hosting,
+// no cloud resources. The only network access is Gradle fetching dependencies
+// from Maven Central the first time you build.
+
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'
+    id 'checkstyle'
+}
+
+group = 'pk.edu.giki.microlend'
+version = '0.1.0-M1'
+
+java {
+    toolchain {
+        // Gradle downloads a matching JDK automatically if one is not installed.
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Local file-based database. No server to install or run.
+    implementation 'org.xerial:sqlite-jdbc:3.46.1.3'
+
+    testImplementation platform('org.junit:junit-bom:5.11.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    mainClass = 'pk.edu.giki.microlend.MicroLendApplication'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+    finalizedBy jacocoTestReport
+}
+
+// ---------------------------------------------------------------------------
+// Coverage. The project must reach 60% of core business logic by M3; the gate
+// below starts low so the build stays green while the domain is still small,
+// and is raised at each milestone.
+// ---------------------------------------------------------------------------
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.register('coverageGate', JacocoCoverageVerification) {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.60   // raised as the money path is implemented
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Static analysis. config/checkstyle.xml is the project coding standard
+// recorded in SQAP section 4.4; constraint C-01 (no double/float for money)
+// is enforced here and fails the build.
+// ---------------------------------------------------------------------------
+checkstyle {
+    toolVersion = '10.18.2'
+    configFile = file('config/checkstyle.xml')
+    maxWarnings = 0
+    ignoreFailures = false
+}
+
+tasks.withType(Checkstyle).configureEach {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:all'
+}

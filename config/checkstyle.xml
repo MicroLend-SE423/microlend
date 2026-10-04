@@ -32,11 +32,14 @@
     <!-- Catches literals such as 1500.0 and 0.05 that slip past IllegalType -->
     <module name="Regexp">
       <property name="id" value="NoDoubleLiteral"/>
-      <property name="format" value="\b\d+\.\d+(?![0-9A-Za-z_])"/>
+      <!-- Matches a bare decimal literal in code (0.05), but not one written
+           inside a string such as new BigDecimal("0.05"), which is the correct
+           way to construct a monetary value. -->
+      <property name="format" value="(?&lt;![&quot;\w.])\d+\.\d+(?![\d&quot;])"/>
       <property name="illegalPattern" value="true"/>
       <property name="ignoreComments" value="true"/>
       <property name="message"
-               value="Constraint C-01: decimal literal found. Money and rates must be constructed as BigDecimal (e.g. new BigDecimal(&quot;0.05&quot;)), never as a double literal."/>
+               value="Constraint C-01: bare decimal literal found. Money and rates must be constructed as BigDecimal from a string (e.g. new BigDecimal(&quot;0.05&quot;)), never as a double literal."/>
     </module>
 
     <!-- BigDecimal.equals compares scale as well as value: 2.50 != 2.5.
