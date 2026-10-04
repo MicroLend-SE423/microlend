@@ -12,11 +12,11 @@ penalties, ages accounts into delinquency buckets and provisions the portfolio.
 
 | Module | Responsibility | Owner |
 |---|---|---|
-| `origination` | Eligibility assessment and loan approval: age bounds, active-loan limit, instalment-to-income burden, prior write-off check, risk grading | *TBC* |
-| `products` | Product catalogue and schedule generation: flat, reducing-balance and bullet products; due-date calendar rule; rounding residue absorbed into the final instalment | *TBC* |
-| `ledger` | Repayment posting and the append-only ledger: allocation waterfall (penalty → fees → interest → principal), partial payment, overpayment, compensating entries | *TBC* |
-| `delinquency` | End-of-day engine: penalty accrual, days-past-due bucketing, classification and provisioning, auto write-off. **The concurrent module.** | *TBC* |
-| `reporting` | Statements, portfolio reports (PAR30, collection efficiency, provision coverage), CSV export | *TBC* |
+| `origination` | Eligibility assessment and loan approval: age bounds, active-loan limit, instalment-to-income burden, prior write-off check, risk grading | Muhammad Ibrahim |
+| `products` | Product catalogue and schedule generation: flat, reducing-balance and bullet products; due-date calendar rule; rounding residue absorbed into the final instalment | Hassan Khalid |
+| `ledger` | Repayment posting and the append-only ledger: allocation waterfall (penalty → fees → interest → principal), partial payment, overpayment, compensating entries | Tughral Hussain |
+| `delinquency` | End-of-day engine: penalty accrual, days-past-due bucketing, classification and provisioning, auto write-off. **The concurrent module.** | Muhammad Ibrahim |
+| `reporting` | Statements, portfolio reports (PAR30, collection efficiency, provision coverage), CSV export | Hassan Khalid |
 
 ## Technology
 
@@ -114,11 +114,13 @@ compares scale (`2.50` is not `equals` to `2.5`).
 
 ## Team
 
-| Member | Primary modules (SE423) | SE431 deliverable lead (M1) |
-|---|---|---|
-| *TBC* | `origination`, `delinquency` | SQAP and risk register |
-| *TBC* | `products`, `reporting` | Quality requirements and RTM |
-| *TBC* | `ledger` | Standards awareness and Cost of Quality |
+| Member | Reg. # | Primary modules (SE423) | Pattern owned | SE431 deliverable lead (M1) |
+|---|---|---|---|---|
+| Muhammad Ibrahim | 2023446 | `origination`, `delinquency` | Adapter | SQAP scope & outline, risk register |
+| Hassan Khalid | 2023242 | `products`, `reporting` | Factory Method | Quality requirements (25010), RTM v1 |
+| Tughral Hussain | 2023532 | `ledger` | Decorator | Standards awareness, Cost of Quality |
+
+**Team Lead / Integrator (M1):** Tughral Hussain — final integration and the version-control repository. This role rotates at each milestone.
 
 SE431 deliverable ownership rotates each milestone, so every member leads each
 kind of quality artifact at least once.
