@@ -71,6 +71,9 @@ build() {             # $1 source md, $2 asset prefix, $3 course line, $4 doc li
     let md=fs.readFileSync('$1','utf8'), i=0;
     md=md.replace(/\`\`\`mermaid\n[\s\S]*?\`\`\`/g, () => '![](assets/$2-fig'+(++i)+'.png)');
     md=md.replace(/^# .*\n/, '');                       // title is on the title page
+    const log = fs.readFileSync('../qa/ai-usage-log.md','utf8')
+      .replace(/^# .*\n/, '# Annex A — AI Usage Log\n');
+    md = md + '\n\n\\\\newpage\n\n' + log;
     fs.writeFileSync('$body', md);
   "
   make_titlepage "$3" "$4" "titlepage-$2.tex"
