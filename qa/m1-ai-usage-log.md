@@ -1,10 +1,8 @@
-# MicroLend — AI Usage Log
+# MicroLend — AI Usage Log (Milestone 1)
 
-Required by the joint-project guidelines §9. Maintained continuously and submitted with every milestone.
+Required by the joint-project guidelines §9. Milestones 2 and 3 carry their own logs.
 
 **Tool used throughout:** Claude Opus 5 (Claude Code). **All Milestone 1 entries dated 4 October 2026.**
-
-## Milestone 1
 
 | # | Purpose | Material adopted | Modifications made | Verification |
 |---|---|---|---|---|
@@ -15,14 +13,6 @@ Required by the joint-project guidelines §9. Maintained continuously and submit
 | 5 | Business Rules Register | 43 numbered rules with boundary values | Numeric thresholds reviewed and accepted unchanged by the team | Boundary values cross-checked against the RTM test design |
 | 6 | Build and CI scaffold | Gradle build, `Money`, `MoneyTest`, GitHub Actions workflow | Written as a real TDD cycle, red commit before green | CI green: compile, 10 tests, Checkstyle, coverage |
 | 7 | Submission PDFs | Build script and title page | Fonts changed to carry mathematical symbols | Pages inspected; a fault dropping `≤` and `×` was found and fixed |
-
-## Milestone 2
-
-*(added as work proceeds)*
-
-## Milestone 3
-
-*(added as work proceeds)*
 
 ## Declaration for Milestone 1
 

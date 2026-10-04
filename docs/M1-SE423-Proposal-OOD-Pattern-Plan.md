@@ -703,11 +703,11 @@ The configuration also enforces complexity limits (cyclomatic complexity ≤ 15 
 | `docs/M1-SE423-*.md` | This document |
 | `docs/business-rules.md` | The Business Rules Register — every rule frozen at M1, with a deferred list |
 | `qa/risk-register.md` | Living risk register, initiated at M1 with 8 scored risks |
-| `qa/ai-usage-log.md` | AI Usage Log, submitted with every milestone |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 | `config/checkstyle.xml` | The coding standard, referenced by SQAP §4.4 |
 
 ---
 
 ## 7. Declaration
 
-The design in this document is the team's own. Where AI assistance was used — in drafting documentation and in reviewing design alternatives — it is recorded in `qa/ai-usage-log.md` with the tool, purpose, what was adopted, what was modified, and how it was verified. Each member is the owner of their modules and is able to explain and defend the design decisions recorded here.
+The design in this document is the team's own. Where AI assistance was used — in drafting documentation and in reviewing design alternatives — it is recorded in  `qa/m1-ai-usage-log.md` with the tool, purpose, what was adopted, what was modified, and how it was verified. Each member is the owner of their modules and is able to explain and defend the design decisions recorded here.

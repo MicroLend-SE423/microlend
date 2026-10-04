@@ -129,7 +129,7 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | `qa/rtm.md` | Requirements Traceability Matrix: requirement → design → code → test → result |
 | `qa/defect-log.md` | Inspection defects and corrective action tracking (from M2) |
 | `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up |
-| `qa/ai-usage-log.md` | AI Usage Log, submitted with every milestone |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 
 ## Team
 
