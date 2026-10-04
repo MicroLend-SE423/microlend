@@ -29,17 +29,14 @@
                value="Constraint C-01: ''{0}'' is a binary floating-point type and must not be used. Use BigDecimal via the Money value object; see SQAP 4.4."/>
     </module>
 
-    <!-- Catches literals such as 1500.0 and 0.05 that slip past IllegalType -->
-    <module name="Regexp">
+    <!-- Catches literals such as 1500.0 and 0.05 that slip past IllegalType.
+         Token-based rather than text-based, so a version string such as
+         "0.1.0-M1" is not mistaken for a numeric literal. -->
+    <module name="IllegalToken">
       <property name="id" value="NoDoubleLiteral"/>
-      <!-- Matches a bare decimal literal in code (0.05), but not one written
-           inside a string such as new BigDecimal("0.05"), which is the correct
-           way to construct a monetary value. -->
-      <property name="format" value="(?&lt;![&quot;\w.])\d+\.\d+(?![\d&quot;])"/>
-      <property name="illegalPattern" value="true"/>
-      <property name="ignoreComments" value="true"/>
-      <property name="message"
-               value="Constraint C-01: bare decimal literal found. Money and rates must be constructed as BigDecimal from a string (e.g. new BigDecimal(&quot;0.05&quot;)), never as a double literal."/>
+      <property name="tokens" value="NUM_DOUBLE, NUM_FLOAT"/>
+      <message key="illegal.token"
+               value="Constraint C-01: ''{0}'' is a floating-point literal. Money and rates must be constructed as BigDecimal from a string (e.g. new BigDecimal(&quot;0.05&quot;)); see SQAP 4.4."/>
     </module>
 
     <!-- BigDecimal.equals compares scale as well as value: 2.50 != 2.5.
