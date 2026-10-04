@@ -123,29 +123,14 @@ Everything else follows from that. Services are thin and stateless. Data crosses
 
 ### 3.2 Class diagram
 
+The class model is shown in three views, one per area of the system. Shared kernel types (`Money`, `LoanId`, the exception hierarchy) appear where they are used.
+
+**View 1 — Origination and Products: deciding whether to lend, and on what schedule**
+
 ```mermaid
 classDiagram
-    direction TB
+    direction LR
 
-    %% ---------- shared kernel ----------
-    class Money {
-        -BigDecimal amount
-        -Currency currency
-        +Money(BigDecimal, Currency)
-        +plus(Money) Money
-        +minus(Money) Money
-        +percentage(BigDecimal) Money
-        +isNegative() boolean
-        +compareTo(Money) int
-    }
-    class LoanId {
-        -String value
-    }
-    class LoanDomainException {
-        <<abstract>>
-    }
-
-    %% ---------- origination ----------
     class LoanApplication {
         -Applicant applicant
         -Money requestedAmount
@@ -170,7 +155,6 @@ classDiagram
         -RiskGrade grade
     }
 
-    %% ---------- products ----------
     class LoanProduct {
         <<abstract>>
         -String code
@@ -192,7 +176,7 @@ classDiagram
     class Schedule {
         -List~Instalment~ instalments
         +totalPayable() Money
-        +instalmentDueOn(LocalDate) Optional~Instalment~
+        +instalments() List~Instalment~
     }
     class Instalment {
         -int sequence
@@ -201,14 +185,33 @@ classDiagram
         -Money interest
     }
 
-    %% ---------- ledger ----------
-    class LoanAccount {
-        -LoanId id
-        -LoanStatus status
-        -Money outstandingPrincipal
-        +applyAllocation(Allocation) void
-        +isClosed() boolean
-    }
+    EligibilityEvaluator o-- EligibilityRule
+    EligibilityRule <|.. AgeRule
+    EligibilityRule <|.. ActiveLoanLimitRule
+    EligibilityRule <|.. BurdenRatioRule
+    EligibilityRule <|.. WriteOffHistoryRule
+    EligibilityEvaluator ..> LoanApplication
+    EligibilityEvaluator ..> Decision
+
+    LoanProduct <|-- FlatRateProduct
+    LoanProduct <|-- ReducingBalanceProduct
+    LoanProduct <|-- BulletProduct
+    LoanProduct ..> InterestCalculator : createInterestCalculator()
+    InterestCalculator <|.. FlatRateCalculator
+    InterestCalculator <|.. ReducingBalanceCalculator
+    InterestCalculator <|.. BulletCalculator
+    LoanProduct ..> Schedule
+    Schedule *-- Instalment
+```
+
+*Note the two extension points: a new eligibility rule is a new `EligibilityRule`; a new loan product is a new `LoanProduct` subclass with its calculator. Neither requires editing a tested class.*
+
+**View 2 — Ledger: applying money, with the posting pipeline and the import boundary**
+
+```mermaid
+classDiagram
+    direction LR
+
     class RepaymentPoster {
         <<interface>>
         +post(RepaymentCommand) PostingResult
@@ -225,8 +228,22 @@ classDiagram
     class AuditLoggingPoster
     class TimingPoster
     class IdempotencyGuardPoster
+
     class RepaymentAllocator {
         +allocate(Money, List~Instalment~) Allocation
+    }
+    class Allocation {
+        -Money toPenalty
+        -Money toFees
+        -Money toInterest
+        -Money toPrincipal
+    }
+    class LoanAccount {
+        -LoanId id
+        -LoanStatus status
+        -Money outstandingPrincipal
+        +applyAllocation(Allocation) void
+        +isClosed() boolean
     }
     class LedgerEntry {
         -LoanId loanId
@@ -235,6 +252,13 @@ classDiagram
         -Money credit
         -Instant postedAt
     }
+    class LedgerRepository {
+        <<interface>>
+        +append(LedgerEntry) void
+        +entriesFor(LoanId) List~LedgerEntry~
+    }
+    class SqliteLedgerRepository
+
     class RepaymentSource {
         <<interface>>
         +nextBatch() List~RepaymentCommand~
@@ -247,7 +271,33 @@ classDiagram
         <<external>>
     }
 
-    %% ---------- delinquency ----------
+    RepaymentPoster <|.. CoreRepaymentPoster
+    RepaymentPoster <|.. RepaymentPosterDecorator
+    RepaymentPosterDecorator o-- RepaymentPoster : wraps
+    RepaymentPosterDecorator <|-- AuditLoggingPoster
+    RepaymentPosterDecorator <|-- TimingPoster
+    RepaymentPosterDecorator <|-- IdempotencyGuardPoster
+
+    CoreRepaymentPoster --> RepaymentAllocator
+    CoreRepaymentPoster --> LedgerRepository
+    CoreRepaymentPoster --> LoanAccount
+    RepaymentAllocator ..> Allocation
+    LoanAccount ..> Allocation
+    LedgerRepository ..> LedgerEntry
+    LedgerRepository <|.. SqliteLedgerRepository
+
+    RepaymentSource <|.. CsvStatementAdapter
+    CsvStatementAdapter o-- BankStatementReader : adaptee
+```
+
+*The Decorator chain and the Adapter boundary are both visible here: decorators are each IS-A and HAS-A `RepaymentPoster`, and `CsvStatementAdapter` holds the foreign reader by composition rather than inheriting it.*
+
+**View 3 — Delinquency, the shared kernel, and the persistence boundary**
+
+```mermaid
+classDiagram
+    direction LR
+
     class EndOfDayEngine {
         -ExecutorService pool
         -LockRegistry locks
@@ -263,62 +313,57 @@ classDiagram
         <<interface>>
         +provisionFor(Classification, Money) Money
     }
+    class LockRegistry {
+        -ConcurrentHashMap~LoanId, ReentrantLock~ locks
+        +lockFor(LoanId) ReentrantLock
+    }
 
-    %% ---------- persistence boundary ----------
+    class Money {
+        -BigDecimal amount
+        -Currency currency
+        +Money(BigDecimal, Currency)
+        +plus(Money) Money
+        +minus(Money) Money
+        +percentage(BigDecimal) Money
+        +compareTo(Money) int
+    }
+    class LoanId {
+        -String value
+    }
+    class LoanDomainException {
+        <<abstract>>
+    }
+    class IneligibleApplicantException
+    class InvalidRepaymentException
+    class LoanClosedException
+    class LedgerImbalanceException
+    class InvalidMoneyException
+
     class LoanRepository {
         <<interface>>
-    }
-    class LedgerRepository {
-        <<interface>>
+        +findById(LoanId) Optional~LoanAccount~
+        +save(LoanAccount) void
     }
     class SqliteLoanRepository
-    class SqliteLedgerRepository
-
-    %% ---------- relationships ----------
-    EligibilityEvaluator o-- EligibilityRule
-    EligibilityRule <|.. AgeRule
-    EligibilityRule <|.. ActiveLoanLimitRule
-    EligibilityRule <|.. BurdenRatioRule
-    EligibilityRule <|.. WriteOffHistoryRule
-    EligibilityEvaluator ..> LoanApplication
-    EligibilityEvaluator ..> Decision
-
-    LoanProduct <|-- FlatRateProduct
-    LoanProduct <|-- ReducingBalanceProduct
-    LoanProduct <|-- BulletProduct
-    LoanProduct ..> InterestCalculator : factory method
-    InterestCalculator <|.. FlatRateCalculator
-    InterestCalculator <|.. ReducingBalanceCalculator
-    InterestCalculator <|.. BulletCalculator
-    LoanProduct ..> Schedule
-    Schedule *-- Instalment
-
-    RepaymentPoster <|.. CoreRepaymentPoster
-    RepaymentPoster <|.. RepaymentPosterDecorator
-    RepaymentPosterDecorator o-- RepaymentPoster
-    RepaymentPosterDecorator <|-- AuditLoggingPoster
-    RepaymentPosterDecorator <|-- TimingPoster
-    RepaymentPosterDecorator <|-- IdempotencyGuardPoster
-    CoreRepaymentPoster --> RepaymentAllocator
-    CoreRepaymentPoster --> LedgerRepository
-    CoreRepaymentPoster --> LoanAccount
-    LedgerRepository ..> LedgerEntry
-
-    RepaymentSource <|.. CsvStatementAdapter
-    CsvStatementAdapter o-- BankStatementReader
 
     EndOfDayEngine --> PenaltyAccruer
     EndOfDayEngine --> DelinquencyClassifier
     EndOfDayEngine --> ProvisioningPolicy
-    EndOfDayEngine --> LedgerRepository
+    EndOfDayEngine --> LockRegistry
+    EndOfDayEngine --> LoanRepository
+
+    LoanDomainException <|-- IneligibleApplicantException
+    LoanDomainException <|-- InvalidRepaymentException
+    LoanDomainException <|-- LoanClosedException
+    LoanDomainException <|-- LedgerImbalanceException
+    LoanDomainException <|-- InvalidMoneyException
 
     LoanRepository <|.. SqliteLoanRepository
-    LedgerRepository <|.. SqliteLedgerRepository
-
-    LoanAccount --> Money
-    Instalment --> Money
-    LedgerEntry --> Money
+    PenaltyAccruer ..> Money
+    Money ..> InvalidMoneyException : rejects invalid values
 ```
+
+*`EndOfDayEngine` holds only the interfaces it needs — it cannot export a report or read the full ledger, because those methods are not on the types it is given. The exception hierarchy is rooted at `LoanDomainException`, so nothing outside a module ever catches a storage-layer exception.*
 
 ### 3.3 Component view and allowed dependencies
 
