@@ -29,9 +29,9 @@ ISO/IEC 25010 defines eight product quality characteristics. A quality plan that
 | **Security (integrity)** | **High** | A ledger that can be altered is not an audit record. Integrity, not confidentiality, is the sub-characteristic that matters |
 | **Maintainability** | **High** | The system is assessed across three milestones by three developers who must each work in code the others wrote |
 | **Performance efficiency** | **Moderate** | The end-of-day run must finish within an overnight window. Nothing else is time-critical |
-| **Usability** | **Low** | A command-line tool for trained branch staff. Learnability is not a project risk |
+| **Usability** | **Low** | A small internal web interface used by trained branch staff on a local machine. Learnability is not a project risk |
 | **Compatibility** | **Not applicable** | A single self-contained application; no co-existence or interoperability requirement |
-| **Portability** | **Not applicable** | Runs on the JVM with a file-based database; no deployment-environment variation in scope |
+| **Portability** | **Not applicable** | Runs locally on the JVM with a file-based database and is never deployed, so there is no deployment-environment variation in scope |
 
 Compatibility and portability are declared **not applicable with justification** rather than quietly omitted.
 

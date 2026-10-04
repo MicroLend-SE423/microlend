@@ -24,7 +24,7 @@ A community microfinance institution lends small amounts — typically Rs. 25,00
 
 **MicroLend is the back-office engine that answers those questions.** It assesses loan applications against eligibility rules, generates repayment schedules, applies incoming repayments to the right obligations in the right order, maintains an audit-grade ledger, and runs a nightly process that ages overdue accounts, accrues penalties and classifies the portfolio by risk.
 
-The system is deliberately a **back-office engine with a command-line interface**. There is no web front end, no network dependency and no third-party service. Every demonstration runs from a local database on a laptop.
+The system is a **back-office engine with a small web interface that runs locally**. It is never deployed: there is no hosting, no external service and no paid resource of any kind. The application serves its pages from a local process against a file-based database, so every demonstration runs entirely on a team member’s own laptop.
 
 ### 1.2 Its users
 
@@ -49,7 +49,7 @@ Those three properties are what give the system its invariants, and the invarian
 
 **In scope for this project:** individual loans, three product types, fixed-rate lending in a single currency, repayment by cash at the branch or by bank statement import, penalty accrual, delinquency classification, provisioning, write-off, statements and portfolio reporting.
 
-**Explicitly deferred** (recorded here so that scope cannot creep silently): group/joint-liability lending, guarantors and collateral registers, loan restructuring and rescheduling, multi-currency, savings products, interest on savings, mobile money integration, and any user interface beyond the CLI.
+**Explicitly deferred** (recorded here so that scope cannot creep silently): group/joint-liability lending, guarantors and collateral registers, loan restructuring and rescheduling, multi-currency, savings products, interest on savings, mobile money integration, and any deployment of the application beyond running it locally.
 
 ### 1.5 Mapping of each Section 3.1 minimum requirement to how it will be met
 
@@ -369,7 +369,7 @@ classDiagram
 
 ```mermaid
 flowchart TB
-    CLI[cli — teller, officer, manager commands]
+    WEB[web — teller, officer and manager screens, served locally]
     ORIG[origination]
     PROD[products]
     LED[ledger]
@@ -378,9 +378,9 @@ flowchart TB
     COMMON[common — Money, LoanId, exceptions]
     PERSIST[persistence — SQLite implementations]
 
-    CLI --> ORIG
-    CLI --> LED
-    CLI --> REP
+    WEB --> ORIG
+    WEB --> LED
+    WEB --> REP
     ORIG --> PROD
     ORIG --> COMMON
     PROD --> COMMON
@@ -394,7 +394,7 @@ flowchart TB
     PERSIST -.implements interfaces declared by.-> ORIG
 ```
 
-**The dependency rule:** arrows point inward, toward `common`, and never outward from a domain module to persistence or the CLI. `persistence` depends on the domain, not the reverse — the dashed arrows are implementations of interfaces the domain declares. There are **no cycles** between modules, and this is enforced as a build-time check rather than left as an intention.
+**The dependency rule:** arrows point inward, toward `common`, and never outward from a domain module to persistence or the web layer. `persistence` depends on the domain, not the reverse — the dashed arrows are implementations of interfaces the domain declares. There are **no cycles** between modules, and this is enforced as a build-time check rather than left as an intention.
 
 ### 3.4 Cohesion and coupling reasoning
 
@@ -608,7 +608,7 @@ public abstract class LoanProduct {
 
 | Call path | Audit | Timing | Idempotency |
 |---|---|---|---|
-| Teller CLI | ✔ | ✔ | — |
+| Teller screen | ✔ | ✔ | — |
 | CSV bulk import | one per file | ✔ | ✔ |
 | End-of-day internal adjustment | — | ✔ | — |
 | Unit tests | — | — | — |

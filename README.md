@@ -20,23 +20,42 @@ penalties, ages accounts into delinquency buckets and provisions the portfolio.
 
 ## Technology
 
-Java · SQLite · JUnit 5 · Checkstyle · GitHub Actions. Command-line interface;
-no network access is required to build, test or demonstrate the system.
+Java 21 · Gradle · SQLite · JUnit 5 · JaCoCo · Checkstyle · GitHub Actions.
+
+The application runs **locally only**. It is never deployed: no hosting, no cloud
+service and no paid resource of any kind. A small web interface is served from a
+local process against a file-based database, so the whole system runs on one
+laptop. The only network access is Gradle fetching dependencies the first time
+you build.
 
 ## Build and run
 
-> Populated once the build is scaffolded at the start of M2 development.
+You need a JDK 21 (or newer) on your machine. Gradle itself is bundled, so there is
+nothing else to install — the wrapper downloads what it needs on first use.
 
 ```bash
-# build and run the test suite
-./gradlew build
+# build everything and run the test suite
+./gradlew build            # Windows: gradlew.bat build
 
-# run the static analysis gate
-./gradlew checkstyleMain
+# tests only
+./gradlew test
 
-# start the CLI
+# static analysis — enforces constraint C-01 (no double/float for money)
+./gradlew checkstyleMain checkstyleTest
+
+# coverage report
+./gradlew jacocoTestReport
+
+# run the application
 ./gradlew run
 ```
+
+Reports are written under `build/reports/`: JUnit results in `tests/test/`,
+coverage in `jacoco/test/html/index.html`, and Checkstyle findings in
+`checkstyle/`.
+
+Every push runs the same four steps in GitHub Actions, so a green build locally
+and a green build in CI mean the same thing.
 
 ## Repository layout
 

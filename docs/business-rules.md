@@ -12,7 +12,7 @@ Every rule has an ID. The RTM (`qa/rtm.md`) traces requirements to these IDs, an
 
 **In scope:** individual loans, three product types, fixed-rate lending in a single currency, repayment by cash at the branch or by bank statement import, penalty accrual, delinquency classification, provisioning, write-off, statements and portfolio reporting.
 
-**Deferred — explicitly out of scope for all three milestones:** group and joint-liability lending; guarantors and collateral registers; loan restructuring and rescheduling; multi-currency; savings products; interest paid on savings; mobile-money integration; any user interface beyond the CLI; multi-branch consolidation; and customer-facing self-service.
+**Deferred — explicitly out of scope for all three milestones:** group and joint-liability lending; guarantors and collateral registers; loan restructuring and rescheduling; multi-currency; savings products; interest paid on savings; mobile-money integration; any deployment of the application beyond running it locally; multi-branch consolidation; and customer-facing self-service.
 
 This list exists so that scope creep is a visible decision rather than a drift.
 
