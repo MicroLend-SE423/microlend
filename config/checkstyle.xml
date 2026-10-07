@@ -24,7 +24,6 @@
       <property name="id" value="NoFloatingPointMoney"/>
       <property name="illegalClassNames" value="double, float, Double, Float"/>
       <property name="validateAbstractClassNames" value="true"/>
-      <property name="memberModifiers" value="LITERAL_PUBLIC, LITERAL_PROTECTED, LITERAL_PRIVATE, LITERAL_STATIC, FINAL"/>
       <message key="illegal.type"
                value="Constraint C-01: ''{0}'' is a binary floating-point type and must not be used. Use BigDecimal via the Money value object; see SQAP 4.4."/>
     </module>

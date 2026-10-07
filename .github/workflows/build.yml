@@ -57,5 +57,5 @@ jobs:
             build/reports/tests/test/
             build/reports/jacoco/test/html/
             build/reports/checkstyle/
-          retention-days: 14
+          retention-days: 90
           if-no-files-found: ignore
