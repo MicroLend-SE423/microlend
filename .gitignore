@@ -13,3 +13,7 @@ build/
 # Gradle
 .gradle/
 build/
+
+# Docs build
+docs/node_modules/
+docs/*.tmp.*
