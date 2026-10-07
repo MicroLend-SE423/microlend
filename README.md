@@ -30,7 +30,7 @@ you build.
 
 ## Build and run
 
-You need a JDK 21 (or newer) on your machine. Gradle itself is bundled, so there is
+You need JDK 21 installed (the build pins a Java 21 toolchain, and Gradle will not download one). Gradle itself is bundled, so there is
 nothing else to install — the wrapper downloads what it needs on first use.
 
 ```bash
@@ -74,7 +74,7 @@ A **three-tier** model. `main` is the milestone baseline and is never written to
 
 | Branch | Purpose | Rules |
 |---|---|---|
-| `main` | Released, baselined code. Tagged `m1-baseline` … `m4-baseline` | Protected. No direct pushes. Changes arrive only by reviewed pull request |
+| `main` | Released, baselined code. Tagged `m1-baseline`, `m2-baseline`, `m3-baseline` | Protected. No direct pushes. Changes arrive only by reviewed pull request |
 | `develop` | Integration branch; the current working state of the system | Changes arrive by pull request from feature branches |
 | `feature/<module>-<short-name>` | One unit of work, owned by one member | Branched from `develop`, merged back by PR |
 
@@ -105,9 +105,8 @@ Each milestone submission is tagged on `main`:
 | Tag | Milestone | Week |
 |---|---|---|
 | `m1-baseline` | M1 — proposal, OOD, pattern plan, SQA planning | 6 |
-| `m2-baseline` | M2 — core architecture and patterns; inspection, static analysis, V&V plan | 9 |
-| `m3-baseline` | M3 — feature-complete build, TDD, refactoring; dynamic test design and execution, SCM audit | 12 |
-| `m4-baseline` | M4 — final system, CI, performance, demo; final SQAP, GQM, risk register, audit | 15 |
+| `m2-baseline` | M2 — working architecture, patterns, concurrency and verification baseline; inspection, static analysis, V&V plan, test design, SCM baseline | 10 |
+| `m3-baseline` | M3 — final integrated system, TDD, refactoring, CI and demo; final SQAP, test execution, GQM, risk register and audit | 13 |
 
 ## Coding standards
 
@@ -129,8 +128,8 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | `qa/risk-register.md` | Living risk register, initiated at M1, updated at every milestone |
 | `qa/rtm.md` | Requirements Traceability Matrix: requirement → design → code → test → result |
 | `qa/defect-log.md` | Inspection defects and corrective action tracking (from M2) |
-| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up |
-| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2, M3 and M4 have their own |
+| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up (from M2) |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 
 ## Team
 
@@ -142,5 +141,5 @@ compares scale (`2.50` is not `equals` to `2.5`).
 
 **Team Lead / Integrator (M1):** Muhammad Ibrahim — final integration and the version-control repository. This role rotates at each milestone.
 
-SE431 deliverable ownership rotates each milestone across M1–M4, so every member
-leads a quality deliverable at every milestone and reviews the others.
+SE431 deliverable ownership rotates each milestone across M1–M3, so every member
+leads each kind of quality artifact once and reviews the others.

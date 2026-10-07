@@ -63,7 +63,7 @@ Those three properties are what give the system its invariants, and the invarian
 | 6 | **Persistent data layer with a defined schema** | SQLite, seven tables with foreign keys and `CHECK` constraints that re-state the code's invariants at the storage layer — §3.7 | M2 |
 | 7 | **TDD suite ≥ 60% of core business logic** with visible red-green-refactor history | Eligibility, schedule generation, allocation and classification are pure functions over `Money` and dates — ideal test-first targets. Commit convention `test(red):` → `feat(green):` → `refactor:`; squash-merge **disabled** in repository settings so the trail survives — §6.3 | Repository history, M2, M3 |
 | 8 | **Hosted Git repository** with individually attributable contribution history | GitHub, public. Module ownership maps one-to-one onto directories, so `git log` per path is meaningful. `CODEOWNERS` requests review from the module owner; no author merges their own work into `main` — §6 | Repository, all milestones |
-| 9 | **CI pipeline** that builds and runs the test suite on push | GitHub Actions: compile, JUnit, JaCoCo coverage report, Checkstyle gate. No secrets, no network dependency — §6.4 | M1 (pipeline already green on `develop`), M4 (≥ 5 real runs) |
+| 9 | **CI pipeline** that builds and runs the test suite on push | GitHub Actions: compile, JUnit, JaCoCo coverage report, Checkstyle gate. No secrets, no network dependency — §6.4 | M1 (pipeline already green on `develop`), M3 (multiple genuine pipeline runs) |
 
 ---
 
@@ -105,14 +105,13 @@ Each owner holds a module whose **invariant they can state in a single sentence*
 
 Ibrahim additionally owns the concurrent end-of-day engine, which depends on Tughral's ledger; that dependency is deliberate, because it forces the two of them to agree an interface rather than reach into each other's internals.
 
-**SE431 deliverable ownership rotates** across the four milestones, so every member leads a quality deliverable at every milestone and reviews the ones they do not lead:
+**SE431 deliverable ownership rotates** across the three milestones, so every member leads each kind of quality artifact once and reviews the others each time:
 
-| Milestone | SQAP & risk register | Quality requirements & RTM | Milestone-specific SQA work |
-|------|------------|------------|--------------------------|
-| M1 | Muhammad Ibrahim | Hassan Khalid | Tughral Hussain — standards awareness, Cost of Quality |
-| M2 | Hassan Khalid | Tughral Hussain | Muhammad Ibrahim — Fagan inspection, static analysis, V&V plan |
-| M3 | Tughral Hussain | Muhammad Ibrahim | Hassan Khalid — black-box and white-box test design, SCM audit |
-| M4 | Muhammad Ibrahim | Hassan Khalid | Tughral Hussain — GQM programme, final audit and CAPA closure |
+| Milestone | SQAP, V&V and risk register | Requirements, RTM and test design | Inspection, analysis and measurement |
+|----|------------|------------|------------|
+| M1 (Week 6) | **Muhammad Ibrahim** — SQAP scope and outline, initial risk register | **Hassan Khalid** — quality requirements, RTM v1 | **Tughral Hussain** — standards awareness, Cost of Quality |
+| M2 (Week 10) | **Hassan Khalid** — V&V plan (IEEE 1012), risk register update | **Tughral Hussain** — black-box and white-box test design, RTM update | **Muhammad Ibrahim** — Fagan inspection and CAPA, static analysis, SCM quality-gate evidence |
+| M3 (Week 13) | **Tughral Hussain** — final IEEE 730 SQAP, final risk register | **Muhammad Ibrahim** — final test execution and coverage, final RTM | **Hassan Khalid** — GQM programme, final audit and CAPA closure |
 
 ---
 
@@ -157,6 +156,21 @@ classDiagram
         -boolean approved
         -RejectionReason reason
         -RiskGrade grade
+    }
+    class RejectionReason {
+        <<enumeration>>
+        AGE
+        ACTIVE_LOAN_LIMIT
+        BURDEN_RATIO
+        PRIOR_WRITE_OFF
+        OUTSIDE_PRODUCT_BAND
+        BELOW_PRODUCT_MINIMUM
+    }
+    class RiskGrade {
+        <<enumeration>>
+        A
+        B
+        C
     }
 
     class LoanProduct {
@@ -206,6 +220,8 @@ classDiagram
     EligibilityRule <|.. ProductBandRule
     EligibilityEvaluator ..> LoanApplication
     EligibilityEvaluator ..> Decision
+    Decision --> RejectionReason
+    Decision --> RiskGrade
 
     LoanProduct <|-- FlatRateProduct
     LoanProduct <|-- ReducingBalanceProduct
@@ -236,6 +252,7 @@ classDiagram
     class CoreRepaymentPoster {
         -RepaymentAllocator allocator
         -SettlementPolicy settlement
+        -LoanRepository loans
         -LedgerWriter ledger
         +post(RepaymentCommand) PostingResult
     }
@@ -285,6 +302,11 @@ classDiagram
         +entriesFor(LoanId) List~LedgerEntry~
     }
     class SqliteLedgerRepository
+    class LoanRepository {
+        <<interface>>
+        +findById(LoanId) Optional~LoanAccount~
+        +save(LoanAccount) void
+    }
 
     class RepaymentSource {
         <<interface>>
@@ -314,6 +336,7 @@ classDiagram
     CoreRepaymentPoster --> SettlementPolicy
     CoreRepaymentPoster --> LedgerWriter
     CoreRepaymentPoster --> LoanAccount
+    CoreRepaymentPoster --> LoanRepository
     RepaymentAllocator ..> Allocation
     LoanAccount ..> Allocation
     CompensatingEntryService --> LedgerWriter
@@ -493,6 +516,8 @@ flowchart TB
     DEL --> COMMON
     REP --> LED
     REP --> COMMON
+    DEL --> PROD
+    REP --> DEL
     PERSIST -.implements interfaces declared by.-> LED
     PERSIST -.implements interfaces declared by.-> ORIG
     PERSIST -.implements interfaces declared by.-> PROD
@@ -525,7 +550,7 @@ Within modules the same test is applied to classes. `EligibilityEvaluator` holds
 4. **Content coupling is impossible by construction.** No module exposes mutable fields; all state is private and changed only through methods that enforce the invariant.
 5. **The one accepted dependency with weight** is `delinquency → ledger`, because penalty accrual must write ledger entries. It is deliberately **interface-only**: the end-of-day engine holds a `LedgerWriter`, not the posting implementation, and cannot read statements or export CSV through it.
 
-**Where coupling is highest, and why that is acceptable:** `ledger` is the most depended-upon domain module (`delinquency` and `reporting` both need it). This is *afferent* coupling — many things depend on it — which is appropriate for a stable module whose contract is the smallest and least likely to change in the system. The risk this creates is recorded as **R1** in the risk register, and its mitigation is the golden-schedule test suite written before the implementation.
+**Where coupling is highest, and why that is acceptable:** `products` and `ledger` are the most depended-upon domain modules — `origination`, `ledger` and `delinquency` need the schedule from `products`, and `delinquency` and `reporting` need the ledger. This is *afferent* coupling — many things depend on them — which suits stable modules whose contracts (a schedule; an append-only list of entries) are small and unlikely to change. The risk it creates is that a defect in either propagates to every downstream figure. That risk is recorded as **R1** and mitigated by the golden-schedule tests and the basis-path tests on the allocation waterfall, both written before the implementation.
 
 ### 3.5 Defensive programming and exception design
 
@@ -550,7 +575,7 @@ public final class Money implements Comparable<Money> {
 }
 ```
 
-This is the `Money` class already committed and tested in the repository (`common/Money.java`, `MoneyTest`). The constructor is private, so `Money.of()` is the only way in, and every rejection is an `InvalidMoneyException` — a `LoanDomainException` subtype. A single currency (PKR, BR-41) is assumed, so `Money` carries no currency field. Because `Money` cannot hold a negative or over-scaled value, no downstream code tests for one. The same applies to `LoanApplication` (validated in its constructor) and `RepaymentCommand` (validated in its factory). This is the difference between defending against bad input at one boundary and scattering `if (amount < 0)` through five modules.
+This is an abridged excerpt (messages shortened) of the `Money` class already committed and tested in the repository (`common/Money.java`, `MoneyTest`). The constructor is private, so `Money.of()` is the only way in, and every rejection is an `InvalidMoneyException` — a `LoanDomainException` subtype. A single currency (PKR, BR-41) is assumed, so `Money` carries no currency field. Because `Money` cannot hold a negative or over-scaled value, no downstream code tests for one. The same applies to `LoanApplication` (validated in its constructor) and `RepaymentCommand` (validated in its factory). This is the difference between defending against bad input at one boundary and scattering `if (amount < 0)` through five modules.
 
 **A typed exception hierarchy, carrying the reason.**
 
@@ -563,7 +588,7 @@ LoanDomainException  (abstract — the module boundary type)
 └── InvalidMoneyException
 ```
 
-Rules: no `catch (Exception e)`, and no empty catch blocks — both are rejected by the static-analysis configuration. Exceptions crossing a module boundary are always `LoanDomainException` subtypes, so a caller never catches a JDBC exception; the repository translates storage failures into domain terms. Each exception carries the data needed to explain the failure, because `throw new RuntimeException("invalid")` tells an operator nothing.
+Rules: no `catch (Exception e)`, and no empty catch blocks (unless the exception variable is named `expected` or `ignored`, which marks a deliberate test case) — both are rejected by the static-analysis configuration. Exceptions crossing a module boundary are always `LoanDomainException` subtypes, so a caller never catches a JDBC exception; the repository translates storage failures into domain terms. Each exception carries the data needed to explain the failure, because `throw new RuntimeException("invalid")` tells an operator nothing.
 
 ### 3.6 The concurrent operation and its thread-safety strategy
 
@@ -580,10 +605,11 @@ Rules: no `catch (Exception e)`, and no empty catch blocks — both are rejected
 | Measure | What it prevents |
 |----------------------|--------------|
 | **Immutability at the core** — `Money`, `LedgerEntry`, `Instalment` have no mutable state | Nothing shared can be changed under another thread |
-| **Per-account locks** — `LockRegistry` holds a `ConcurrentHashMap<LoanId, ReentrantLock>`. Each account's read → allocate → write sequence runs under that account's lock and inside one SQLite transaction, committed before the lock is released | Lost updates, while unrelated accounts are computed in parallel |
+| **Per-account locks** — `LockRegistry` holds a `ConcurrentHashMap<LoanId, ReentrantLock>`. Each account's read → allocate → write sequence runs under that account's lock and inside one SQLite transaction (`BEGIN IMMEDIATE`, with a busy timeout and one connection per worker), committed before the lock is released | Lost updates, while unrelated accounts are computed in parallel |
 | **One lock at a time** — no task ever holds two account locks; nothing in scope moves money between accounts | Deadlock, which needs at least two locks held at once to form a cycle |
 | **Unique `(loan_id, business_date)`** in `delinquency_snapshot`, inserted in the same transaction as that day's penalty ledger entries | Double accrual — a second run for the same date fails on the key and its whole transaction, accrual included, rolls back |
 | **Append-only ledger**, with an invariant test asserting Σ debits = Σ credits after every run | Silent imbalance under any interleaving |
+| **Snapshot reads** — a report runs inside one SQLite read transaction (WAL mode gives it a consistent snapshot) and computes as at a stated business date from the append-only ledger (BR-39) | Torn read — a report never sees half of a posting |
 | **Deterministic tests** driven by `CountDownLatch`, never `Thread.sleep` | Flaky CI, which is what causes teams to start ignoring red builds |
 
 **A stated limit.** SQLite admits one writer at a time, so the four pool threads run the *calculation* (days past due, penalty, classification, provisioning) in parallel, while the commits themselves are short and serialised by the database. QR-01 in the SE431 document measures whether that is fast enough for 10,000 loans, rather than assuming it.
@@ -592,7 +618,7 @@ This also supplies the two deliberately injected failure scenarios the M3 rubric
 
 ### 3.7 Persistent data layer
 
-SQLite, seven tables. The schema **re-states the code's invariants** so that a corrupt write fails at two independent levels:
+SQLite, seven tables. The schema **re-states the code's invariants** so that a corrupt write fails at two independent levels (foreign keys are enforced with `PRAGMA foreign_keys = ON` on every connection, because SQLite leaves them off by default):
 
 | Table | Holds | Constraints that matter |
 |-------|----------|------------|
@@ -601,7 +627,7 @@ SQLite, seven tables. The schema **re-states the code's invariants** so that a c
 | `loan` | Account state: principal, status, grade, dates | FK to customer and product; `CHECK (outstanding >= 0)` |
 | `instalment` | Generated schedule lines | FK to loan; `UNIQUE (loan_id, sequence)` |
 | `ledger_entry` | Every money movement | FK to loan; `CHECK (debit >= 0 AND credit >= 0)`; **no `UPDATE` or `DELETE` statement against this table exists in the codebase** |
-| `payment` | Received payments and their source | `UNIQUE (bank_reference)` — the idempotency guard |
+| `payment` | Received payments and their source | `UNIQUE (source_bank, bank_reference)` — the idempotency guard; cash payments store `NULL`, which SQLite treats as distinct |
 | `delinquency_snapshot` | End-of-day result per loan per date | **`UNIQUE (loan_id, business_date)`** — prevents double accrual |
 
 Monetary columns are stored as `INTEGER` minor units (paisa) rather than `REAL`, for the same reason `double` is banned in the code.
@@ -610,7 +636,7 @@ Monetary columns are stored as `INTEGER` minor units (paisa) rather than `REAL`,
 
 ## 4. SOLID Application Plan
 
-The rubric requires all five principles to be analysed, each marked **relevant**, **not relevant**, or **not yet observable**, with non-applicability justified. All five are relevant to MicroLend and none is claimed as not applicable. Each is tied below to a concrete design decision. Two (SRP, OCP) can already be seen in the design; the other three (LSP, ISP, DIP) are designed in but **not yet observable** until code exists at M2, and §4.6 says exactly what evidence will show them.
+The rubric requires all five principles to be analysed, each marked **relevant**, **not relevant**, or **not yet observable**, with non-applicability justified. All five are relevant to MicroLend and none is claimed as not applicable. Each is tied below to a concrete design decision. Four (SRP, OCP, ISP, DIP) are demonstrated by decisions already visible in the class views; LSP is designed in but **not yet observable** until its contract test runs against real calculators at M2, and §4.6 says what evidence will show it.
 
 ### 4.1 Single Responsibility Principle — **relevant, demonstrated in the design**
 
@@ -640,7 +666,7 @@ That is rejected. It refuses an operation the supertype promises, so a `Hardship
 
 **The contract every `InterestCalculator` honours:** same preconditions (any non-negative principal, any tenure within the product band); returns a non-negative `Money`, never null; a schedule always has exactly `tenureMonths` instalments. These are stated in the interface's Javadoc and asserted in a **shared contract test** that every implementation must pass — so LSP is checked by the build rather than by good intentions.
 
-### 4.4 Interface Segregation Principle — **relevant, designed; not yet observable (M2)**
+### 4.4 Interface Segregation Principle — **relevant, demonstrated in the design (code-level evidence at M2)**
 
 **The design decision:** the persistence boundary is not one fat `LoanDao`.
 
@@ -648,7 +674,7 @@ Separate role interfaces: `ScheduleProvider` (read a schedule), `LedgerWriter` (
 
 **The concrete consequence:** apart from `LoanRepository` for account status, the end-of-day engine receives `ScheduleProvider` and `LedgerWriter` only, and `reporting` receives `LedgerReader` only. The engine is therefore *incapable* of exporting a CSV or reading the full ledger, and a report is incapable of writing one — not by policy, but because those methods are not on the interfaces it holds. A fat interface would have made the engine's test double implement export methods it never calls, and every one of those stubs would be a latent failure waiting to be invoked.
 
-### 4.5 Dependency Inversion Principle — **relevant, designed; not yet observable (M2)**
+### 4.5 Dependency Inversion Principle — **relevant, demonstrated in the design (code-level evidence at M2)**
 
 **The design decision:** the domain declares the interfaces it needs; persistence implements them.
 
@@ -656,7 +682,7 @@ Separate role interfaces: `ScheduleProvider` (read a schedule), `LedgerWriter` (
 
 **The concrete consequence:** no business class imports `java.sql`. Unit tests inject in-memory fakes and run with no database present. A ledger-posting test runs in milliseconds and cannot fail because of a locked file or a missing driver.
 
-**What was rejected:** `new SqliteLoanRepository(connection)` inside `RepaymentPoster`. That would make the posting logic untestable without a real database, push a JDBC concern into business code, and make a storage change a business-code change.
+**What was rejected:** `new SqliteLoanRepository(connection)` inside `CoreRepaymentPoster`. That would make the posting logic untestable without a real database, push a JDBC concern into business code, and make a storage change a business-code change.
 
 ### 4.6 Summary and honest limits
 
@@ -665,12 +691,12 @@ Separate role interfaces: `ScheduleProvider` (read a schedule), `LedgerWriter` (
 | **SRP** | Relevant — demonstrated in the design | Splitting of `LoanService` into evaluator, product/assembler, allocator, renderer — §4.1 | Visible now in the class views |
 | **OCP** | Relevant — demonstrated in the design | `LoanProduct` hierarchy and the `EligibilityRule` list — §4.2 | Visible now in View 1 |
 | **LSP** | Relevant — designed, not yet observable | Hardship lending modelled as a zero calculator, plus the shared contract test — §4.3 | Contract test passing for all three calculators (M2) |
-| **ISP** | Relevant — designed, not yet observable | Role interfaces at the persistence and posting boundary — §4.4 | One small test double per role interface (M2) |
-| **DIP** | Relevant — designed, not yet observable | Domain-declared repository interfaces, injected implementations — §4.5 | Suite runs with in-memory fakes and no database (M2) |
+| **ISP** | Relevant — demonstrated in the design | Role interfaces at the persistence and posting boundary — §4.4 | Visible now in Views 2–4; one small test double per role (M2) |
+| **DIP** | Relevant — demonstrated in the design | Domain-declared repository interfaces, injected implementations — §4.5 | Visible now in Views 2–4; suite runs with in-memory fakes and no database (M2) |
 
-No principle is declared not relevant: each one constrains a real decision in this design. M1 commits to the structure; M2 produces the code-level evidence for the three that cannot yet be observed.
+No principle is declared not relevant: each one constrains a real decision in this design. M1 commits to the structure; M2 produces the code-level evidence for all five, and the first observation of LSP.
 
-**Where a principle is weaker, stated honestly.** SRP at the *module* level is clean, but `RepaymentAllocator.allocate()` is a single method with roughly eleven branches, which is the most complex method in the system. It is kept as one method deliberately — splitting the waterfall across classes would scatter a rule that must be read in order — and it is the primary subject of the Fagan inspection and the basis-path test design on the SQA side. Complexity that is acknowledged, inspected and fully covered is a different proposition from complexity that is hidden.
+**Where a principle is weaker, stated honestly.** SRP at the *module* level is clean, but `RepaymentAllocator.allocate()` is a single method with a cyclomatic complexity of about 11 (ten decision points), which is the most complex method in the system. It is kept as one method deliberately — splitting the waterfall across classes would scatter a rule that must be read in order — and it is the primary subject of the Fagan inspection and the basis-path test design on the SQA side. Complexity that is acknowledged, inspected and fully covered is a different proposition from complexity that is hidden.
 
 ---
 
@@ -696,7 +722,7 @@ public abstract class LoanProduct {
 }
 ```
 
-**Alternative rejected: Simple Factory.** A `ScheduleFactory.create(type)` holding a `switch` was the obvious first design. It is rejected because the creation decision stays centralised in one place that must be edited for every new product — it *moves* the conditional ladder rather than removing it. A method that returns a new object is not automatically the GoF Factory Method; the distinguishing property is that the **creator subtype**, not a parameter, decides what gets created.
+**Alternative rejected: Simple Factory.** A `ScheduleFactory.create(type)` holding a `switch` was the obvious first design. It is rejected because the creation decision stays centralised in one place that must be edited for every new product — it *moves* the conditional ladder rather than removing it. A method that returns a new object is not automatically the GoF Factory Method; the distinguishing property is that instantiation is **deferred to subclasses** overriding the creator's factory method, rather than decided by a parameter passed to one central method.
 
 **Also rejected: Abstract Factory**, because there is no product *family* here — only one axis of variation, so a second factory layer is indirection without a second dimension. **Also rejected: Singleton** for a shared product registry, because it hides dependencies, introduces global mutable state and leaks state between tests; constructor injection already gives one shared instance without the coupling.
 
@@ -721,7 +747,7 @@ public abstract class LoanProduct {
 | Call path | Audit | Timing | Idempotency |
 |------------|------|----|------|
 | Teller screen | ✔ | ✔ | — |
-| CSV bulk import | one per file | ✔ | ✔ |
+| CSV bulk import | — (the import job writes one audit line per file) | ✔ | ✔ |
 | End-of-day internal adjustment | — | ✔ | — |
 | Unit tests | — | — | — |
 
@@ -733,12 +759,14 @@ public abstract class LoanProduct {
 RepaymentPoster importPoster =           // CSV bulk import
     new IdempotencyGuardPoster(          // outermost: a duplicate stops here
         new TimingPoster(
-            new CoreRepaymentPoster(allocator, settlementPolicy, ledgerWriter)));
+            new CoreRepaymentPoster(allocator, settlementPolicy,
+                                    loanRepository, ledgerWriter)));
 
 RepaymentPoster tellerPoster =           // teller screen: no bank reference to guard
     new AuditLoggingPoster(
         new TimingPoster(
-            new CoreRepaymentPoster(allocator, settlementPolicy, ledgerWriter)));
+            new CoreRepaymentPoster(allocator, settlementPolicy,
+                                    loanRepository, ledgerWriter)));
 ```
 
 **Alternative rejected: inheritance combinations.** `AuditingPoster`, `TimingPoster`, `AuditingTimingPoster`, `AuditingIdempotentPoster`… — eight classes for three optional behaviours, and sixteen the day a retry behaviour is added. This is the classic subclass explosion, and the combinations cannot be chosen at runtime per call path.
@@ -750,7 +778,7 @@ RepaymentPoster tellerPoster =           // teller screen: no bank reference to 
 | Pattern | Why not now |
 |-----------|--------------------|
 | **Facade** — `RepaymentFacade.postRepayment()` | A genuine candidate: three clients need the same five-step workflow. Held as a possible fourth pattern at M2. If adopted, it must **coordinate and not absorb** — the allocation rules stay in `RepaymentAllocator`, or it becomes a god class |
-| **Strategy** — `ProvisioningPolicy` | Valid, and likely at M2 for swapping provisioning percentages when regulations change. Not claimed at M1, and `InterestCalculator` will **not** be presented as a Strategy, because it is the Product of the Factory Method above; claiming both patterns for the same objects would be incoherent |
+| **Strategy** — `ProvisioningPolicy` | Valid, and likely at M2 for swapping provisioning percentages when regulations change. Not claimed at M1, and `InterestCalculator` will **not** be presented as a Strategy, because it is the Product of the Factory Method above; the calculators do play a Strategy role, but counting the same classes as a second pattern would inflate the pattern count |
 | **State** — loan lifecycle; **Observer** — classification alerts | Both fit the domain, and both are deferred to M2 rather than adopted on vocabulary the team cannot yet defend in depth |
 
 A pattern is only included where it solves a problem that existed in the design *before* the pattern was named. The three above each do.
@@ -805,15 +833,15 @@ The pull-request template requires the author to name the red, green and refacto
 
 ### 6.4 Baselines and CI
 
-Milestone submissions are tagged on `main`: `m1-baseline` (Week 6), `m2-baseline` (Week 9), `m3-baseline` (Week 12) and `m4-baseline` (Week 15). A tag is created only at submission, so it points at exactly the state that was assessed.
+Milestone submissions are tagged on `main`: `m1-baseline` (Week 6), `m2-baseline` (Week 10) and `m3-baseline` (Week 13). A tag is created only at submission, so it points at exactly the state that was assessed.
 
-The CI pipeline (GitHub Actions, `.github/workflows/build.yml`) runs on every push to `main`, `develop` and `feature/**`, and on every pull request: compile → JUnit → Checkstyle gate → JaCoCo coverage report, with the reports uploaded as build artifacts. It requires no secrets and no network access beyond fetching dependencies. It is already running and green on `develop`.
+The CI pipeline (GitHub Actions, `.github/workflows/build.yml`) runs on every push to `main`, `develop` and `feature/**`, and on every pull request into `main` or `develop`: compile → JUnit → Checkstyle gate → JaCoCo coverage report, with the reports uploaded as build artifacts. It requires no secrets and no network access beyond fetching dependencies. It is already running and green on `develop`.
 
 ### 6.5 Coding standards
 
 `config/checkstyle.xml` is the project coding standard, and it enforces **constraint C-01: money is never a binary floating-point type.** `double` and `float` are rejected by the build, and a second rule catches stray decimal literals such as `0.05`. All monetary values use `BigDecimal` inside `Money` with an explicit `RoundingMode`. `0.1 + 0.2 != 0.3` in IEEE 754, and a fraction of a rupee per instalment accumulates across a portfolio into a ledger that does not balance.
 
-The configuration also enforces complexity limits (cyclomatic complexity ≤ 15 per method, classes ≤ 400 lines), rejects empty catch blocks and `catch (Exception)`, and forbids public mutable fields.
+The configuration also enforces complexity limits (cyclomatic complexity ≤ 15 per method, source files ≤ 400 lines), rejects empty catch blocks and `catch (Exception)`, and forbids public mutable fields.
 
 ### 6.6 Documentation
 
@@ -825,7 +853,7 @@ The configuration also enforces complexity limits (cyclomatic complexity ≤ 15 
 | `docs/business-rules.md` | The Business Rules Register — every rule frozen at M1, with a deferred list |
 | `qa/rtm.md` | Requirements Traceability Matrix, version 1 |
 | `qa/risk-register.md` | Living risk register, initiated at M1 with 8 scored risks |
-| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2, M3 and M4 have their own |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 | `config/checkstyle.xml` | The coding standard, referenced by SQAP §4.4 |
 
 ---
