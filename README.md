@@ -74,7 +74,7 @@ A **three-tier** model. `main` is the milestone baseline and is never written to
 
 | Branch | Purpose | Rules |
 |---|---|---|
-| `main` | Released, baselined code. Tagged `m1-baseline`, `m2-baseline`, `m3-baseline` | Protected. No direct pushes. Changes arrive only by reviewed pull request |
+| `main` | Released, baselined code. Tagged `m1-baseline` … `m4-baseline` | Protected. No direct pushes. Changes arrive only by reviewed pull request |
 | `develop` | Integration branch; the current working state of the system | Changes arrive by pull request from feature branches |
 | `feature/<module>-<short-name>` | One unit of work, owned by one member | Branched from `develop`, merged back by PR |
 
@@ -92,8 +92,8 @@ TDD cycles are visible in the log:
 
 ```
 test(red): instalment rounding residue lands on the final instalment
-feat(green): absorb rounding residue in ScheduleGenerator
-refactor: extract RoundingPolicy from ScheduleGenerator
+feat(green): absorb rounding residue in ScheduleAssembler
+refactor: extract RoundingPolicy from ScheduleAssembler
 ```
 
 Other prefixes: `docs:`, `chore:`, `fix:`, `test:` (for tests that are not part of a red-green cycle).
@@ -105,8 +105,9 @@ Each milestone submission is tagged on `main`:
 | Tag | Milestone | Week |
 |---|---|---|
 | `m1-baseline` | M1 — proposal, OOD, pattern plan, SQA planning | 6 |
-| `m2-baseline` | M2 — working architecture, inspection, test design | 10 |
-| `m3-baseline` | M3 — final system, test execution, final SQAP | 13 |
+| `m2-baseline` | M2 — core architecture and patterns; inspection, static analysis, V&V plan | 9 |
+| `m3-baseline` | M3 — feature-complete build, TDD, refactoring; dynamic test design and execution, SCM audit | 12 |
+| `m4-baseline` | M4 — final system, CI, performance, demo; final SQAP, GQM, risk register, audit | 15 |
 
 ## Coding standards
 
@@ -129,7 +130,7 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | `qa/rtm.md` | Requirements Traceability Matrix: requirement → design → code → test → result |
 | `qa/defect-log.md` | Inspection defects and corrective action tracking (from M2) |
 | `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up |
-| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2, M3 and M4 have their own |
 
 ## Team
 
@@ -139,7 +140,7 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | Hassan Khalid | 2023242 | `products`, `reporting` | Factory Method | Quality requirements (25010), RTM v1 |
 | Tughral Hussain | 2023532 | `ledger` | Decorator | Standards awareness, Cost of Quality |
 
-**Team Lead / Integrator (M1):** Tughral Hussain — final integration and the version-control repository. This role rotates at each milestone.
+**Team Lead / Integrator (M1):** Muhammad Ibrahim — final integration and the version-control repository. This role rotates at each milestone.
 
-SE431 deliverable ownership rotates each milestone, so every member leads each
-kind of quality artifact at least once.
+SE431 deliverable ownership rotates each milestone across M1–M4, so every member
+leads a quality deliverable at every milestone and reviews the others.
