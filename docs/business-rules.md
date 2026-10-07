@@ -12,7 +12,7 @@ Every rule has an ID. The RTM (`qa/rtm.md`) traces requirements to these IDs, an
 
 **In scope:** individual loans, three product types, fixed-rate lending in a single currency, repayment by cash at the branch or by bank statement import, penalty accrual, delinquency classification, provisioning, write-off, statements and portfolio reporting.
 
-**Deferred — explicitly out of scope for all three milestones:** group and joint-liability lending; guarantors and collateral registers; loan restructuring and rescheduling; multi-currency; savings products; interest paid on savings; mobile-money integration; any deployment of the application beyond running it locally; multi-branch consolidation; and customer-facing self-service.
+**Deferred — explicitly out of scope for all four milestones:** group and joint-liability lending; guarantors and collateral registers; loan restructuring and rescheduling; multi-currency; savings products; interest paid on savings; mobile-money integration; any deployment of the application beyond running it locally; multi-branch consolidation; and customer-facing self-service.
 
 This list exists so that scope creep is a visible decision rather than a drift.
 
@@ -24,13 +24,13 @@ This list exists so that scope creep is a visible decision rather than a drift.
 |---|---|---|
 | **BR-01** | An applicant must be at least **18 years old** at disbursement | 17 / 18 / 19 years |
 | **BR-02** | An applicant must be no more than **65 years old at maturity** (not at application) | maturity age 64 / 65 / 66 |
-| **BR-03** | An applicant may hold at most **2 active loans**; a written-off loan is not active, a loan in arrears is | 0 / 1 / 2 / 3 active |
+| **BR-03** | An applicant may hold at most **2 active loans including the one applied for**, so an applicant with 2 or more existing active loans is rejected; a written-off loan is not active, a loan in arrears is | 0 / 1 / 2 / 3 existing active (0–1 pass, 2–3 rejected) |
 | **BR-04** | Total monthly instalment burden, including the new loan, must not exceed **40% of declared monthly income** | 39.99% / 40.00% / 40.01% |
 | **BR-05** | An applicant with **any prior write-off** is rejected regardless of other factors | none / one write-off / settled-late but never written off |
 | **BR-06** | The requested amount must lie within the product's **minimum and maximum**, inclusive | min − 1 / min / max / max + 1 |
 | **BR-07** | The requested tenure must lie within the product's **tenure band**, inclusive | band − 1 / band edges / band + 1 |
 | **BR-08** | A rejected application returns a **typed rejection reason** naming the first rule that failed, evaluated in the order BR-01 … BR-07 | one case per reason |
-| **BR-09** | Risk grade adjusts the rate by a fixed spread and caps the approved amount: **A** +0.00% and up to 100% of requested; **B** +1.50% and up to 80%; **C** +3.00% and up to 60% | one case per grade |
+| **BR-09** | Risk grade adjusts the rate by a fixed spread and caps the approved amount: **A** +0.00% and up to 100% of requested; **B** +1.50% and up to 80%; **C** +3.00% and up to 60%. Grade is assigned from the burden ratio (BR-04) and the applicant's worst days past due on any earlier loan: **A** — burden ≤ 25%, at least one earlier loan, never more than 30 days past due; **B** — burden ≤ 35% and never more than 60 days past due (includes first-time borrowers); **C** — any other applicant who passes BR-01 – BR-07 | one case per grade; burden 25.00 / 25.01 / 35.00 / 35.01%; worst past DPD 30 / 31 / 60 / 61 |
 | **BR-10** | Approval is for the **capped** amount, not the requested amount; the applicant may accept or decline | requested within cap / above cap |
 
 **Invariant:** no loan may exist in the system that these rules would not have approved.
@@ -57,7 +57,7 @@ This list exists so that scope creep is a visible decision rather than a drift.
 
 | ID | Rule | Boundary values for test design |
 |---|---|---|
-| **BR-18** | Payments are applied in strict order: **penalty → fees → interest → principal** | payment covering part of each tier |
+| **BR-18** | Payments are applied in strict order: **penalty → fees → interest → principal**. No fee type is defined at M1, so the fees tier is always zero until a fee is introduced by a recorded deviation | payment covering part of each tier |
 | **BR-19** | Within that order, the **oldest unpaid instalment is settled first** | two and three instalments overdue |
 | **BR-20** | A **partial payment** is applied as far as it reaches; the remainder stays outstanding | 0 / 0.01 / due − 0.01 / exactly due |
 | **BR-21** | An **overpayment** becomes an advance credit held against future instalments | due + 0.01 |
@@ -78,7 +78,7 @@ This list exists so that scope creep is a visible decision rather than a drift.
 | **BR-27** | Penalty accrues at **0.05% per day** on overdue **principal only**, not on overdue interest | 1 / 30 / 90 days overdue |
 | **BR-28** | Accrued penalty is **capped at 10% of the overdue amount** | just below / at / just above the cap |
 | **BR-29** | **Days past due** is counted from the day after the instalment due date | due date / due + 1 |
-| **BR-30** | Buckets and classifications: **0 days → Standard**; **1–30 → Watch**; **31–60 → Substandard**; **61–90 → Doubtful**; **90+ → Loss** | 0 / 1 / 30 / 31 / 60 / 61 / 90 / 91 |
+| **BR-30** | Buckets and classifications: **0 days → Standard**; **1–30 → Watch**; **31–60 → Substandard**; **61–90 → Doubtful**; **91+ → Loss** | 0 / 1 / 30 / 31 / 60 / 61 / 90 / 91 |
 | **BR-31** | Provision percentages by classification: **Standard 1%**, **Watch 5%**, **Substandard 25%**, **Doubtful 50%**, **Loss 100%** of outstanding principal | one case per classification |
 | **BR-32** | A loan more than **180 days past due is written off automatically**, moving outstanding principal to the write-off account | 179 / 180 / 181 days |
 | **BR-33** | The end-of-day process is **idempotent per business date**: running it twice for the same date has no additional effect | same date run twice |
@@ -123,6 +123,8 @@ These are the numbers the team must own, because they are quoted in both milesto
 | Risk-grade spreads and caps | A +0.00%/100%, B +1.50%/80%, C +3.00%/60% | Drives BR-09 and BR-10 |
 | Provision percentages | 1 / 5 / 25 / 50 / 100% | Drives BR-31 |
 | Maximum grace period | 3 months | Drives BR-13 |
+| Risk-grade assignment | A: burden ≤ 25%, ≥ 1 earlier loan, worst DPD ≤ 30; B: burden ≤ 35%, worst DPD ≤ 60; C: otherwise | Drives BR-09 and FR-06 |
+| Active-loan limit | 2, counting the loan applied for | Drives BR-03 |
 
 ---
 
@@ -131,3 +133,4 @@ These are the numbers the team must own, because they are quoted in both milesto
 | Date | Version | Change | Approved by |
 |---|---|---|---|
 | 2026-10-04 | 1.0 | Register created and frozen for M1: 43 rules across five modules | — |
+| 2026-10-07 | 1.1 | Pre-submission review: BR-03 states that the limit counts the loan applied for; BR-09 states how the grade is assigned; BR-18 notes the fees tier is zero at M1; BR-30 writes the Loss bucket as 91+ so it no longer overlaps 61–90 | Muhammad Ibrahim (team lead, `origination` owner) |

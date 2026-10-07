@@ -1,18 +1,19 @@
 # MicroLend — AI Usage Log (Milestone 1)
 
-Required by the joint-project guidelines §9. Milestones 2 and 3 carry their own logs.
+Required by the joint-project guidelines §9. Milestones 2, 3 and 4 carry their own logs.
 
-**Tool used throughout:** Claude Opus 5 (Claude Code). **All Milestone 1 entries dated 4 October 2026.**
+**Tools:** entries 1–7 used Claude Opus 5 (Claude Code); entry 8 used Claude Opus 5.5 (Claude Code). Each entry is dated the day the work was done, which the repository's commit history corroborates.
 
-| # | Purpose | Material adopted | Modifications made | Verification |
-|---|---|---|---|---|
-| 1 | Compare candidate project ideas against both rubrics | Comparative analysis; MicroLend chosen over two alternatives | Scope cut to a locally-run application with no deployment or paid services | Each rubric minimum traced to where it is met; team accepted the choice |
-| 2 | Draft the SE423 document | Class model, SOLID analysis, pattern justifications | Diagram split into three views for legibility; CLI replaced by a local web interface | Found and corrected a Simple Factory presented as a Factory Method |
-| 3 | Draft the SE431 document | Quality requirements, RTM, SQAP outline, CoQ, risk register | Four items reclassified from quality requirements to constraints | Targets and effort estimates checked as realistic for a three-person team |
-| 4 | Repository setup and coding standard | Checkstyle config, CODEOWNERS, PR template, branch rules | C-01 check rewritten as a token rule after a false positive | Branch protection tested by a direct push, which was blocked and logged |
-| 5 | Business Rules Register | 43 numbered rules with boundary values | Numeric thresholds reviewed and accepted unchanged by the team | Boundary values cross-checked against the RTM test design |
-| 6 | Build and CI scaffold | Gradle build, `Money`, `MoneyTest`, GitHub Actions workflow | Written as a real TDD cycle, red commit before green | CI green: compile, 10 tests, Checkstyle, coverage |
-| 7 | Submission PDFs | Build script and title page | Fonts changed to carry mathematical symbols | Pages inspected; a fault dropping `≤` and `×` was found and fixed |
+| # | Date | Purpose | Prompt / activity summary | Material adopted | Modifications made | Verification |
+|-|----|----|-----|-----|-----|-----|
+| 1 | 2026-10-04 | Compare candidate project ideas against both rubrics | Asked for candidate project ideas scored against the §3.1 and §3.2 minimum requirements | Comparative analysis; MicroLend chosen over two alternatives | Scope cut to a locally-run application with no deployment or paid services | Each rubric minimum traced to where it is met; team accepted the choice |
+| 2 | 2026-10-04 | Draft the SE423 document | Asked for a class model, SOLID analysis and pattern justifications from the module list and business rules | Class model, SOLID analysis, pattern justifications | Diagram split into views for legibility; CLI replaced by a local web interface | Found and corrected a Simple Factory presented as a Factory Method |
+| 3 | 2026-10-04 | Draft the SE431 document | Asked for ISO 25010 quality requirements, an RTM, an IEEE 730 outline, a CoQ estimate and a risk register for the SE423 design | Quality requirements, RTM, SQAP outline, CoQ, risk register | Four items reclassified from quality requirements to constraints | Targets and effort estimates checked as realistic for a three-person team |
+| 4 | 2026-10-04 | Repository setup and coding standard | Asked for a Checkstyle configuration enforcing C-01, a CODEOWNERS file, a PR template and branch rules | Checkstyle config, CODEOWNERS, PR template, branch rules | C-01 check rewritten as a token rule after a false positive | Branch protection tested by a direct push, which was blocked and logged |
+| 5 | 2026-10-04 | Business Rules Register | Asked to turn each module's rules into numbered rules with boundary values for test design | 43 numbered rules with boundary values | Numeric thresholds reviewed and accepted unchanged by the team | Boundary values cross-checked against the RTM test design |
+| 6 | 2026-10-04 | Build and CI scaffold | Asked for a Gradle build, a failing `MoneyTest` first, then `Money`, and a GitHub Actions workflow | Gradle build, `Money`, `MoneyTest`, GitHub Actions workflow | Written as a real TDD cycle, red commit before green | CI green: compile, 10 tests, Checkstyle, coverage |
+| 7 | 2026-10-04 | Submission PDFs | Asked for a pandoc/LaTeX script producing both submission PDFs with a title page | Build script and title page | Fonts changed to carry mathematical symbols | Pages inspected; a fault dropping `≤` and `×` was found and fixed |
+| 8 | 2026-10-07 | Pre-submission review of both documents and the repository | Asked to check both M1 documents against the joint guidelines and rubrics, list inconsistencies, then apply the fixes | Corrections to both documents, RTM, risk register, business rules, README and CODEOWNERS: four-milestone schedule, class views matched to the text and RTM, SOLID status labels, table layout | M1 Team Lead and four-milestone schedule confirmed by the team; risk-grade assignment and active-loan counting defined at the team lead's request (BR-03, BR-09) | Each change checked against the guidelines PDF and the live repository (ruleset, CI runs, `Money.java`); PDFs rebuilt and every page inspected |
 
 ## Declaration for Milestone 1
 
