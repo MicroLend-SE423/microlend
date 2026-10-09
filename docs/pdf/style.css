@@ -70,39 +70,37 @@ img { max-width: 100%; }
   color: #fff;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(130mm 90mm at 92% 4%, rgba(201, 162, 77, .38), transparent 70%),
-    radial-gradient(150mm 120mm at -10% 105%, rgba(76, 96, 214, .55), transparent 70%),
-    linear-gradient(160deg, #0E1440 0%, #1A2257 48%, #26328A 100%);
+  /* Opaque colours only: transparency on a full-page cover makes PDF viewers lag */
+  background: linear-gradient(160deg, #0E1440 0%, #1A2257 48%, #26328A 100%);
 }
 .cover-glow::before, .cover-glow::after {
   content: "";
   position: absolute;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, .09);
+  border: 1px solid #2C3468;
 }
 .cover-glow::before { width: 170mm; height: 170mm; right: -70mm; top: 40mm; }
-.cover-glow::after { width: 115mm; height: 115mm; right: -42mm; top: 67mm; border-color: rgba(201, 162, 77, .22); }
+.cover-glow::after { width: 115mm; height: 115mm; right: -42mm; top: 67mm; border-color: #4A4560; }
 .cover-top { display: flex; align-items: center; gap: 11pt; position: relative; }
-.crest { width: 44pt; height: 44pt; border-radius: 50%; background: #fff; padding: 2.5pt; box-shadow: 0 0 0 3pt rgba(255, 255, 255, .12); }
+.crest { width: 44pt; height: 44pt; border-radius: 50%; background: #fff; padding: 2.5pt; border: 3pt solid #2F3870; }
 .institute { font-size: 8.4pt; line-height: 1.4; font-weight: 600; }
-.institute .faculty { font-weight: 400; color: rgba(255, 255, 255, .7); }
-.pill { margin-left: auto; border: 1px solid rgba(201, 162, 77, .6); color: var(--gold); border-radius: 20pt; padding: 3pt 10pt; font-size: 7.8pt; font-weight: 700; letter-spacing: .04em; }
+.institute .faculty { font-weight: 400; color: #B9BDD6; }
+.pill { margin-left: auto; border: 1px solid #8A7150; color: var(--gold); border-radius: 20pt; padding: 3pt 10pt; font-size: 7.8pt; font-weight: 700; letter-spacing: .04em; }
 .cover-main { margin-top: 58mm; position: relative; }
-.eyebrow { font-size: 8.6pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: rgba(255, 255, 255, .78); }
+.eyebrow { font-size: 8.6pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: #CDD0E1; }
 .eyebrow span { color: #0E1440; background: var(--gold); padding: 2pt 7pt; border-radius: 4pt; margin-right: 8pt; letter-spacing: .06em; font-weight: 800; }
 .cover-title { font-size: 58pt; font-weight: 800; letter-spacing: -.04em; line-height: 1; margin: 16pt 0 9pt; color: #fff; }
-.cover-sub { font-size: 13pt; color: rgba(255, 255, 255, .8); margin: 0; max-width: 135mm; line-height: 1.4; }
-.cover-doc { margin-top: 24pt; display: inline-block; font-size: 12.5pt; font-weight: 600; padding: 10pt 16pt 11pt 14pt; border-left: 3pt solid var(--gold); background: rgba(255, 255, 255, .07); border-radius: 0 9pt 9pt 0; }
+.cover-sub { font-size: 13pt; color: #CED1E3; margin: 0; max-width: 135mm; line-height: 1.4; }
+.cover-doc { margin-top: 24pt; display: inline-block; font-size: 12.5pt; font-weight: 600; padding: 10pt 16pt 11pt 14pt; border-left: 3pt solid var(--gold); background: #283066; border-radius: 0 9pt 9pt 0; }
 .cover-doc .ms { display: block; font-size: 7.2pt; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); margin-bottom: 4pt; font-weight: 700; }
-.cover .label { display: block; font-size: 7pt; letter-spacing: .16em; text-transform: uppercase; color: rgba(255, 255, 255, .58); font-weight: 700; margin-bottom: 6pt; }
+.cover .label { display: block; font-size: 7pt; letter-spacing: .16em; text-transform: uppercase; color: #A0A4BC; font-weight: 700; margin-bottom: 6pt; }
 .cover-team { margin-top: auto; position: relative; }
 .members { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; }
-.member { background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); border-radius: 10pt; padding: 10pt 11pt 11pt; }
+.member { background: #2A3266; border: 1px solid #3A4277; border-radius: 10pt; padding: 10pt 11pt 11pt; }
 .member-name { font-weight: 700; font-size: 10pt; }
-.member-meta { font-size: 7.6pt; color: rgba(255, 255, 255, .7); margin-top: 3pt; }
+.member-meta { font-size: 7.6pt; color: #B9BDD6; margin-top: 3pt; }
 .badge { display: inline-block; margin-left: 6pt; font-size: 6pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--gold); color: #0E1440; padding: 1.5pt 5pt; border-radius: 10pt; vertical-align: 1.5pt; }
-.cover-foot { margin-top: 13pt; padding-top: 11pt; border-top: 1px solid rgba(255, 255, 255, .16); display: flex; justify-content: space-between; font-size: 9pt; font-weight: 500; position: relative; }
+.cover-foot { margin-top: 13pt; padding-top: 11pt; border-top: 1px solid #3D4579; display: flex; justify-content: space-between; font-size: 9pt; font-weight: 500; position: relative; }
 .cover-foot .label { margin-bottom: 3pt; }
 
 /* ---------- Contents ---------- */
@@ -155,7 +153,7 @@ td > code:only-child { overflow-wrap: normal; }
 /* ---------- Code ---------- */
 code { font-family: var(--mono); font-size: .86em; }
 :not(pre) > code { background: var(--tint2); color: #2E3A8C; padding: .4pt 3.2pt; border-radius: 3.5pt; overflow-wrap: anywhere; }
-td :not(pre) > code { background: rgba(59, 75, 168, .08); }
+td :not(pre) > code { background: #E9ECF6; }
 div.sourceCode { margin: 8pt 0 10pt; }
 pre { background: #10173A; color: #E4E8F7; border-radius: 9pt; padding: 10pt 13pt; margin: 8pt 0 10pt; font-size: 7.7pt; line-height: 1.6; white-space: pre-wrap; break-inside: avoid; }
 pre code { background: none; color: inherit; padding: 0; font-size: 1em; }

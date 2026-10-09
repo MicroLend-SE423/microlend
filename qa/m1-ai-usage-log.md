@@ -13,23 +13,15 @@ Every entry used Claude through Claude Code. Each entry is dated the day the wor
 | 5 | 2026-10-04 | Claude Opus 5 | Business Rules Register | Asked to turn each module's rules into numbered rules with boundary values for test design | 43 numbered rules with boundary values | Numeric thresholds reviewed and accepted unchanged by the team | Boundary values cross-checked against the RTM test design |
 | 6 | 2026-10-04 | Claude Opus 5 | Build and CI scaffold | Asked for a Gradle build, a failing `MoneyTest` first, then `Money`, and a GitHub Actions workflow | Gradle build, `Money`, `MoneyTest`, GitHub Actions workflow | Written as a real TDD cycle, red commit before green | CI green: compile, 11 tests, Checkstyle, coverage |
 | 7 | 2026-10-04 | Claude Opus 5 | Submission PDFs | Asked for a pandoc/LaTeX script producing both submission PDFs with a title page | Build script and title page | Fonts changed to carry mathematical symbols | Pages inspected; a fault dropping `≤` and `×` was found and fixed |
-| 8 | 2026-10-07 | Claude Opus 5.5 | Pre-submission review of both documents and the repository | Asked to check both M1 documents against the joint guidelines and rubrics, list inconsistencies, then apply the fixes | Corrections to both documents, RTM, risk register, business rules, README and CODEOWNERS: M1 Team Lead, class views matched to the text and RTM, SOLID status labels, milestone references matched to the updated guidelines, an independent fact-check pass, PDFs rebuilt with an HTML/CSS pipeline (Paged.js) | M1 Team Lead confirmed by the team; an interim four-milestone revision was reverted to three milestones when the instructor issued the updated guidelines the same day; risk-grade assignment and active-loan counting defined at the team lead's request (BR-03, BR-09) | Each change checked against the guidelines PDF and the live repository (ruleset, CI runs, `Money.java`); PDFs rebuilt and every page inspected |
+| 8 | 2026-10-07 | Claude Opus 5.5 | Pre-submission review of both documents and the repository | Asked to check both M1 documents against the joint guidelines and rubrics, list inconsistencies, then apply the fixes | Corrections to both documents, RTM, risk register, business rules, README and CODEOWNERS: M1 Team Lead, class views matched to the text and RTM, SOLID status labels, milestone references matched to the updated guidelines, an independent fact-check pass, PDFs rebuilt with an HTML/CSS pipeline (Paged.js) | M1 Team Lead confirmed by the team; an interim four-milestone revision was reverted to three milestones when the instructor issued the updated guidelines the same day; risk-grade assignment and active-loan counting defined at the team lead's request and confirmed by all three members (BR-03, BR-09) | Each change checked against the guidelines PDF and the live repository (ruleset, CI runs, `Money.java`); PDFs rebuilt and every page inspected |
 
 ## Declaration for Milestone 1
 
-> I confirm that I have read, understood and verified the material submitted under my name, that I can explain and defend the design decisions, quality requirements and analysis it contains, and that any AI-assisted content was reviewed and modified by me where needed.
+> Each member named below has read, understood and verified the material credited to them, can explain and defend the design decisions, quality requirements and analysis it contains, and reviewed and modified any AI-assisted content where needed.
 
-**Muhammad Ibrahim — 2023446** · `origination`, `delinquency`; SQAP outline, risk register
-
-> Signature: ............................................................  Date: ..............................
-
-**Hassan Khalid — 2023242** · `products`, `reporting`; quality requirements, RTM
-
-> Signature: ............................................................  Date: ..............................
-
-**Tughral Hussain — 2023532** · `ledger`; standards awareness, Cost of Quality, repository setup
-
-> Signature: ............................................................  Date: ..............................
+- **Muhammad Ibrahim — 2023446** · `origination`, `delinquency`; SQAP outline, risk register
+- **Hassan Khalid — 2023242** · `products`, `reporting`; quality requirements, RTM
+- **Tughral Hussain — 2023532** · `ledger`; standards awareness, Cost of Quality, repository setup
 
 ## Team rules for AI use
 

@@ -111,9 +111,9 @@ This list exists so that scope creep is a visible decision rather than a drift.
 
 ---
 
-## 8. Open decisions for the team to confirm
+## 8. Team-owned thresholds
 
-These are the numbers the team must own, because they are quoted in both milestone documents and traced through the RTM. Each is a reasonable default taken from common microfinance practice; change them now if the team disagrees, not after M2 work has been built on them.
+These are the numbers the team owns, because they are quoted in both milestone documents and traced through the RTM. Each started as a default taken from common microfinance practice; all three members reviewed and confirmed them on 9 October 2026. A later change requires a recorded deviation (SQAP §6.3).
 
 | Decision | Current value | Why it matters |
 |---|---|---|
@@ -133,4 +133,4 @@ These are the numbers the team must own, because they are quoted in both milesto
 | Date | Version | Change | Approved by |
 |---|---|---|---|
 | 2026-10-04 | 1.0 | Register created and frozen for M1: 43 rules across five modules | — |
-| 2026-10-07 | 1.1 | Pre-submission review: BR-03 states that the limit counts the loan applied for; BR-09 states how the grade is assigned; BR-18 notes the fees tier is zero at M1; BR-30 writes the Loss bucket as 91+ so it no longer overlaps 61–90; BR-04 fixes the burden basis so it does not depend on the grade; BR-10 rejects a capped amount below the product minimum; BR-25 keys duplicates by bank and reference; BR-28 notes that the cap is a safeguard | Muhammad Ibrahim (team lead, `origination` owner) |
+| 2026-10-07 | 1.1 | Pre-submission review: BR-03 states that the limit counts the loan applied for; BR-09 states how the grade is assigned; BR-18 notes the fees tier is zero at M1; BR-30 writes the Loss bucket as 91+ so it no longer overlaps 61–90; BR-04 fixes the burden basis so it does not depend on the grade; BR-10 rejects a capped amount below the product minimum; BR-25 keys duplicates by bank and reference; BR-28 notes that the cap is a safeguard | All three members (confirmed 2026-10-09) |
