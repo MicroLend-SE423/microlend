@@ -12,31 +12,50 @@ penalties, ages accounts into delinquency buckets and provisions the portfolio.
 
 | Module | Responsibility | Owner |
 |---|---|---|
-| `origination` | Eligibility assessment and loan approval: age bounds, active-loan limit, instalment-to-income burden, prior write-off check, risk grading | *TBC* |
-| `products` | Product catalogue and schedule generation: flat, reducing-balance and bullet products; due-date calendar rule; rounding residue absorbed into the final instalment | *TBC* |
-| `ledger` | Repayment posting and the append-only ledger: allocation waterfall (penalty → fees → interest → principal), partial payment, overpayment, compensating entries | *TBC* |
-| `delinquency` | End-of-day engine: penalty accrual, days-past-due bucketing, classification and provisioning, auto write-off. **The concurrent module.** | *TBC* |
-| `reporting` | Statements, portfolio reports (PAR30, collection efficiency, provision coverage), CSV export | *TBC* |
+| `origination` | Eligibility assessment and loan approval: age bounds, active-loan limit, instalment-to-income burden, prior write-off check, risk grading | Muhammad Ibrahim |
+| `products` | Product catalogue and schedule generation: flat, reducing-balance and bullet products; due-date calendar rule; rounding residue absorbed into the final instalment | Hassan Khalid |
+| `ledger` | Repayment posting and the append-only ledger: allocation waterfall (penalty → fees → interest → principal), partial payment, overpayment, compensating entries | Tughral Hussain |
+| `delinquency` | End-of-day engine: penalty accrual, days-past-due bucketing, classification and provisioning, auto write-off. **The concurrent module.** | Muhammad Ibrahim |
+| `reporting` | Statements, portfolio reports (PAR30, collection efficiency, provision coverage), CSV export | Hassan Khalid |
 
 ## Technology
 
-Java · SQLite · JUnit 5 · Checkstyle · GitHub Actions. Command-line interface;
-no network access is required to build, test or demonstrate the system.
+Java 21 · Gradle · SQLite · JUnit 5 · JaCoCo · Checkstyle · GitHub Actions.
+
+The application runs **locally only**. It is never deployed: no hosting, no cloud
+service and no paid resource of any kind. A small web interface is served from a
+local process against a file-based database, so the whole system runs on one
+laptop. The only network access is Gradle fetching dependencies the first time
+you build.
 
 ## Build and run
 
-> Populated once the build is scaffolded at the start of M2 development.
+You need JDK 21 installed (the build pins a Java 21 toolchain, and Gradle will not download one). Gradle itself is bundled, so there is
+nothing else to install — the wrapper downloads what it needs on first use.
 
 ```bash
-# build and run the test suite
-./gradlew build
+# build everything and run the test suite
+./gradlew build            # Windows: gradlew.bat build
 
-# run the static analysis gate
-./gradlew checkstyleMain
+# tests only
+./gradlew test
 
-# start the CLI
+# static analysis — enforces constraint C-01 (no double/float for money)
+./gradlew checkstyleMain checkstyleTest
+
+# coverage report
+./gradlew jacocoTestReport
+
+# run the application
 ./gradlew run
 ```
+
+Reports are written under `build/reports/`: JUnit results in `tests/test/`,
+coverage in `jacoco/test/html/index.html`, and Checkstyle findings in
+`checkstyle/`.
+
+Every push runs the same four steps in GitHub Actions, so a green build locally
+and a green build in CI mean the same thing.
 
 ## Repository layout
 
@@ -73,8 +92,8 @@ TDD cycles are visible in the log:
 
 ```
 test(red): instalment rounding residue lands on the final instalment
-feat(green): absorb rounding residue in ScheduleGenerator
-refactor: extract RoundingPolicy from ScheduleGenerator
+feat(green): absorb rounding residue in ScheduleAssembler
+refactor: extract RoundingPolicy from ScheduleAssembler
 ```
 
 Other prefixes: `docs:`, `chore:`, `fix:`, `test:` (for tests that are not part of a red-green cycle).
@@ -86,8 +105,8 @@ Each milestone submission is tagged on `main`:
 | Tag | Milestone | Week |
 |---|---|---|
 | `m1-baseline` | M1 — proposal, OOD, pattern plan, SQA planning | 6 |
-| `m2-baseline` | M2 — working architecture, inspection, test design | 10 |
-| `m3-baseline` | M3 — final system, test execution, final SQAP | 13 |
+| `m2-baseline` | M2 — working architecture, patterns, concurrency and verification baseline; inspection, static analysis, V&V plan, test design, SCM baseline | 10 |
+| `m3-baseline` | M3 — final integrated system, TDD, refactoring, CI and demo; final SQAP, test execution, GQM, risk register and audit | 13 |
 
 ## Coding standards
 
@@ -109,16 +128,18 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | `qa/risk-register.md` | Living risk register, initiated at M1, updated at every milestone |
 | `qa/rtm.md` | Requirements Traceability Matrix: requirement → design → code → test → result |
 | `qa/defect-log.md` | Inspection defects and corrective action tracking (from M2) |
-| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up |
-| `qa/ai-usage-log.md` | AI Usage Log, submitted with every milestone |
+| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up (from M2) |
+| `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 
 ## Team
 
-| Member | Primary modules (SE423) | SE431 deliverable lead (M1) |
-|---|---|---|
-| *TBC* | `origination`, `delinquency` | SQAP and risk register |
-| *TBC* | `products`, `reporting` | Quality requirements and RTM |
-| *TBC* | `ledger` | Standards awareness and Cost of Quality |
+| Member | Reg. # | Primary modules (SE423) | Pattern owned | SE431 deliverable lead (M1) |
+|---|---|---|---|---|
+| Muhammad Ibrahim | 2023446 | `origination`, `delinquency` | Adapter | SQAP scope & outline, risk register |
+| Hassan Khalid | 2023242 | `products`, `reporting` | Factory Method | Quality requirements (25010), RTM v1 |
+| Tughral Hussain | 2023532 | `ledger` | Decorator | Standards awareness, Cost of Quality |
 
-SE431 deliverable ownership rotates each milestone, so every member leads each
-kind of quality artifact at least once.
+**Team Lead / Integrator (M1):** Muhammad Ibrahim — final integration and the version-control repository. This role rotates at each milestone.
+
+SE431 deliverable ownership rotates each milestone across M1–M3, so every member
+leads each kind of quality artifact once and reviews the others.

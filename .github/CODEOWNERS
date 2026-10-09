@@ -1,0 +1,44 @@
+# Module ownership for MicroLend.
+#
+# GitHub automatically requests a review from the listed owner when a pull
+# request touches their paths. Ownership is the basis of individual evidence in
+# both courses, so cross-module changes should be reviewed by the module's owner.
+#
+# Muhammad Ibrahim (2023446) - origination, delinquency, ledger.importing; M1 integrator
+# Hassan Khalid    (2023242) - products, reporting
+# Tughral Hussain  (2023532) - ledger, web layer
+
+# Default: any team member may review
+*                                   @tughral1 @mIBRAHIM707 @Hassan242-kk
+
+# Construction modules
+/src/main/java/**/origination/      @mIBRAHIM707
+/src/test/java/**/origination/      @mIBRAHIM707
+/src/main/java/**/delinquency/      @mIBRAHIM707
+/src/test/java/**/delinquency/      @mIBRAHIM707
+
+/src/main/java/**/products/         @Hassan242-kk
+/src/test/java/**/products/         @Hassan242-kk
+/src/main/java/**/reporting/        @Hassan242-kk
+/src/test/java/**/reporting/        @Hassan242-kk
+
+/src/main/java/**/ledger/           @tughral1
+/src/test/java/**/ledger/           @tughral1
+
+# Bank statement adapters (Adapter pattern) live under ledger but are owned by
+# their pattern owner. Listed after ledger so this more specific rule wins.
+/src/main/java/**/ledger/importing/ @mIBRAHIM707
+/src/test/java/**/ledger/importing/ @mIBRAHIM707
+
+/src/main/java/**/web/              @tughral1
+/src/test/java/**/web/              @tughral1
+
+# Shared foundations: the money value object and the domain exception hierarchy
+# are depended on by every module, so all three owners review changes to them.
+/src/main/java/**/common/           @tughral1 @mIBRAHIM707 @Hassan242-kk
+
+# Quality records and the build gate
+/qa/risk-register.md                @mIBRAHIM707
+/qa/rtm.md                          @Hassan242-kk
+/config/checkstyle.xml              @tughral1 @mIBRAHIM707 @Hassan242-kk
+/.github/workflows/                 @tughral1

@@ -1,0 +1,19 @@
+{
+  "theme": "base",
+  "fontFamily": "Arial, sans-serif",
+  "class": { "hideEmptyMembersBox": true },
+  "flowchart": { "curve": "basis", "padding": 14 },
+  "themeVariables": {
+    "fontFamily": "Arial, sans-serif",
+    "fontSize": "15px",
+    "primaryColor": "#EEF2FF",
+    "primaryBorderColor": "#3B4BA8",
+    "primaryTextColor": "#1A2257",
+    "secondaryColor": "#FFF7E6",
+    "tertiaryColor": "#F6F7FB",
+    "lineColor": "#7A84A3",
+    "edgeLabelBackground": "#FFFFFF",
+    "clusterBkg": "#F6F7FB",
+    "clusterBorder": "#C9A24D"
+  }
+}

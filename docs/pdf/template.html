@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>$pagetitle$</title>
+<link rel="stylesheet" href="pdf/style.css">
+<style>
+  @page { @top-left { content: "MicroLend  ·  $code$  ·  Milestone 1"; } }
+</style>
+</head>
+<body>
+$for(include-before)$
+$include-before$
+$endfor$
+<section class="toc-page">
+  <h2 class="toc-title">Contents</h2>
+  <nav id="TOC">
+$table-of-contents$
+  </nav>
+</section>
+<main>
+$body$
+</main>
+</body>
+</html>

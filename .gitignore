@@ -9,3 +9,11 @@ build/
 .DS_Store
 *.db
 *.sqlite
+
+# Gradle
+.gradle/
+build/
+
+# Docs build
+docs/node_modules/
+docs/*.tmp.*
