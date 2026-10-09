@@ -30,7 +30,7 @@ you build.
 
 ## Build and run
 
-You need a JDK 21 (or newer) on your machine. Gradle itself is bundled, so there is
+You need JDK 21 installed (the build pins a Java 21 toolchain, and Gradle will not download one). Gradle itself is bundled, so there is
 nothing else to install — the wrapper downloads what it needs on first use.
 
 ```bash
@@ -92,8 +92,8 @@ TDD cycles are visible in the log:
 
 ```
 test(red): instalment rounding residue lands on the final instalment
-feat(green): absorb rounding residue in ScheduleGenerator
-refactor: extract RoundingPolicy from ScheduleGenerator
+feat(green): absorb rounding residue in ScheduleAssembler
+refactor: extract RoundingPolicy from ScheduleAssembler
 ```
 
 Other prefixes: `docs:`, `chore:`, `fix:`, `test:` (for tests that are not part of a red-green cycle).
@@ -105,8 +105,8 @@ Each milestone submission is tagged on `main`:
 | Tag | Milestone | Week |
 |---|---|---|
 | `m1-baseline` | M1 — proposal, OOD, pattern plan, SQA planning | 6 |
-| `m2-baseline` | M2 — working architecture, inspection, test design | 10 |
-| `m3-baseline` | M3 — final system, test execution, final SQAP | 13 |
+| `m2-baseline` | M2 — working architecture, patterns, concurrency and verification baseline; inspection, static analysis, V&V plan, test design, SCM baseline | 10 |
+| `m3-baseline` | M3 — final integrated system, TDD, refactoring, CI and demo; final SQAP, test execution, GQM, risk register and audit | 13 |
 
 ## Coding standards
 
@@ -128,7 +128,7 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | `qa/risk-register.md` | Living risk register, initiated at M1, updated at every milestone |
 | `qa/rtm.md` | Requirements Traceability Matrix: requirement → design → code → test → result |
 | `qa/defect-log.md` | Inspection defects and corrective action tracking (from M2) |
-| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up |
+| `qa/inspections/` | Fagan inspection records: checklists, logging meeting minutes, follow-up (from M2) |
 | `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 
 ## Team
@@ -139,7 +139,7 @@ compares scale (`2.50` is not `equals` to `2.5`).
 | Hassan Khalid | 2023242 | `products`, `reporting` | Factory Method | Quality requirements (25010), RTM v1 |
 | Tughral Hussain | 2023532 | `ledger` | Decorator | Standards awareness, Cost of Quality |
 
-**Team Lead / Integrator (M1):** Tughral Hussain — final integration and the version-control repository. This role rotates at each milestone.
+**Team Lead / Integrator (M1):** Muhammad Ibrahim — final integration and the version-control repository. This role rotates at each milestone.
 
-SE431 deliverable ownership rotates each milestone, so every member leads each
-kind of quality artifact at least once.
+SE431 deliverable ownership rotates each milestone across M1–M3, so every member
+leads each kind of quality artifact once and reviews the others.

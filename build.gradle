@@ -16,7 +16,7 @@ version = '0.1.0-M1'
 
 java {
     toolchain {
-        // Gradle downloads a matching JDK automatically if one is not installed.
+        // A JDK 21 must be installed: no toolchain resolver is configured, so Gradle will not download one.
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
