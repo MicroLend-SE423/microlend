@@ -1,27 +1,12 @@
 # Milestone 1 — SE431 Software Quality Assurance
 
-## MicroLend — Community Microfinance Loan Servicing & Delinquency Engine
-
-**Team**
-
-| Member | Reg. # | M1 SQA deliverable lead | Construction modules |
-|----------|------|---------------|----------|
-| Muhammad Ibrahim | 2023446 | SQAP scope & outline, risk register | `origination`, `delinquency` |
-| Hassan Khalid | 2023242 | Quality requirements (ISO/IEC 25010), RTM v1 | `products`, `reporting` |
-| Tughral Hussain | 2023532 | Standards awareness, Cost of Quality | `ledger` |
-
-**Team Lead / Integrator (M1):** Muhammad Ibrahim — role rotates each milestone.\
-**Repository:** https://github.com/tughral1/microlend\
-**Companion document:** `docs/M1-SE423-Proposal-OOD-Pattern-Plan.md` — the construction-side proposal this quality plan applies to\
-**Milestone:** M1 (Week 6) · **Weight:** 15% of the project grade
-
----
+**Companion document:** `docs/M1-SE423-Proposal-OOD-Pattern-Plan.md` — the construction-side proposal this quality plan applies to.
 
 ## 1. Quality Requirements (ISO/IEC 25010)
 
 ### 1.1 Which characteristics matter for this system, and which do not
 
-ISO/IEC 25010:2011, the version used in this course, defines eight product quality characteristics. A quality plan that claims all eight matter equally has not analysed the system. MicroLend's product risk is **financial, not safety-related**, and it is an internal back-office tool with a handful of users, which determines where quality effort is spent:
+ISO/IEC 25010:2011, the version used in this course, defines eight product quality characteristics. MicroLend's product risk is **financial, not safety-related**, and it is an internal back-office tool with a handful of users, which determines where quality effort is spent:
 
 | Characteristic | Relevance to MicroLend | Why |
 |----------|------|------------------|
@@ -137,7 +122,7 @@ Each requirement traces to a rule in the Business Rules Register (`docs/business
 | Constraints recorded | 4 |
 | Requirements with a planned verification approach | 38 of 38 (100%) |
 | Requirements with executed tests | 0 — M1 is a planning milestone |
-| Planned design elements traceable to a requirement | Every planned business-logic class in the SE423 class views traces to at least one FR or QR, directly or as the interface or value type its traced classes share (`EligibilityRule`, `LoanApplication`, `RepaymentPoster`, `RepaymentSource`, `PortfolioReport`); the rest are shared kernel types (`Money`, `LoanId`, exceptions) and infrastructure (repositories, `TimingPoster`, which serves the GQM programme in SQAP §6.2) |
+| Planned design elements traceable to a requirement | Every planned business-logic class in the SE423 class views traces to an FR or QR; the rest are shared kernel and infrastructure types |
 | Code modules traceable to a requirement | n/a at M1; audited from M2 |
 
 **Audit rule for M2 and M3:** every requirement must have at least one test (no test gaps), and every production class must trace to at least one requirement (no rogue code). Both directions are checked, because neither direction can find the other's defect.
@@ -154,7 +139,7 @@ The outline below follows the SQAP outline in Annex C of IEEE 730-2014. Every ma
 | **2** | Definitions and acronyms | Define the terms actually used — DPD, PAR30, allocation waterfall, EOD, compensating entry, cyclomatic complexity, EP/BVA — plus error, defect and failure, so the document is self-contained |
 | **3** | Reference documents | The joint-project guidelines (updated 7 October 2026: three milestones), ISO/IEC 25010:2011, ISO/IEC/IEEE 29148, IEEE 730-2014, IEEE 1012 (V&V plan at M2), IEEE 1028, ISO/IEC 29110, the Business Rules Register and the RTM |
 | **4** | SQA plan overview | Organisation, product risk, tools, standards and effort for MicroLend — 4.1 to 4.5 below |
-| **4.1** | Organisation and independence | Name the three members, their module ownership and the rotating SQA lead. State honestly that organisational independence is impossible in a three-person team, and that it is substituted by **non-owner review** (no one approves their own pull request) and the **external inspector at M2** |
+| **4.1** | Organisation and independence | Name the three members, their module ownership and the rotating SQA lead. State that organisational independence is impossible in a three-person team, and that it is substituted by **non-owner review** (no one approves their own pull request) and the **external inspector at M2** |
 | **4.2** | Software product risk | Classify MicroLend's product risk as **financial, not safety-related**; identify the money path (`RepaymentAllocator`, `DelinquencyClassifier`, the ledger) as the high-risk area; set SQA depth from that, since SQA effort is proportionate to product risk |
 | **4.3** | Tools | Java 21 and JUnit 5, SQLite, Gradle, GitHub and GitHub Actions, JaCoCo for coverage, Checkstyle as the coding-standard gate, ArchUnit for the no-cycles constraint, and a second static analyser for the M2 report — each named with the quality question it answers |
 | **4.4** | Standards, practices and conventions | Constraints C-01 to C-04; the commit convention `test(red):` / `feat(green):` / `refactor:`; the documentation standard; and the **100% decision coverage on the money path** policy |
@@ -177,7 +162,7 @@ The outline below follows the SQAP outline in Annex C of IEEE 730-2014. Every ma
 | **6.2** | Quality measurement | The GQM programme — one goal, three questions, and the metrics listed in §5.1.5 and §5.2.4 |
 | **6.3** | Waivers and deviations | Any departure from this plan is logged with reason, approver and date — for example, dropping a planned pattern is recorded, not silently abandoned |
 | **6.4** | Task repetition | A re-inspection is triggered if an inspection finds more than five major defects in the roughly 250-line inspection package; the full regression suite re-runs on every push |
-| **6.5** | Risk to performing SQA | The honest risks to the quality work itself — exam weeks compressing the inspection, the external inspector falling through, one member carrying the SQA load |
+| **6.5** | Risk to performing SQA | Risks to the quality work itself: exam weeks compressing the inspection, the external inspector falling through, one member carrying the SQA load |
 | **6.6** | Communications strategy | A weekly 15-minute session where each member explains their module's invariants to the other two; defect log and corrective actions in the repository; milestone status summarised in the M2 and M3 documents |
 | **6.7** | Non-conformance process | How a defect or process non-conformance is raised, triaged by severity, assigned, corrected and verified — the corrective-action (CAPA) loop opened at M2 with the inspection and static-analysis findings, and closed — or kept open with a stated reason — in the M3 final audit |
 | **7** | SQA records | What is recorded and where it is kept — 7.1 and 7.2 |
@@ -188,7 +173,7 @@ The outline below follows the SQAP outline in Annex C of IEEE 730-2014. Every ma
 
 The inspection runs in six stages: **planning → overview (kickoff) → preparation (individual checking) → inspection (logging) meeting → rework (edit) → follow-up and exit.** The planning guideline is **100–200 lines of code per hour** for source code.
 
-That rate is the number to plan with. Inspecting `RepaymentAllocator` plus `DelinquencyClassifier` — roughly 250 lines — means a logging meeting of about 1¼ to 2½ hours — split into two sessions of at most two hours if the slower rate applies — which is schedulable with an external inspector and which also provides the denominator for the defect-detection-rate metric in the GQM programme. A team that ignores the rate "inspects" 800 lines in forty minutes and finds nothing, and the defect log then shows exactly that. No member moderates their own code: Muhammad Ibrahim moderates `RepaymentAllocator` (Tughral Hussain's module), Hassan Khalid moderates `DelinquencyClassifier` (Muhammad Ibrahim's), and the external inspector reviews both.
+That rate is the number to plan with. Inspecting `RepaymentAllocator` plus `DelinquencyClassifier` — roughly 250 lines — means a logging meeting of about 1¼ to 2½ hours — split into two sessions of at most two hours if the slower rate applies — which is schedulable with an external inspector and which also provides the denominator for the defect-detection-rate metric in the GQM programme. No member moderates their own code: Muhammad Ibrahim moderates `RepaymentAllocator` (Tughral Hussain's module), Hassan Khalid moderates `DelinquencyClassifier` (Muhammad Ibrahim's), and the external inspector reviews both.
 
 ---
 
@@ -241,25 +226,19 @@ The team commits to four behaviours, each with a mechanism that makes it checkab
 | **Defects are data, not blame.** A defect found in inspection is a success for the process | The defect log records type, severity and phase found — never who wrote it. The metric is defect-removal effectiveness, not individual defect counts |
 | **If it is not evidenced, it did not happen.** Every claim in this plan maps to an artifact in the repository | All quality records live in `/qa`, versioned with the code and reproducible from a milestone tag |
 
-The honest limit: in a three-person team, the person reviewing is also a developer on the project. Independence is structural, not organisational, and that is stated in SQAP §4.1 rather than hidden.
-
 ---
 
 ## 5. Standards Awareness
 
-Software has no laws of nature to stop a defect from executing. A silent rounding error or a lost update in our ledger meets no physical resistance the way an under-designed arch meets gravity, so process standards serve as the surrogate laws — and they are a **prevention cost** in the cost-of-quality model rather than paperwork. By business model, MicroLend is *custom software written in-house*: the category where standards are adopted voluntarily to stop chronic rework rather than imposed by a client.
-
 **ISO/IEC/IEEE 12207** tells us *what processes must exist*. Of its processes we genuinely perform Configuration Management (branch protection, the `m1`–`m3` baseline tags) and Quality Assurance, which the 2017 edition groups as technical management processes, and Verification and Validation, two separate technical processes; our pull-request reviews and the Fagan inspection correspond to the 2008 edition's Software Review process. **IEEE 730-2014** tells us *how* the SQA function executes inside that lifecycle: its activities in three groups — SQA process implementation, product assurance, process assurance — its principle that the depth of SQA is set by **product risk**, and its rule that any activity not performed must be declared *not applicable with a justification* rather than quietly dropped. That rule is why our SQAP §5.2.3 explicitly marks subcontractor evaluation as not applicable instead of omitting it.
 
-Full 12207 and CMMI adoption would be wrong at our scale. Three students on one project is a **Very Small Entity** under ISO/IEC 29110's 25-person definition, and at roughly three person-months of effort (§4.5 of the SQAP outline) we fall within the **Entry** profile's six-person-month ceiling, though we follow the **Basic** profile's structure as taught. Its two processes map onto our milestone loop: Project Management covers planning, the risk register and milestone reviews, and Software Implementation covers the construction work each milestone delivers. Its Deployment Packages supply ready-made templates and traceability tables so our time goes into the work rather than into inventing document formats. Lightweight here means *scaled to context*, not undisciplined.
+Full 12207 and CMMI adoption would be wrong at our scale. Three students on one project is a **Very Small Entity** under ISO/IEC 29110's 25-person definition, and at roughly three person-months of effort (§4.5 of the SQAP outline) we fall within the **Entry** profile's six-person-month ceiling, though we follow the **Basic** profile's structure as taught. Its two processes map onto our milestone loop: Project Management covers planning, the risk register and milestone reviews, and Software Implementation covers the construction work each milestone delivers. Its Deployment Packages supply ready-made templates and traceability tables so our time goes into the work rather than into inventing document formats.
 
 Against **CMMI-DEV v1.3** we claim **Maturity Level 2 behaviours only**, and we name them: Requirements Management through the RTM, Configuration Management through protected branches and baselines, Process and Product Quality Assurance through the SQAP §5.2.1 process-conformance checks and the M3 audit, and Measurement and Analysis through the GQM programme. We explicitly do **not** claim Level 3, because Level 3 requires an organisational set of standard processes, which a single student project does not have (the Fagan inspection is a peer review, which CMMI places in Verification at Level 3), and the statistical process control of Levels 4 and 5 is meaningless with three people and one data point per milestone.
 
-From **ISO 9001:2015** we take two things concretely. The **PDCA cycle** is literally our milestone loop: plan the milestone, build it, measure coverage and defect density, then change the *process* rather than promising to be more careful. **Risk-based thinking** is why our register already records that only one member fully understands the allocation waterfall, although nothing has failed yet. **ISO/IEC 90003** is what licenses us to translate ISO 9001's abstract "design and development verification" into the specific software acts we actually perform — code inspection, static analysis, automated unit tests and decision-coverage criteria.
+MicroLend is not safety-critical, so no domain safety standard applies. We borrow one idea from them — criticality dictates technique — as the SQAP policy of **100% decision coverage on the money path** (`RepaymentAllocator`, `DelinquencyClassifier`), alongside the ban on `double` for money.
 
-Finally, rigour is scaled to consequence. MicroLend is not safety-critical, so the domain standards for airborne systems, railway applications and medical devices do not apply, and we make no such claim. But because it is a financial ledger we borrow their one transferable idea — that criticality dictates technique — and adopt as a stated SQAP policy **100% decision coverage on the money path** (`RepaymentAllocator`, `DelinquencyClassifier`), together with the coding-standard rule banning `double` for monetary values: our scaled-down equivalent of a safety standard's language restrictions, recorded under IEEE 730's "standards, practices and conventions" clause rather than left as an aspiration.
-
-**What we are not claiming,** stated plainly: CMMI Level 3 or above; conformance to any safety-critical standard; organisational independence of the QA function; and certification of any kind. Every standard named above is used as a source of practice, not as a badge.
+**Not claimed:** CMMI Level 3 or above; conformance to any safety-critical standard; organisational independence of the QA function; and certification of any kind. Every standard named above is used as a source of practice, not as a badge.
 
 ---
 
@@ -310,7 +289,7 @@ P = probability, C = consequence, E = exposure. Residual exposure is recorded fr
 | RTM v1 | 32 functional and 6 quality requirements, each traced to a business rule where one exists and given a planned verification approach and a named test design technique |
 | SQAP | Scope set and all mandatory IEEE 730 sections outlined with project-specific plans; one section declared not applicable with justification |
 | Cost of Quality | Estimated at 162 student-hours with the prevention/appraisal/failure split and three stated predictions |
-| Standards awareness | 12207, IEEE 730, 29110, CMMI-DEV, ISO 9001 and 90003 related to this project's scale, with explicit non-claims |
+| Standards awareness | 12207, IEEE 730, 29110 and CMMI-DEV related to this project's scale, with explicit non-claims |
 | Risk register | 8 risks, computed exposure, owners assigned, living document in the repository |
 
-**What M1 deliberately does not yet contain,** because the techniques are taught later in the semester and the rubric does not require them at this milestone: executed test results, the inspection defect log, the static-analysis report, coverage figures and GQM data. Each has a planned home in this document and an owner, Of the four evidence streams that cannot be reconstructed afterwards, three are already running at M1 — the TDD commit trail, the SCM baselines and the CI static-analysis reports (kept for 90 days) — and GQM data collection starts with the first feature branch at M2.
+**What M1 deliberately does not yet contain,** because the techniques are taught later in the semester and M1 does not require them: executed test results, the inspection defect log, the static-analysis report, coverage figures and GQM data. Each has a planned home in this document and an owner. Of the four evidence streams that cannot be reconstructed afterwards, three are already running at M1 — the TDD commit trail, the SCM baselines and the CI static-analysis reports (kept for 90 days) — and GQM data collection starts with the first feature branch at M2.
