@@ -1,21 +1,5 @@
 # Milestone 1 — SE423 Software Construction & Development
 
-## MicroLend — Community Microfinance Loan Servicing & Delinquency Engine
-
-**Team**
-
-| Member | Reg. # | Primary modules | Pattern owned |
-|---|---|---|---|
-| Muhammad Ibrahim | 2023446 | `origination`, `delinquency` | Adapter |
-| Hassan Khalid | 2023242 | `products`, `reporting` | Factory Method |
-| Tughral Hussain | 2023532 | `ledger` | Decorator |
-
-**Team Lead / Integrator (M1):** Muhammad Ibrahim — role rotates each milestone.\
-**Repository:** https://github.com/tughral1/microlend\
-**Milestone:** M1 (Week 6) · **Weight:** 15% of the project grade
-
----
-
 ## 1. Problem Definition and Requirement-to-Minimum Mapping
 
 ### 1.1 The system
@@ -69,7 +53,7 @@ Those three properties are what give the system its invariants, and the invarian
 
 ## 2. Module Breakdown and Ownership
 
-Five modules — one above the minimum, so that if effort runs short, `reporting` can be reduced without dropping below four.
+Five modules, one more than the minimum of four.
 
 | # | Module | Scope in one line | Primary owner |
 |--|-------|--------------------------|--------|
@@ -97,7 +81,7 @@ These are frozen at M1 in the **Business Rules Register** (`docs/business-rules.
 
 ### 2.2 Why ownership is split this way
 
-Each owner holds a module whose **invariant they can state in a single sentence**, which is what makes individual Q&A defensible:
+Each owner holds a module whose **invariant fits in one sentence**:
 
 - **Muhammad Ibrahim** — *"No loan may exist that the eligibility rules would not have approved."*
 - **Hassan Khalid** — *"The instalments of a schedule sum exactly to principal plus total interest."*
@@ -592,7 +576,7 @@ Rules: no `catch (Exception e)`, and no empty catch blocks (unless the exception
 
 ### 3.6 The concurrent operation and its thread-safety strategy
 
-**What runs concurrently.** The end-of-day engine processes the active portfolio across `Executors.newFixedThreadPool(4)`, one task per loan account, **while teller threads are still posting repayments to the same accounts**. This is not contrived: in a real branch, the nightly batch and late counter transactions overlap, and the demo harness runs both at once.
+**What runs concurrently.** The end-of-day engine processes the active portfolio across `Executors.newFixedThreadPool(4)`, one task per loan account, **while teller threads are still posting repayments to the same accounts**. In a real branch the nightly batch and late counter transactions overlap, and the demo harness runs both at once.
 
 **The three races it must prevent:**
 
@@ -614,7 +598,7 @@ Rules: no `catch (Exception e)`, and no empty catch blocks (unless the exception
 
 **A stated limit.** SQLite admits one writer at a time, so the four pool threads run the *calculation* (days past due, penalty, classification, provisioning) in parallel, while the commits themselves are short and serialised by the database. QR-01 in the SE431 document measures whether that is fast enough for 10,000 loans, rather than assuming it.
 
-This also supplies the two deliberately injected failure scenarios the M3 rubric asks for: a repository that throws mid-posting must leave the ledger balanced, and an end-of-day task that dies must not block the pool or leave a half-applied accrual.
+The same design gives the two injected failure scenarios planned for M3: a repository that throws mid-posting must leave the ledger balanced, and an end-of-day task that dies must not block the pool or leave a half-applied accrual.
 
 ### 3.7 Persistent data layer
 
@@ -636,7 +620,7 @@ Monetary columns are stored as `INTEGER` minor units (paisa) rather than `REAL`,
 
 ## 4. SOLID Application Plan
 
-The rubric requires all five principles to be analysed, each marked **relevant**, **not relevant**, or **not yet observable**, with non-applicability justified. All five are relevant to MicroLend and none is claimed as not applicable. Each is tied below to a concrete design decision. Four (SRP, OCP, ISP, DIP) are demonstrated by decisions already visible in the class views; LSP is designed in but **not yet observable** until its contract test runs against real calculators at M2, and §4.6 says what evidence will show it.
+All five principles are relevant to MicroLend; none is declared not applicable. Each is tied below to a concrete design decision. Four (SRP, OCP, ISP, DIP) are demonstrated by decisions already visible in the class views; LSP is designed in but **not yet observable** until its contract test runs against real calculators at M2, and §4.6 says what evidence will show it.
 
 ### 4.1 Single Responsibility Principle — **relevant, demonstrated in the design**
 
@@ -684,7 +668,7 @@ Separate role interfaces: `ScheduleProvider` (read a schedule), `LedgerWriter` (
 
 **What was rejected:** `new SqliteLoanRepository(connection)` inside `CoreRepaymentPoster`. That would make the posting logic untestable without a real database, push a JDBC concern into business code, and make a storage change a business-code change.
 
-### 4.6 Summary and honest limits
+### 4.6 Summary and limits
 
 | Principle | Status at M1 | Concrete design decision | Evidence that will show it |
 |-----|----------|--------------------|--------------|
@@ -694,15 +678,15 @@ Separate role interfaces: `ScheduleProvider` (read a schedule), `LedgerWriter` (
 | **ISP** | Relevant — demonstrated in the design | Role interfaces at the persistence and posting boundary — §4.4 | Visible now in Views 2–4; one small test double per role (M2) |
 | **DIP** | Relevant — demonstrated in the design | Domain-declared repository interfaces, injected implementations — §4.5 | Visible now in Views 2–4; suite runs with in-memory fakes and no database (M2) |
 
-No principle is declared not relevant: each one constrains a real decision in this design. M1 commits to the structure; M2 produces the code-level evidence for all five, and the first observation of LSP.
+M1 commits to the structure; M2 produces the code-level evidence for all five, and the first observation of LSP.
 
-**Where a principle is weaker, stated honestly.** SRP at the *module* level is clean, but `RepaymentAllocator.allocate()` is a single method with a cyclomatic complexity of about 11 (ten decision points), which is the most complex method in the system. It is kept as one method deliberately — splitting the waterfall across classes would scatter a rule that must be read in order — and it is the primary subject of the Fagan inspection and the basis-path test design on the SQA side. Complexity that is acknowledged, inspected and fully covered is a different proposition from complexity that is hidden.
+**Where a principle is weaker.** SRP at the *module* level is clean, but `RepaymentAllocator.allocate()` is a single method with a cyclomatic complexity of about 11 (ten decision points), which is the most complex method in the system. It is kept as one method deliberately — splitting the waterfall across classes would scatter a rule that must be read in order — and it is the primary subject of the Fagan inspection and the basis-path test design on the SQA side.
 
 ---
 
 ## 5. Design Pattern Selection and Justification
 
-Three patterns, chosen by the rule that the construction problem comes first and the pattern name second. One creational and two structural, satisfying the "at least one creational plus at least one structural or behavioural" requirement.
+Three patterns — one creational, two structural — each chosen because a construction problem came first and the pattern second.
 
 ### 5.1 Factory Method — `LoanProduct` as Creator (creational)
 
@@ -787,7 +771,7 @@ A pattern is only included where it solves a problem that existed in the design 
 
 ## 6. Repository and Documentation Setup
 
-**Repository:** https://github.com/tughral1/microlend (public)\
+**Repository:** https://github.com/MicroLend-SE423/microlend (public, owned by the team's GitHub organisation)\
 **Collaborators:** `tughral1`, `mIBRAHIM707`, `Hassan242-kk`
 
 ### 6.1 Branching strategy
@@ -800,7 +784,7 @@ Three tiers:
 | `develop` | Integration branch, the current working state | Receives pull requests from feature branches; each is reviewed by a member other than the author |
 | `feature/<module>-<short-name>` | One unit of work, owned by one member | Branched from `develop`, merged back by pull request |
 
-### 6.2 Quality gates (configured, not aspirational)
+### 6.2 Quality gates
 
 A GitHub **ruleset** (`main-protection`) is active on `main`:
 
@@ -815,7 +799,7 @@ A GitHub **ruleset** (`main-protection`) is active on `main`:
 
 `CODEOWNERS` automatically requests review from the owner of the module a pull request touches; for shared code — `Money`, the exception hierarchy, the Checkstyle configuration — it requests all three members.
 
-**Stated honestly:** the M1 scaffold (documents, build, CI, `Money`) was committed directly to `develop` while the repository was being set up, before any feature work existed. From M2, every change to `develop` arrives by pull request from a `feature/` branch, and the same ruleset is extended to `develop` when the first feature branch opens.
+**Note:** the M1 scaffold (documents, build, CI, `Money`) was committed directly to `develop` while the repository was being set up, before any feature work existed. From M2, every change to `develop` arrives by pull request from a `feature/` branch, and the same ruleset is extended to `develop` when the first feature branch opens.
 
 ### 6.3 Preserving the TDD trail
 
@@ -855,9 +839,3 @@ The configuration also enforces complexity limits (cyclomatic complexity ≤ 15 
 | `qa/risk-register.md` | Living risk register, initiated at M1 with 8 scored risks |
 | `qa/m1-ai-usage-log.md` | AI Usage Log for this milestone; M2 and M3 have their own |
 | `config/checkstyle.xml` | The coding standard, referenced by SQAP §4.4 |
-
----
-
-## 7. Declaration
-
-The design in this document is the team's own. Where AI assistance was used — in drafting documentation and in reviewing design alternatives — it is recorded in  `qa/m1-ai-usage-log.md` with the tool, purpose, what was adopted, what was modified, and how it was verified. Each member is the owner of their modules and is able to explain and defend the design decisions recorded here.

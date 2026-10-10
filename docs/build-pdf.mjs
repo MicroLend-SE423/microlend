@@ -52,7 +52,8 @@ function cli(pkg, args) {
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 function renderDiagrams(md, key) {
-  const config = readFileSync('mermaid-config.json', 'utf8');
+  // Line endings are normalised so a Windows checkout (CRLF) hits the same cache as Linux.
+  const config = readFileSync('mermaid-config.json', 'utf8').replace(/\r\n/g, '\n');
   let i = 0;
   return md.replace(/```mermaid\r?\n([\s\S]*?)```/g, (_, src) => {
     const file = `assets/${key}-fig${++i}.svg`;
@@ -98,7 +99,7 @@ function cover(doc) {
   </div>
   <footer class="cover-foot">
     <div><span class="label">Instructor</span>Dr. Mian Muaz Razaq</div>
-    <div><span class="label">Repository</span>github.com/tughral1/microlend</div>
+    <div><span class="label">Repository</span>github.com/MicroLend-SE423/microlend</div>
   </footer>
 </section>`;
 }
