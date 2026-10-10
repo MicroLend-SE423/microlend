@@ -771,7 +771,7 @@ A pattern is only included where it solves a problem that existed in the design 
 
 ## 6. Repository and Documentation Setup
 
-**Repository:** https://github.com/tughral1/microlend (public)\
+**Repository:** https://github.com/MicroLend-SE423/microlend (public, owned by the team's GitHub organisation)\
 **Collaborators:** `tughral1`, `mIBRAHIM707`, `Hassan242-kk`
 
 ### 6.1 Branching strategy
