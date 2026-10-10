@@ -99,7 +99,7 @@ function cover(doc) {
   </div>
   <footer class="cover-foot">
     <div><span class="label">Instructor</span>Dr. Mian Muaz Razaq</div>
-    <div><span class="label">Repository</span>github.com/tughral1/microlend</div>
+    <div><span class="label">Repository</span>github.com/MicroLend-SE423/microlend</div>
   </footer>
 </section>`;
 }
