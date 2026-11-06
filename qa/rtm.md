@@ -83,6 +83,14 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 
 ## 4. Coverage summary
 
+M2 incremental evidence (2026-11-06): `LoanId`, `LedgerEntry`, `EntryType`,
+`LedgerWriter` and `LedgerReader` now implement the L-01/L-02 foundations.
+`LoanIdTest`, `LedgerEntryTest` and `InMemoryLedgerRepositoryTest` pass locally.
+The test-only repository verifies loan isolation, append order, immutable
+snapshots, repeated movements and null rejection. This is partial evidence for
+FR-16, FR-17 and QR-05: balanced transactional posting, persistence and compensating
+reversals remain unimplemented, so those requirements retain their planned status.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |

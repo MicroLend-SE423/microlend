@@ -1,6 +1,6 @@
 # M2 code to-do — Tughral Hussain (`ledger`, persistence, `web`)
 
-Work queue for the daily scheduled Claude Code session. Items are taken **top to
+Work queue for the daily scheduled coding session. Items are taken **top to
 bottom**, one red-green cycle per run unless told to expedite. Tick an item only
 when its tests pass in CI on the pull request. Items owned by Ibrahim and Hassan
 are listed at the end for context only and must not be picked up here.
@@ -8,6 +8,15 @@ are listed at the end for context only and must not be picked up here.
 Every item traces to the M1 design (`docs/M1-SE423-Proposal-OOD-Pattern-Plan.md`
 §3.2 View 2, §3.7, §5.3), the Business Rules Register (`docs/business-rules.md`)
 and the RTM (`qa/rtm.md`).
+
+Schedule: **12:00-14:00 Asia/Karachi daily**, one red/green pair per normal run.
+The Windows runner, setup and one-day expedite command are documented in
+[`daily-coding.md`](daily-coding.md). Commits, pushes and ledger PR creation are
+authorized by the owner; PR merges still require teammate review.
+
+2026-11-06: L-01 and L-02 are implemented on `feature/ledger-entry`; the local
+build passes. Checkboxes await verification of PR CI and reconciliation on the
+next run. L-03 is the next implementation item once those checks pass.
 
 ## Queue
 
