@@ -18,12 +18,17 @@ authorized by the owner; PR merges still require teammate review.
 build passes. Checkboxes await verification of PR CI and reconciliation on the
 next run. L-03 is the next implementation item once those checks pass.
 
+2026-11-08: L-01 and L-02 ticked; PR #8 CI passed for them on 2026-11-06. L-03 is
+implemented and passes locally; tick it once PR CI passes. Next item: L-04.
+The scheduled runs on 11-07 and 11-08 produced no work (Codex model rejected;
+machine off at noon). The Codex-based runner cannot work until it is replaced.
+
 ## Queue
 
-- [ ] **L-01** `LoanId` value object (`common`) and `LedgerEntry` immutable value with
+- [x] **L-01** `LoanId` value object (`common`) and `LedgerEntry` immutable value with
       `EntryType`: exactly one of debit/credit is non-zero, no mutators. BR-23, BR-24,
       BR-43; FR-17, QR-05.
-- [ ] **L-02** `LedgerWriter` and `LedgerReader` role interfaces (`ledger`), plus an
+- [x] **L-02** `LedgerWriter` and `LedgerReader` role interfaces (`ledger`), plus an
       in-memory implementation for tests. FR-16, FR-17; ISP/DIP (§4.4, §4.5).
 - [ ] **L-03** `LoanAccount` with `LoanStatus` (ACTIVE / CLOSED / WRITTEN_OFF),
       outstanding principal, `isClosed()`, and `LoanClosedException` for postings
