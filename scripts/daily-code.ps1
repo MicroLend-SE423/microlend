@@ -1,11 +1,14 @@
 param(
     [switch]$Expedite,
     [switch]$Check,
-    [string]$CodexPath = '',
+    [string]$ClaudePath = '',
+    [string]$Model = 'claude-opus-5-5',
     [string]$StateRoot = (Join-Path $env:LOCALAPPDATA 'MicroLendScheduler')
 )
+# Daily MicroLend coding run with Claude Code in headless mode.
+# Installed copy lives in $StateRoot\runner (see install-daily-code-task.ps1), so the
+# scheduled task does not depend on which branch the interactive checkout is on.
 $ErrorActionPreference = 'Stop'
-$source = Split-Path $PSScriptRoot -Parent
 $zone = [TimeZoneInfo]::FindSystemTimeZoneById('Pakistan Standard Time')
 $now = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $zone)
 $deadline = if ($Expedite) { $now.Date.AddDays(1) } else { $now.Date.AddHours(14) }
@@ -13,48 +16,67 @@ if (!$Check -and !$Expedite -and ($now.Hour -lt 12 -or $now.Hour -ge 14)) {
     Write-Output 'Outside 12:00-14:00 Asia/Karachi; skipping.'
     exit 0
 }
-if (!$CodexPath) { $CodexPath = (Get-Command codex.exe -ErrorAction Stop).Source }
-if (!(Test-Path -LiteralPath $CodexPath)) { throw 'Codex executable missing; reinstall the task.' }
+if (!$ClaudePath) { $ClaudePath = (Get-Command claude.exe -ErrorAction Stop).Source }
+if (!(Test-Path -LiteralPath $ClaudePath)) { throw 'Claude Code executable missing; reinstall the task.' }
 if (!$env:JAVA_HOME) { $env:JAVA_HOME = [Environment]::GetEnvironmentVariable('JAVA_HOME', 'User') }
 if (!(Test-Path "$env:JAVA_HOME/bin/java.exe")) { throw 'Set JAVA_HOME to JDK 21.' }
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+if (!$env:CLAUDE_CODE_OAUTH_TOKEN) {
+    $token = [Environment]::GetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', 'User')
+    if ($token) { $env:CLAUDE_CODE_OAUTH_TOKEN = $token }
+}
 foreach ($command in @('git', 'gh')) { $null = Get-Command $command -ErrorAction Stop }
+$checkout = Join-Path $StateRoot 'checkout'
+if (!(Test-Path -LiteralPath (Join-Path $checkout '.git'))) { throw "Scheduler checkout missing at $checkout; run the installer." }
+$promptFile = Join-Path $PSScriptRoot 'daily-code-prompt.txt'
+
+# Allowlist for --permission-mode dontAsk: anything not listed is refused, not prompted.
+$allowed = @(
+    'Read', 'Edit', 'Write', 'Glob', 'Grep',
+    'PowerShell(git *)', 'PowerShell(gh pr *)', 'PowerShell(gh run *)',
+    'PowerShell(.\gradlew.bat *)', 'PowerShell(./gradlew.bat *)'
+)
+$denied = @(
+    'PowerShell(git push --force*)', 'PowerShell(git push -f*)', 'PowerShell(git reset --hard*)',
+    'PowerShell(git clean*)', 'PowerShell(gh pr merge*)', 'PowerShell(gh pr close*)'
+)
+function Format-Args([string[]]$items) { ($items | ForEach-Object { '"' + $_ + '"' }) -join ' ' }
+
 if ($Check) {
-    & $CodexPath login status
-    if ($LASTEXITCODE) { throw 'Codex login required.' }
-    gh auth status
+    # Native tools write warnings to stderr; judge them by exit code, not by stderr output.
+    $ErrorActionPreference = 'Continue'
+    gh auth status 2>&1 | Out-Null
     if ($LASTEXITCODE) { throw 'GitHub login required.' }
-    Write-Output "Preflight passed. Window: 12:00-14:00 Asia/Karachi. State: $StateRoot"
+    $probe = 'Reply with the single word READY.' | & $ClaudePath -p --model $Model --permission-mode dontAsk 2>$null
+    $probeExit = $LASTEXITCODE
+    $ErrorActionPreference = 'Stop'
+    if ($probeExit -or ($probe -join ' ') -notmatch 'READY') { throw "Claude Code did not answer: $probe" }
+    if (!$env:CLAUDE_CODE_OAUTH_TOKEN) {
+        Write-Warning 'No CLAUDE_CODE_OAUTH_TOKEN: runs depend on the interactive sign-in, which expires. Run "claude setup-token".'
+    }
+    Write-Output "Preflight passed. Model: $Model. Window: 12:00-14:00 Asia/Karachi. State: $StateRoot"
     exit 0
 }
-New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
+
 $lock = $null
 $process = $null
+$failed = $null
 try {
     # Exclusive file handle also prevents overlap with manual expedited runs.
     $lock = [IO.File]::Open((Join-Path $StateRoot 'run.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
     $stamp = $now.ToString('yyyyMMdd-HHmmss')
     Start-Transcript -Path (Join-Path $StateRoot "$stamp.log") | Out-Null
-    $checkout = Join-Path $StateRoot 'checkout'
-    if (!(Test-Path -LiteralPath $checkout)) {
-        git clone https://github.com/MicroLend-SE423/microlend.git $checkout
-        if ($LASTEXITCODE) { throw 'Clone failed.' }
-        foreach ($key in @('user.name', 'user.email')) {
-            $value = git -C $source config --get $key
-            if (!$value) { throw "Configure $key in the source repository." }
-            git -C $checkout config $key $value
-            if ($LASTEXITCODE) { throw "Could not configure $key." }
-        }
-    }
     $dirty = git -C $checkout status --porcelain
-    if ($LASTEXITCODE -or $dirty) { throw 'Scheduler checkout needs inspection; preserving unfinished work.' }
+    if ($LASTEXITCODE -or $dirty) { throw 'Scheduler checkout has uncommitted work; inspect it before the next run.' }
     $mode = if ($Expedite) { 'Expedited: complete as many ordered items as safely possible today, using a red/green pair for each.' }
         else { 'Normal: complete ONE pending queue item with TWO commits: test(red), then feat(green). No filler commits.' }
-    $prompt = Get-Content (Join-Path $PSScriptRoot 'daily-code-prompt.txt') -Raw
+    $prompt = Get-Content $promptFile -Raw
     $prompt += "`n$mode`nHard deadline: $($deadline.ToString('yyyy-MM-dd HH:mm:ss')) Asia/Karachi. Reserve the final 15 minutes for validation and publication."
     $start = New-Object Diagnostics.ProcessStartInfo
-    $start.FileName = $CodexPath
+    $start.FileName = $ClaudePath
     $start.WorkingDirectory = $checkout
-    $start.Arguments = 'exec --sandbox danger-full-access -c approval_policy=never --color never -'
+    $start.Arguments = "-p --model $Model --output-format json --permission-mode dontAsk " +
+        "--allowedTools $(Format-Args $allowed) --disallowedTools $(Format-Args $denied)"
     $start.UseShellExecute = $false
     $start.CreateNoWindow = $true
     $start.RedirectStandardInput = $true
@@ -71,13 +93,22 @@ try {
     while (!$process.WaitForExit(1000)) {
         if ([DateTime]::UtcNow -ge $utcDeadline) {
             taskkill.exe /PID $process.Id /T /F | Out-Null
-            throw 'Deadline reached; process tree stopped. Inspect checkout before next run.'
+            throw 'Deadline reached; process tree stopped. Inspect the checkout before the next run.'
         }
     }
-    [IO.File]::WriteAllText((Join-Path $StateRoot "$stamp-result.txt"), $stdout.Result)
+    [IO.File]::WriteAllText((Join-Path $StateRoot "$stamp-result.json"), $stdout.Result)
     [IO.File]::WriteAllText((Join-Path $StateRoot "$stamp-agent.log"), $stderr.Result)
-    if ($process.ExitCode -ne 0) { throw "Codex failed with exit code $($process.ExitCode)." }
+    if ($process.ExitCode -ne 0) { throw "Claude Code exited with code $($process.ExitCode); see $stamp-agent.log." }
+    $result = $stdout.Result | ConvertFrom-Json
+    if ($result.is_error) { throw "Claude Code reported an error: $($result.result)" }
+    Write-Output $result.result
+} catch {
+    $failed = $_
 } finally {
     if ($process -and !$process.HasExited) { taskkill.exe /PID $process.Id /T /F | Out-Null }
-    if ($lock) { $lock.Dispose(); Stop-Transcript -ErrorAction SilentlyContinue | Out-Null }
+    if ($failed) { Write-Output "FAILED: $failed" }
+    if ($lock) { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null; $lock.Dispose() }
 }
+# A non-zero exit makes Task Scheduler record the failure instead of a false success.
+if ($failed) { exit 1 }
+exit 0
