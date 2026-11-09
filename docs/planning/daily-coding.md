@@ -55,6 +55,12 @@ One-day sprint, working through queue items until finished, blocked or midnight:
 & "$env:LOCALAPPDATA\MicroLendScheduler\runner\daily-code.ps1" -Expedite
 ```
 
+Catch up on missed days, for example three items within two hours from now:
+
+```powershell
+& "$env:LOCALAPPDATA\MicroLendScheduler\runner\daily-code.ps1" -CatchUpItems 3 -DurationMinutes 120
+```
+
 Disable the daily run:
 
 ```powershell
