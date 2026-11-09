@@ -78,6 +78,86 @@ class LoanAccountTest {
     }
 
     @Nested
+    @DisplayName("applying an allocation (BR-18)")
+    class ApplyingAnAllocation {
+
+        private Money money(final String amount) {
+            return Money.of(new BigDecimal(amount));
+        }
+
+        @Test
+        @DisplayName("the principal tier reduces the outstanding principal")
+        void principalTierReducesOutstanding() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            final Allocation allocation =
+                Allocation.of(money("10.00"), Money.ZERO, money("300.00"), money("1690.00"));
+            final LoanAccount after = account.applyAllocation(allocation);
+            assertEquals(money("38310.00"), after.outstandingPrincipal());
+            assertEquals(LOAN, after.id());
+            assertEquals(LoanStatus.ACTIVE, after.status());
+        }
+
+        @Test
+        @DisplayName("penalty, fees and interest leave the outstanding principal unchanged")
+        void nonPrincipalTiersLeavePrincipal() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            final Allocation allocation =
+                Allocation.of(money("10.00"), Money.ZERO, money("300.00"), Money.ZERO);
+            assertEquals(OUTSTANDING, account.applyAllocation(allocation).outstandingPrincipal());
+        }
+
+        @Test
+        @DisplayName("the original account is not modified")
+        void originalAccountUnchanged() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            account.applyAllocation(Allocation.of(Money.ZERO, Money.ZERO, Money.ZERO, money("1.00")));
+            assertEquals(OUTSTANDING, account.outstandingPrincipal());
+        }
+
+        @Test
+        @DisplayName("paying exactly the outstanding principal leaves zero and the loan still active")
+        void exactPrincipalLeavesZero() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            final LoanAccount after = account.applyAllocation(
+                Allocation.of(Money.ZERO, Money.ZERO, Money.ZERO, OUTSTANDING));
+            assertTrue(after.outstandingPrincipal().isZero());
+            assertEquals(LoanStatus.ACTIVE, after.status());
+        }
+
+        @Test
+        @DisplayName("principal one paisa above the outstanding amount is rejected")
+        void principalAboveOutstandingRejected() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            final Allocation allocation =
+                Allocation.of(Money.ZERO, Money.ZERO, Money.ZERO, money("40000.01"));
+            final InvalidAllocationException thrown = assertThrows(
+                InvalidAllocationException.class, () -> account.applyAllocation(allocation));
+            assertTrue(thrown.getMessage().contains(LOAN.value()));
+            assertEquals(OUTSTANDING, account.outstandingPrincipal());
+        }
+
+        @Test
+        @DisplayName("a closed or written-off loan refuses an allocation (BR-26)")
+        void closedLoanRefusesAllocation() {
+            final Allocation allocation =
+                Allocation.of(Money.ZERO, Money.ZERO, Money.ZERO, money("1.00"));
+            final LoanAccount closed =
+                LoanAccount.restore(LOAN, LoanStatus.CLOSED, Money.ZERO, CLOSED_ON);
+            final LoanAccount writtenOff =
+                LoanAccount.restore(LOAN, LoanStatus.WRITTEN_OFF, OUTSTANDING, CLOSED_ON);
+            assertThrows(LoanClosedException.class, () -> closed.applyAllocation(allocation));
+            assertThrows(LoanClosedException.class, () -> writtenOff.applyAllocation(allocation));
+        }
+
+        @Test
+        @DisplayName("a null allocation is rejected")
+        void nullAllocationRejected() {
+            final LoanAccount account = LoanAccount.active(LOAN, OUTSTANDING);
+            assertThrows(InvalidAllocationException.class, () -> account.applyAllocation(null));
+        }
+    }
+
+    @Nested
     @DisplayName("construction enforces the invariants")
     class Construction {
 
