@@ -46,7 +46,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | *planned* | TC-LED-04 | INV | planned |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
 | FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | *planned* | TC-LED-06 | EP | planned |
-| FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | implemented |
+| FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | verified |
 | FR-20 | Repayments importable from each supported bank's statement format | — | ledger.importing | `HblStatementAdapter`, `McbStatementAdapter` | *planned* | TC-LED-08 | EP | planned |
 | FR-21 | Penalty accrues at 0.05%/day on overdue principal, capped at 10% | BR-27, BR-28 | delinquency | `PenaltyAccruer` | *planned* | TC-DEL-01 | BVA | planned |
 | FR-22 | Days past due counted from the day after the due date | BR-29 | delinquency | `DaysPastDueCalculator` | *planned* | TC-DEL-02 | BVA | planned |
@@ -96,6 +96,16 @@ M2 incremental evidence (2026-11-08): `LoanAccount`, `LoanStatus` and
 three equivalence classes of BR-26 (active, closed, written-off) and passes
 locally; FR-19 moves to *verified* once PR CI passes. The rejection is only
 reachable from a posting path once `CoreRepaymentPoster` (queue item L-08) calls it.
+
+M2 incremental evidence (2026-11-09): FR-19 is *verified*: PR #8 CI run
+42471721763 passed for ff8d352. `Allocation` (the four BR-18 tiers, value
+equality, every tier required) and `LoanAccount.applyAllocation()` (principal
+tier reduces outstanding principal, over-allocation rejected, closed loans refuse
+it) are implemented and tested in `AllocationTest` and `LoanAccountTest`. This is
+supporting work for FR-13 only: `RepaymentAllocator.allocate()`, which applies the
+waterfall and the oldest-first order (TC-LED-01, TC-LED-02), is not implemented, so
+FR-13 and FR-14 stay *planned*. `applyAllocation` returns a new account instead of
+the `void` shown in M1 View 2, because `LoanAccount` is immutable.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
