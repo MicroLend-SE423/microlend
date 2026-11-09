@@ -12,9 +12,9 @@ import pk.edu.giki.microlend.common.Money;
  * <p>The account defends its own consistency: an active loan has no closure
  * date, and a closed or written-off loan always has one. It also answers the
  * one question every posting path must ask first, whether the loan still
- * accepts money (BR-26). Applying an allocation arrives with queue item L-04;
- * closing and write-off transitions arrive with settlement (L-06) and the
- * end-of-day engine.</p>
+ * accepts money (BR-26). The account is immutable: applying an allocation
+ * returns a new account. Closing and write-off transitions arrive with
+ * settlement (L-06) and the end-of-day engine.</p>
  */
 public final class LoanAccount {
 
@@ -83,6 +83,36 @@ public final class LoanAccount {
         if (isClosed()) {
             throw new LoanClosedException(id, status, closedOn);
         }
+    }
+
+    /**
+     * Applies an allocation to the account (BR-18).
+     *
+     * <p>Only the principal tier changes the account's state: penalty, fees
+     * and interest are recorded by the ledger lines the posting path writes.
+     * The account is immutable, so the result is a new account and this one is
+     * left unchanged. A loan whose principal reaches zero stays
+     * {@link LoanStatus#ACTIVE}; closing it is the settlement policy's
+     * decision (L-06), not this method's.</p>
+     *
+     * @param allocation the split of one payment
+     * @return the account after the allocation
+     * @throws LoanClosedException if the loan is closed or written off (BR-26)
+     * @throws InvalidAllocationException if the allocation is null, or its
+     *     principal tier exceeds the outstanding principal
+     */
+    public LoanAccount applyAllocation(final Allocation allocation) {
+        if (allocation == null) {
+            throw new InvalidAllocationException("allocation is required for loan " + id);
+        }
+        ensureAcceptsPayment();
+        if (allocation.toPrincipal().isGreaterThan(outstandingPrincipal)) {
+            throw new InvalidAllocationException("allocation of "
+                + allocation.toPrincipal().toPlainString() + " to principal exceeds the "
+                + outstandingPrincipal.toPlainString() + " outstanding on loan " + id);
+        }
+        return new LoanAccount(id, status,
+            outstandingPrincipal.minus(allocation.toPrincipal()), closedOn);
     }
 
     /**

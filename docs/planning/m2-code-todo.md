@@ -23,6 +23,20 @@ implemented and passes locally; tick it once PR CI passes. Next item: L-04.
 The scheduled runs on 11-07 and 11-08 produced no work (Codex model rejected;
 machine off at noon). The Codex-based runner cannot work until it is replaced.
 
+2026-11-09 (catch-up run): L-03 ticked; PR #8 CI run 42471721763 passed for
+ff8d352. L-04 is implemented and passes the full local build; tick it once PR CI
+passes. **L-05 is blocked** and was not started:
+- `Instalment` (Hassan, `products`) is not on `develop` or any branch; PR #6 only
+  adds `DueDateCalculator`. The M1 design gives it principal and interest only,
+  with no paid-to-date or accrued-penalty fields the allocator needs.
+- BR-18 and BR-19 can be read two ways: settle each instalment fully (penalty →
+  fees → interest → principal) before the next, or apply each tier across all
+  instalments oldest first before the next tier. The team must choose; the run
+  does not invent it.
+- Per-instalment penalty comes from Ibrahim's `PenaltyAccruer`, not yet built.
+Unblock by agreeing the `Instalment` shape with Hassan and the BR-18/BR-19 reading
+with the team. Items are taken in order, so L-06 onwards wait for L-05.
+
 ## Queue
 
 - [x] **L-01** `LoanId` value object (`common`) and `LedgerEntry` immutable value with
@@ -30,7 +44,7 @@ machine off at noon). The Codex-based runner cannot work until it is replaced.
       BR-43; FR-17, QR-05.
 - [x] **L-02** `LedgerWriter` and `LedgerReader` role interfaces (`ledger`), plus an
       in-memory implementation for tests. FR-16, FR-17; ISP/DIP (§4.4, §4.5).
-- [ ] **L-03** `LoanAccount` with `LoanStatus` (ACTIVE / CLOSED / WRITTEN_OFF),
+- [x] **L-03** `LoanAccount` with `LoanStatus` (ACTIVE / CLOSED / WRITTEN_OFF),
       outstanding principal, `isClosed()`, and `LoanClosedException` for postings
       against a closed or written-off loan. BR-26; FR-19.
 - [ ] **L-04** `Allocation` value object (toPenalty, toFees, toInterest, toPrincipal)
