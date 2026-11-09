@@ -1,6 +1,10 @@
 param(
     [switch]$Expedite,
     [switch]$Check,
+    # Catch-up for missed days: complete up to this many queue items, one red/green
+    # pair each, within -DurationMinutes from now, regardless of the noon window.
+    [int]$CatchUpItems = 0,
+    [int]$DurationMinutes = 120,
     [string]$ClaudePath = '',
     [string]$Model = 'claude-opus-5-5',
     [string]$StateRoot = (Join-Path $env:LOCALAPPDATA 'MicroLendScheduler')
@@ -11,8 +15,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $zone = [TimeZoneInfo]::FindSystemTimeZoneById('Pakistan Standard Time')
 $now = [TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $zone)
-$deadline = if ($Expedite) { $now.Date.AddDays(1) } else { $now.Date.AddHours(14) }
-if (!$Check -and !$Expedite -and ($now.Hour -lt 12 -or $now.Hour -ge 14)) {
+$catchUp = $CatchUpItems -gt 0
+$deadline = if ($catchUp) { $now.AddMinutes($DurationMinutes) }
+    elseif ($Expedite) { $now.Date.AddDays(1) } else { $now.Date.AddHours(14) }
+if (!$Check -and !$Expedite -and !$catchUp -and ($now.Hour -lt 12 -or $now.Hour -ge 14)) {
     Write-Output 'Outside 12:00-14:00 Asia/Karachi; skipping.'
     exit 0
 }
@@ -68,7 +74,8 @@ try {
     Start-Transcript -Path (Join-Path $StateRoot "$stamp.log") | Out-Null
     $dirty = git -C $checkout status --porcelain
     if ($LASTEXITCODE -or $dirty) { throw 'Scheduler checkout has uncommitted work; inspect it before the next run.' }
-    $mode = if ($Expedite) { 'Expedited: complete as many ordered items as safely possible today, using a red/green pair for each.' }
+    $mode = if ($catchUp) { "Catch-up for $CatchUpItems missed daily runs: complete up to $CatchUpItems pending queue items in order, each with its own test(red) then feat(green) pair, pushing after each green build. Stop early if blocked; never start an item you cannot finish before the deadline." }
+        elseif ($Expedite) { 'Expedited: complete as many ordered items as safely possible today, using a red/green pair for each.' }
         else { 'Normal: complete ONE pending queue item with TWO commits: test(red), then feat(green). No filler commits.' }
     $prompt = Get-Content $promptFile -Raw
     $prompt += "`n$mode`nHard deadline: $($deadline.ToString('yyyy-MM-dd HH:mm:ss')) Asia/Karachi. Reserve the final 15 minutes for validation and publication."
