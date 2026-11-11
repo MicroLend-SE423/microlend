@@ -37,6 +37,20 @@ passes. **L-05 is blocked** and was not started:
 Unblock by agreeing the `Instalment` shape with Hassan and the BR-18/BR-19 reading
 with the team. Items are taken in order, so L-06 onwards wait for L-05.
 
+2026-11-11 (catch-up run, out-of-order override authorised by Tughral on
+2026-11-11): L-04 ticked; PR #8 CI run 42599213093 passed for 525d7cc.
+L-05 re-checked and **still blocked**: no `Instalment` type exists on `develop`,
+PR #6 or any other branch, and the BR-18/BR-19 reading is undecided. Skipped as
+blocked, because each needs `RepaymentAllocator` or a working `RepaymentPoster`
+chain: L-06 (settlement acts on an allocation), L-08 (`CoreRepaymentPoster`
+reads → allocates → writes), L-09 to L-11 (decorators need a core poster to
+wrap), L-16 (fault injection into the posting path) and L-17 (wires the chains).
+Taken **out of order** because they depend only on code already on this branch:
+L-07 (`RepaymentCommand`), then L-12, L-13 and L-14 as time allows. Decision to
+confirm with the team: `RepaymentCommand` rejects a zero amount because a
+posting that moves no money cannot write a ledger line (BR-23); the BR-20 "0"
+boundary is still tested at the allocator's own API when L-05 is unblocked.
+
 ## Queue
 
 - [x] **L-01** `LoanId` value object (`common`) and `LedgerEntry` immutable value with
@@ -47,7 +61,7 @@ with the team. Items are taken in order, so L-06 onwards wait for L-05.
 - [x] **L-03** `LoanAccount` with `LoanStatus` (ACTIVE / CLOSED / WRITTEN_OFF),
       outstanding principal, `isClosed()`, and `LoanClosedException` for postings
       against a closed or written-off loan. BR-26; FR-19.
-- [ ] **L-04** `Allocation` value object (toPenalty, toFees, toInterest, toPrincipal)
+- [x] **L-04** `Allocation` value object (toPenalty, toFees, toInterest, toPrincipal)
       and `LoanAccount.applyAllocation()`. BR-18.
 - [ ] **L-05** `RepaymentAllocator.allocate(Money, List<Instalment>)`: penalty →
       fees → interest → principal, oldest unpaid instalment first; partial payment
