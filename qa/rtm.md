@@ -79,7 +79,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | C-01 | No `double` or `float` for monetary values | Checkstyle rule, build fails | **active** |
 | C-02 | `BigDecimal` compared with `compareTo() == 0` | Inspection checklist (no automated rule at M1) | active |
 | C-03 | No cyclic dependencies between module packages | ArchUnit test in CI from M2 | planned |
-| C-04 | Monetary columns stored as integer minor units | Schema DDL review | planned |
+| C-04 | Monetary columns stored as integer minor units | Schema DDL review; `SchemaMigratorTest.moneyColumnsAreInteger` (`persistence/SchemaMigrator.java`) | implemented (2026-11-11; tested, awaiting PR CI) |
 
 ## 4. Coverage summary
 
@@ -124,6 +124,19 @@ correction leaves the original in place with debits equal to credits. This is
 partial evidence for FR-17 and QR-05 only: the SQLite repository (L-14) and its
 "no `UPDATE`/`DELETE` against `ledger_entry`" check, the Fagan checklist item and
 the static-analysis rule do not exist yet, so both keep their planned status.
+
+M2 incremental evidence (2026-11-11): `SchemaMigrator` and `SqliteDatabase`
+(queue item L-13) create the seven tables of M1 section 3.7 on the first
+connection and turn on foreign keys for every connection. `SchemaMigratorTest`
+checks that the database itself refuses rows the code would never write:
+negative, zero-zero or two-sided ledger lines (BR-43), a reversal without an
+existing original or a reason (BR-24), a repeated (bank, reference) pair while
+cash rows and the same reference from another bank are accepted (BR-25), a
+second snapshot for the same loan and business date (BR-33), and a loan whose
+status and closure date disagree (FR-19). Money columns are `INTEGER` paisa
+(C-04). This is schema support only: FR-18 (the guard), FR-26/BR-33 (the
+engine) and QR-05 (the repository with no `UPDATE`/`DELETE`, L-14) keep their
+planned status.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
