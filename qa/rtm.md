@@ -107,6 +107,14 @@ waterfall and the oldest-first order (TC-LED-01, TC-LED-02), is not implemented,
 FR-13 and FR-14 stay *planned*. `applyAllocation` returns a new account instead of
 the `void` shown in M1 View 2, because `LoanAccount` is immutable.
 
+M2 incremental evidence (2026-11-11): `RepaymentCommand` and
+`InvalidRepaymentException` (queue item L-07) give the posting pipeline one
+validated input. `RepaymentCommandTest` covers the cash and bank equivalence
+classes of BR-25, the 0.00 / 0.01 amount boundary, missing fields and a blank
+bank or reference. The command only *carries* the (bank, reference) pair; the
+duplicate check itself is `IdempotencyGuardPoster` (L-11), so FR-18 stays
+*planned*.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |
