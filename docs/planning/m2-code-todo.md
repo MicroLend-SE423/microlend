@@ -54,6 +54,12 @@ L-07 and L-12 implemented on this run and pass the full local build; tick them
 once PR CI passes for their green commits. Open question for the team (L-12): may
 an entry be reversed twice, or a reversal itself be reversed? No rule says, so
 neither is prevented yet.
+L-13 implemented and passes the full local build; tick it once PR CI passes. For
+Hassan and Ibrahim to confirm or extend in a later schema version: `customer`
+(id, name, date of birth, monthly income), `loan_product` (type, rate as integer
+basis points, amount and tenure bands), `instalment` (sequence, due date,
+principal, interest, as in M1 View 1) and `delinquency_snapshot` (days past due,
+classification). Only the M1-stated constraints were added to these tables.
 
 ## Queue
 
