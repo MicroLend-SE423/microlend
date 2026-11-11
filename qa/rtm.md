@@ -115,6 +115,16 @@ bank or reference. The command only *carries* the (bank, reference) pair; the
 duplicate check itself is `IdempotencyGuardPoster` (L-11), so FR-18 stays
 *planned*.
 
+M2 incremental evidence (2026-11-11): `CompensatingEntryService.reverse()` and
+`LedgerEntry.reversalOf()` (queue item L-12) implement correction by reversal:
+a `REVERSAL` entry in the opposite column that references the original and
+records a non-blank reason (BR-24). `CompensatingEntryServiceTest` (TC-LED-05)
+and `LedgerImmutabilityTest` show the write role offers only `append` and a
+correction leaves the original in place with debits equal to credits. This is
+partial evidence for FR-17 and QR-05 only: the SQLite repository (L-14) and its
+"no `UPDATE`/`DELETE` against `ledger_entry`" check, the Fagan checklist item and
+the static-analysis rule do not exist yet, so both keep their planned status.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |

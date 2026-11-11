@@ -50,6 +50,10 @@ L-07 (`RepaymentCommand`), then L-12, L-13 and L-14 as time allows. Decision to
 confirm with the team: `RepaymentCommand` rejects a zero amount because a
 posting that moves no money cannot write a ledger line (BR-23); the BR-20 "0"
 boundary is still tested at the allocator's own API when L-05 is unblocked.
+L-07 and L-12 implemented on this run and pass the full local build; tick them
+once PR CI passes for their green commits. Open question for the team (L-12): may
+an entry be reversed twice, or a reversal itself be reversed? No rule says, so
+neither is prevented yet.
 
 ## Queue
 
