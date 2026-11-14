@@ -89,6 +89,8 @@ L-10 implemented (red 48515d3) and passes the full local build; the operator
 is supplied by the teller session, not carried on `RepaymentCommand`.
 L-11 implemented (red 7b0faf4) and passes the full local build; references are
 held in memory, so a durable store on the `payment` table is a follow-up.
+L-15 implemented (red f20f08e) and passes the full local build; `LoanRepository`
+was already defined in ledger at L-08.
 
 ## Queue
 

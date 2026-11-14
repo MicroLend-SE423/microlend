@@ -12,10 +12,15 @@ import java.util.Objects;
  * <p>SQLite leaves foreign keys off by default and the setting is per
  * connection, so every connection handed out has {@code PRAGMA foreign_keys = ON}
  * (M1 design section 3.7). The first connection also applies the schema
- * through {@link SchemaMigrator}. Busy timeouts and {@code BEGIN IMMEDIATE}
- * transactions belong to the repositories (queue item L-15).</p>
+ * through {@link SchemaMigrator}. Every connection also gets a busy timeout of
+ * {@link #BUSY_TIMEOUT_MILLIS}, so a writer that meets another writer's lock
+ * waits instead of failing with {@code SQLITE_BUSY} (section 3.6); the
+ * repositories open their own {@code BEGIN IMMEDIATE} transactions.</p>
  */
 public final class SqliteDatabase {
+
+    /** How long a connection waits for another writer's lock (section 3.6). */
+    public static final int BUSY_TIMEOUT_MILLIS = 5000;
 
     private final String jdbcUrl;
     private final SchemaMigrator migrator = new SchemaMigrator();
@@ -55,6 +60,7 @@ public final class SqliteDatabase {
             connection = DriverManager.getConnection(jdbcUrl);
             try (Statement statement = connection.createStatement()) {
                 statement.execute("PRAGMA foreign_keys = ON");
+                statement.execute("PRAGMA busy_timeout = " + BUSY_TIMEOUT_MILLIS);
             }
             return connection;
         } catch (SQLException e) {
