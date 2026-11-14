@@ -93,6 +93,14 @@ L-15 implemented (red f20f08e) and passes the full local build; `LoanRepository`
 was already defined in ledger at L-08.
 L-16 implemented (red 01d739b) and passes the full local build: 14 failure
 points on SQLite; a failed loan save now reverses the posting's lines.
+Mid-run reconciliation: PR #8 CI passed for every push up to 82ba753, so L-05
+(46c5ea1), L-08 (2211bb7), L-09 (29f9c1c), L-10 (04102ea), L-11 (022dcea),
+L-14 (737a47a) and L-15 (b75b9bd, with refactor 82ba753) are ticked. L-06's
+green commit 923755b also passed CI but stays unticked because it is partial.
+L-16 (8e0ac30) was still awaiting CI at this point.
+L-17 implemented (red 5d7dd40) and passes the full local build. Wired with
+named placeholders (`ModuleNotAvailableException`) for the instalments source
+and the BR-22 rebate until `products`/`delinquency` provide them.
 
 ## Queue
 
@@ -106,7 +114,7 @@ points on SQLite; a failed loan save now reverses the posting's lines.
       against a closed or written-off loan. BR-26; FR-19.
 - [x] **L-04** `Allocation` value object (toPenalty, toFees, toInterest, toPrincipal)
       and `LoanAccount.applyAllocation()`. BR-18.
-- [ ] **L-05** `RepaymentAllocator.allocate(Money, List<Instalment>)`: penalty →
+- [x] **L-05** `RepaymentAllocator.allocate(Money, List<Instalment>)`: penalty →
       fees → interest → principal, oldest unpaid instalment first; partial payment
       applied as far as it reaches. One readable method (it is the Fagan inspection
       target). BR-18, BR-19, BR-20; FR-13, FR-14. Needs `Instalment` from `products`;
@@ -114,15 +122,16 @@ points on SQLite; a failed loan save now reverses the posting's lines.
       coordinate with Hassan.
 - [ ] **L-06** `SettlementPolicy`: overpayment becomes advance credit; exact payoff
       triggers early settlement with per-product rebate rules. BR-21, BR-22; FR-15.
+      *Partial: rebate supplied by `products` through `EarlySettlementRebate`.*
 - [x] **L-07** `RepaymentCommand` (validated factory) and `InvalidRepaymentException`.
       BR-25 data (bank, reference) carried for the idempotency guard.
-- [ ] **L-08** `RepaymentPoster` interface and `CoreRepaymentPoster`: read → allocate →
+- [x] **L-08** `RepaymentPoster` interface and `CoreRepaymentPoster`: read → allocate →
       write balanced debit and credit lines; invariant test Σ debits = Σ credits after
       every posting; `LedgerImbalanceException`. BR-23; FR-16, QR-03.
-- [ ] **L-09** Decorator pattern: abstract `RepaymentPosterDecorator` (IS-A and HAS-A
+- [x] **L-09** Decorator pattern: abstract `RepaymentPosterDecorator` (IS-A and HAS-A
       `RepaymentPoster`), then `TimingPoster`. §5.3.
-- [ ] **L-10** `AuditLoggingPoster` (operator named on every teller posting). FR-31.
-- [ ] **L-11** `IdempotencyGuardPoster` (rejects a repeated (bank, reference) pair).
+- [x] **L-10** `AuditLoggingPoster` (operator named on every teller posting). FR-31.
+- [x] **L-11** `IdempotencyGuardPoster` (rejects a repeated (bank, reference) pair).
       BR-25; FR-18.
 - [x] **L-12** `CompensatingEntryService.reverse(LedgerEntry, reason)` and
       `LedgerImmutabilityTest` (no mutator on `LedgerEntry`, corrections only by
@@ -130,9 +139,9 @@ points on SQLite; a failed loan save now reverses the posting's lines.
 - [x] **L-13** SQLite schema DDL for the seven tables (§3.7): CHECK and UNIQUE
       constraints, FKs, `PRAGMA foreign_keys = ON`, money as INTEGER paisa (C-04).
       Schema applied by a `SchemaMigrator` on first connection.
-- [ ] **L-14** `SqliteLedgerRepository` implementing `LedgerWriter` and `LedgerReader`;
+- [x] **L-14** `SqliteLedgerRepository` implementing `LedgerWriter` and `LedgerReader`;
       no UPDATE or DELETE against `ledger_entry` anywhere. QR-05.
-- [ ] **L-15** `SqliteLoanRepository` implementing `LoanRepository`, with
+- [x] **L-15** `SqliteLoanRepository` implementing `LoanRepository`, with
       `BEGIN IMMEDIATE` transactions and a busy timeout (§3.6).
 - [ ] **L-16** Fault-injection test: a `LedgerWriter` stub that throws at each write
       point leaves the ledger balanced (`PostingFaultInjectionTest`). QR-03.
