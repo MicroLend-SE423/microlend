@@ -13,8 +13,8 @@ import pk.edu.giki.microlend.common.Money;
  * date, and a closed or written-off loan always has one. It also answers the
  * one question every posting path must ask first, whether the loan still
  * accepts money (BR-26). The account is immutable: applying an allocation
- * returns a new account. Closing and write-off transitions arrive with
- * settlement (L-06) and the end-of-day engine.</p>
+ * returns a new account. Closing on payoff is {@link #closeAsRepaid}, used by
+ * {@link SettlementPolicy}; write-off belongs to the end-of-day engine.</p>
  */
 public final class LoanAccount {
 
@@ -113,6 +113,26 @@ public final class LoanAccount {
         }
         return new LoanAccount(id, status,
             outstandingPrincipal.minus(allocation.toPrincipal()), closedOn);
+    }
+
+    /**
+     * Closes a loan whose principal has been repaid in full (BR-22).
+     *
+     * @param closedOn the business date of the payoff
+     * @return a new, {@link LoanStatus#CLOSED} account; this one is unchanged
+     * @throws LoanClosedException if the loan is already closed or written off
+     * @throws InvalidLoanAccountException if the date is null or principal is still owed
+     */
+    public LoanAccount closeAsRepaid(final LocalDate closedOn) {
+        ensureAcceptsPayment();
+        if (closedOn == null) {
+            throw new InvalidLoanAccountException("closure date is required for loan " + id);
+        }
+        if (!outstandingPrincipal.isZero()) {
+            throw new InvalidLoanAccountException("loan " + id + " still owes "
+                + outstandingPrincipal.toPlainString() + " principal and cannot be closed");
+        }
+        return new LoanAccount(id, LoanStatus.CLOSED, outstandingPrincipal, closedOn);
     }
 
     /**
