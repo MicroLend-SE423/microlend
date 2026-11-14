@@ -58,7 +58,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-28 | Customer statement for a date range with running balance | BR-35 | reporting | `StatementRenderer` | *planned* | TC-REP-01 | EP | planned |
 | FR-29 | Portfolio reports: PAR30, provision coverage, collection efficiency | BR-36–BR-38 | reporting | `PortfolioReporter` | *planned* | TC-REP-02 | Golden file | planned |
 | FR-30 | Reports reproducible as at any past business date | BR-39 | reporting | `PortfolioReporter` | *planned* | TC-REP-03 | EP | planned |
-| FR-31 | Teller postings record an audit line naming the operator; imports record one line per file | — | ledger | `AuditLoggingPoster` (teller); import job (per file) | *planned* | TC-LED-09 | EP | planned |
+| FR-31 | Teller postings record an audit line naming the operator; imports record one line per file | — | ledger | `AuditLoggingPoster` (teller); import job (per file) | `ledger/AuditLoggingPoster.java`, `AuditRecord.java`, `AuditJournal.java` (teller half only) | TC-LED-09 → `AuditLoggingPosterTest` | EP | partial (2026-11-14): teller half implemented, awaiting PR CI; per-file import line not built |
 | FR-32 | Portfolio reports exportable as CSV | — | reporting | `ReportExporter`, `CsvReportExporter` | *planned* | TC-REP-04 | EP | planned |
 
 ## 2. Quality requirements
@@ -193,6 +193,13 @@ M2 incremental evidence (2026-11-14): `RepaymentPosterDecorator` and
 delegation, and that both successful and refused postings are timed. Timing
 traces to the design (GQM measurement), not to a numbered FR; no requirement
 status changes.
+
+M2 incremental evidence (2026-11-14): `AuditLoggingPoster` (queue item L-10)
+journals one line per teller posting naming the trimmed operator, for posted
+and refused attempts, and refuses a posting with no operator before it is
+forwarded. `AuditLoggingPosterTest` (TC-LED-09) covers named, blank, null and
+whitespace operators. FR-31 is *partial*: the one-line-per-file audit of
+imports belongs to the import job, which does not exist yet.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
