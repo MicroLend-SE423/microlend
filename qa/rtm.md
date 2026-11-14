@@ -242,6 +242,16 @@ the BR-22 rebate are named placeholders that throw
 running application cannot post a repayment end to end yet. FR-13 and FR-14
 are *verified*: PR #8 CI passed for 46c5ea1.
 
+M2 incremental evidence (2026-11-14): `TellerWebServer` and `OperatorContext`
+(queue item L-18, `web` package) serve a teller posting form and an end-of-day
+page on 127.0.0.1 only, using the JDK's `com.sun.net.httpserver`; `./gradlew
+run` starts it through `CompositionRoot.withPlaceholders`. `TellerWebServerTest`
+covers loopback binding, posting as the operator named on the form (FR-31 input)
+without leaking it to the next request, 400 for malformed amount, date or a
+zero amount, 404/409 for domain refusals, HTML escaping, and 404/405 routing.
+The end-of-day page states that the engine (Muhammad Ibrahim) is not available
+yet and a trigger returns 503, so FR-26 and the delinquency FRs are unaffected.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |
