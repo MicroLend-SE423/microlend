@@ -101,6 +101,9 @@ L-16 (8e0ac30) was still awaiting CI at this point.
 L-17 implemented (red 5d7dd40) and passes the full local build. Wired with
 named placeholders (`ModuleNotAvailableException`) for the instalments source
 and the BR-22 rebate until `products`/`delinquency` provide them.
+L-18 implemented (red bdd34c8) and passes the full local build: teller form on
+127.0.0.1:8080 via `gradlew run`; the end-of-day page reports that Ibrahim's
+engine is not available yet.
 
 ## Queue
 
