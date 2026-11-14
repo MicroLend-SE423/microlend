@@ -91,6 +91,8 @@ L-11 implemented (red 7b0faf4) and passes the full local build; references are
 held in memory, so a durable store on the `payment` table is a follow-up.
 L-15 implemented (red f20f08e) and passes the full local build; `LoanRepository`
 was already defined in ledger at L-08.
+L-16 implemented (red 01d739b) and passes the full local build: 14 failure
+points on SQLite; a failed loan save now reverses the posting's lines.
 
 ## Queue
 

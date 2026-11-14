@@ -67,7 +67,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 |---|---|---|---|---|---|
 | QR-01 | End-of-day run over 10,000 loans completes within 20 s on 4 threads | median ≤ 20 s over 5 runs; no run > 25 s | Test | `EndOfDayPerformanceTest` | planned |
 | QR-02 | Schedule generation reproduces reference schedules exactly | 0 discrepancy against 30 golden schedules | Test | `GoldenScheduleTest` | planned |
-| QR-03 | A failure during posting leaves the ledger balanced | Σ debits = Σ credits at ≥ 10 injected failure points; 0 orphans | Test + demonstration | `PostingFaultInjectionTest` | planned |
+| QR-03 | A failure during posting leaves the ledger balanced | Σ debits = Σ credits at ≥ 10 injected failure points; 0 orphans | Test + demonstration | `PostingFaultInjectionTest` (14 points on SQLite; `CoreRepaymentPoster`, `SqliteLedgerRepository.appendAll`) | test implemented (2026-11-14; awaiting PR CI); demonstration not yet given |
 | QR-04 | Core methods stay within complexity and size limits | mean CC ≤ 5; no method > 15; no file > 400 lines | Analysis | Static-analysis metric report in CI | planned |
 | QR-05 | Ledger entries are not alterable | 0 mutators; 0 `UPDATE`/`DELETE` against `ledger_entry`; all corrections compensating | Inspection | Fagan checklist item + `LedgerImmutabilityTest` | planned |
 | QR-06 | End-of-day results identical with and without concurrent posting | 50 runs: 0 lost updates, 0 double accruals, balances match single-threaded run | Test | `EndOfDayConcurrencyTest` (`EndOfDayEngine`, `LockRegistry`) | planned |
@@ -220,6 +220,17 @@ writer's lock and then succeeding. This supports the concurrency strategy of
 M1 section 3.6 and QR-06, which stays *planned* until the end-of-day engine
 (Ibrahim) and `EndOfDayConcurrencyTest` exist. The ledger write and the loan
 save are still two transactions.
+
+M2 incremental evidence (2026-11-14): `PostingFaultInjectionTest` (queue item
+L-16) injects a failure at each line of three postings (3, 4 and 4 lines) and
+at the loan save after each, 14 points on a real SQLite file. After every
+failure the ledger balances, the loan is unchanged and no line of the failed
+posting stands unreversed. On the red run the 11 line points already passed
+(atomic `appendAll`, L-08) and the 3 save points failed with orphan lines; the
+fix reverses a posting's lines (BR-24) when its loan cannot be saved. QR-03's
+test target is met locally; the "demonstration" half of its verification
+method is still owed, and a failure of the compensating reversal itself is
+only reported (suppressed exception), not recovered.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
