@@ -66,7 +66,7 @@ public final class LedgerEntry {
         if (original == null) {
             throw new InvalidLedgerEntryException("the entry to reverse is required");
         }
-        if (reason == null || reason.trim().isEmpty()) {
+        if (reason == null || reason.isBlank()) {
             throw new InvalidLedgerEntryException("a reversal must state its reason");
         }
         if (postedAt == null) {

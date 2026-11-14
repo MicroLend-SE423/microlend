@@ -39,7 +39,7 @@ public final class AuditLoggingPoster extends RepaymentPosterDecorator {
     @Override
     public PostingResult post(final RepaymentCommand command) {
         final String name = operator.get();
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.isBlank()) {
             throw new InvalidRepaymentException(
                 "a teller posting must name its operator (FR-31)", String.valueOf(name),
                 command == null ? "unknown" : command.bank().orElse("cash"));
