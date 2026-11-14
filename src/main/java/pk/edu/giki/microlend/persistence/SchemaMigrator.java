@@ -118,7 +118,9 @@ public final class SchemaMigrator {
     private static int currentVersion(final Connection connection) throws SQLException {
         try (Statement statement = connection.createStatement();
              ResultSet rows = statement.executeQuery("PRAGMA user_version")) {
-            rows.next();
+            if (!rows.next()) {
+                throw new SQLException("PRAGMA user_version returned no row");
+            }
             return rows.getInt(1);
         }
     }
