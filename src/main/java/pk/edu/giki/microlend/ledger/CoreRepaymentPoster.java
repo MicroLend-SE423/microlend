@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import pk.edu.giki.microlend.common.LoanDomainException;
 import pk.edu.giki.microlend.common.LoanId;
 import pk.edu.giki.microlend.common.Money;
 
@@ -18,15 +19,18 @@ import pk.edu.giki.microlend.common.Money;
  * surplus while principal is owed, an {@link EntryType#ADVANCE_CREDIT} credit.
  * The lines are checked to balance before anything is written, and written
  * with {@link LedgerWriter#appendAll} so that a failure writes none of them.
- * The loan is saved only after the ledger write succeeded. Making the two
- * writes one database transaction is the job of the SQLite repositories
- * ({@code BEGIN IMMEDIATE}, queue item L-15).</p>
+ * The loan is saved only after the ledger write succeeded; if that save fails,
+ * the posting's lines are reversed (BR-24) before the failure is rethrown, so
+ * no orphan line remains (QR-03, {@code PostingFaultInjectionTest}). The two
+ * writes are still separate transactions.</p>
  *
  * <p>Not posted yet, because no rule or owning module defines them: money left
  * over after a payoff (the posting is refused instead) and the BR-22 rebate
  * line (reported in the result, pending the {@code products} implementation).</p>
  */
 public final class CoreRepaymentPoster implements RepaymentPoster {
+
+    private static final String ABANDONED = "posting abandoned: the loan could not be saved";
 
     private final RepaymentAllocator allocator;
     private final SettlementPolicy settlement;
@@ -80,8 +84,31 @@ public final class CoreRepaymentPoster implements RepaymentPoster {
         final List<LedgerEntry> lines = linesFor(command, allocated.total(), outcome);
         requireBalanced(loanId, lines);
         ledger.appendAll(lines);
-        loans.save(outcome.account());
+        try {
+            loans.save(outcome.account());
+        } catch (LoanDomainException saveFailed) {
+            reverse(lines, saveFailed);
+            throw saveFailed;
+        }
         return new PostingResult(command, allocated, outcome, lines);
+    }
+
+    /**
+     * Compensates a posting whose loan could not be saved: every line is
+     * reversed (BR-24), so the ledger holds no orphan lines (QR-03). If the
+     * reversal itself fails, that failure is attached to the original one.
+     */
+    private void reverse(final List<LedgerEntry> lines, final LoanDomainException saveFailed) {
+        final Instant now = clock.instant();
+        final List<LedgerEntry> reversals = new ArrayList<>();
+        for (final LedgerEntry line : lines) {
+            reversals.add(LedgerEntry.reversalOf(line, ABANDONED, now));
+        }
+        try {
+            ledger.appendAll(reversals);
+        } catch (LoanDomainException reversalFailed) {
+            saveFailed.addSuppressed(reversalFailed);
+        }
     }
 
     private List<LedgerEntry> linesFor(final RepaymentCommand command, final Allocation tiers,
