@@ -170,6 +170,29 @@ class SqliteLedgerRepositoryTest {
     }
 
     @Test
+    @DisplayName("appendAll writes a balanced posting, including the PAYMENT_RECEIVED leg")
+    void appendAllWritesEveryLine() {
+        final List<LedgerEntry> posting = List.of(
+            LedgerEntry.debit(LOAN, EntryType.PAYMENT_RECEIVED, money("60.00"), T1),
+            LedgerEntry.credit(LOAN, EntryType.PENALTY_REPAYMENT, money("10.00"), T1),
+            LedgerEntry.credit(LOAN, EntryType.INTEREST_REPAYMENT, money("50.00"), T1));
+        repository.appendAll(posting);
+        assertEquals(posting, repository.entriesFor(LOAN));
+    }
+
+    @Test
+    @DisplayName("appendAll is all or nothing: a bad last line leaves no line written (QR-03)")
+    void appendAllIsAtomic() throws SQLException {
+        final List<LedgerEntry> posting = List.of(
+            LedgerEntry.debit(LOAN, EntryType.PAYMENT_RECEIVED, money("60.00"), T1),
+            LedgerEntry.credit(LoanId.of("LN-404"), EntryType.INTEREST_REPAYMENT,
+                money("60.00"), T1));
+        assertThrows(PersistenceException.class, () -> repository.appendAll(posting));
+        assertEquals(List.of(0L), rawColumn("SELECT COUNT(*) FROM ledger_entry"));
+        assertThrows(NullPointerException.class, () -> repository.appendAll(null));
+    }
+
+    @Test
     @DisplayName("entries survive a new repository on the same file")
     void entriesAreDurable() {
         final LedgerEntry entry =
