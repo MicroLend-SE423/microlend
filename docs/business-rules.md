@@ -58,7 +58,7 @@ This list exists so that scope creep is a visible decision rather than a drift.
 | ID | Rule | Boundary values for test design |
 |---|---|---|
 | **BR-18** | Payments are applied in strict order: **penalty → fees → interest → principal**. No fee type is defined at M1, so the fees tier is always zero until a fee is introduced by a recorded deviation | payment covering part of each tier |
-| **BR-19** | Within that order, the **oldest unpaid instalment is settled first** | two and three instalments overdue |
+| **BR-19** | Within that order, the **oldest unpaid instalment is settled first**. *Clarification (2026-11-14): read tier by tier, so all penalties are paid oldest first, then all fees oldest first, then all interest oldest first, then all principal oldest first. Reading adopted by Tughral on 2026-11-14, pending team confirmation.* | two and three instalments overdue |
 | **BR-20** | A **partial payment** is applied as far as it reaches; the remainder stays outstanding | 0 / 0.01 / due − 0.01 / exactly due |
 | **BR-21** | An **overpayment** becomes an advance credit held against future instalments | due + 0.01 |
 | **BR-22** | If a payment clears the loan entirely, **early settlement** applies: unearned interest is refunded for reducing-balance loans; **no rebate** for flat-rate loans; bullet loans refund unaccrued monthly interest only | exact payoff / payoff + 0.01, per product |
