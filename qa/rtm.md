@@ -40,10 +40,10 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-10 | Grace period defers the first instalment while interest accrues | BR-13 | products | `GracePeriodPolicy` | *planned* | TC-PRD-03 | EP + BVA | planned |
 | FR-11 | Instalments sum exactly to principal plus total interest | BR-14, BR-15 | products | `ScheduleAssembler`, `Schedule`, `Instalment` | *planned* | TC-PRD-04 | INV | planned |
 | FR-12 | A schedule contains exactly `tenureMonths` instalments | BR-16 | products | `ScheduleAssembler` | *planned* | TC-PRD-05 | EP | planned |
-| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | implemented (2026-11-14; awaiting PR CI) |
-| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | implemented (2026-11-14; awaiting PR CI) |
+| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | verified (PR #8 CI passed for 46c5ea1); BR-19 reading pending team confirmation |
+| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | verified (PR #8 CI passed for 46c5ea1) |
 | FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | `ledger/SettlementPolicy.java`, `SettlementOutcome.java`, `EarlySettlementRebate.java` (rebate amount supplied by `products`, not yet implemented) | TC-LED-03 → `SettlementPolicyTest` | BVA | partial (2026-11-14; per-product rebate outstanding) |
-| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | `ledger/CoreRepaymentPoster.java`, `LedgerImbalanceException.java`; `LedgerWriter.appendAll` (`persistence/SqliteLedgerRepository.java`) | TC-LED-04 → `CoreRepaymentPosterTest`, `SqliteLedgerRepositoryTest.appendAllIsAtomic` | INV | implemented for repayment postings (2026-11-14; awaiting PR CI); rebate and end-of-day postings not covered |
+| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | `ledger/CoreRepaymentPoster.java`, `LedgerImbalanceException.java`; `LedgerWriter.appendAll` (`persistence/SqliteLedgerRepository.java`) | TC-LED-04 → `CoreRepaymentPosterTest`, `SqliteLedgerRepositoryTest.appendAllIsAtomic` | INV | implemented for repayment postings (2026-11-14; tests pass in PR #8 CI for 2211bb7); rebate and end-of-day postings not covered, so not yet *verified* as a whole |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
 | FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | `ledger/IdempotencyGuardPoster.java`, `PaymentReferences.java`, `InMemoryPaymentReferences.java`, `DuplicatePaymentException.java` | TC-LED-06 → `IdempotencyGuardPosterTest` | EP | partial (2026-11-14): guard implemented, awaiting PR CI; references held in memory only, durable store pending |
 | FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | verified |
@@ -231,6 +231,16 @@ fix reverses a posting's lines (BR-24) when its loan cannot be saved. QR-03's
 test target is met locally; the "demonstration" half of its verification
 method is still owed, and a failure of the compensating reversal itself is
 only reported (suppressed exception), not recovered.
+
+M2 incremental evidence (2026-11-14): `CompositionRoot` (queue item L-17)
+builds the two chains of M1 section 5.3 over one `CoreRepaymentPoster` on
+SQLite. `CompositionRootTest` shows the teller chain posting, auditing the
+operator (FR-31) and timing, and the import chain refusing a duplicate before
+it is timed (guard outermost) with no audit line. The instalment source and
+the BR-22 rebate are named placeholders that throw
+`ModuleNotAvailableException` until `products`/`delinquency` exist, so the
+running application cannot post a repayment end to end yet. FR-13 and FR-14
+are *verified*: PR #8 CI passed for 46c5ea1.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
