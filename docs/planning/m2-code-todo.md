@@ -71,6 +71,8 @@ Hassan's `products.Instalment` once it exists), the accrued penalty is an input
 amount (no dependency on Ibrahim's `PenaltyAccruer`), and BR-18/BR-19 are read
 tier by tier (see the dated note under BR-19 in `docs/business-rules.md`,
 pending team confirmation).
+L-05 implemented (red dd914b9) and passes the full local build; tick once PR CI
+passes.
 
 ## Queue
 
