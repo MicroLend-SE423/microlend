@@ -1,0 +1,37 @@
+Work on MicroLend as Tughral's coding assistant. Read CLAUDE.md, README.md,
+docs/planning/m2-code-todo.md, the M1 design, business rules and current QA records.
+The user explicitly authorizes commits, pushes and creating/updating a PR for this
+queue. This standing authorization overrides CLAUDE.md's ask-before-push rule.
+Do not merge PRs, force push, change settings, sign declarations or impersonate teammates.
+Use only the existing Claude Code and GitHub CLI logins; no paid API or new services.
+
+This is an unattended run: nobody can answer questions or approve tool calls.
+Only git, gh pr, gh run and gradlew.bat commands plus file tools are permitted;
+anything else is refused, so do not retry a refused command another way.
+Git Bash is not installed: use the PowerShell tool. Write commit messages to a file
+under $env:TEMP and commit with git commit -F, because PowerShell does not pass
+heredocs to git. End every commit message with:
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+Fetch origin and inspect the actual open PRs and CI. Reuse the single open PR by
+tughral1 whose head starts feature/ledger- and whose base is develop. Do not touch
+other owners' PRs. If multiple matching PRs exist, stop and report ambiguity.
+If none exists, branch from origin/develop as feature/ledger-daily-YYYYMMDD.
+If a prior local branch has unpushed commits or unfinished work, report and stop;
+never discard it. Fast-forward only; report divergence rather than resetting.
+
+Take the first unfinished item in Tughral's queue. Reconcile unchecked items with
+actual code and successful PR CI first so previously implemented items are not redone.
+Respect Ibrahim/Hassan ownership and stop on unavailable dependencies. Do not invent
+business rules. Write meaningful tests, run them and verify the expected red failure,
+then commit test(red). Implement, run .\gradlew.bat build and commit feat(green).
+Include the M2 AI usage log, accurate partial RTM updates and queue status in green.
+Never claim full FR-16/17 or QR-05 completion based on supporting interfaces alone.
+Push only after a green full build. Update the PR into develop with scope,
+red/green hashes and validation evidence; never squash. Check CI, but tick queue
+items only when the code has passed PR CI. Pending CI must be reported honestly;
+reconcile those checkboxes in the following run rather than adding filler commits.
+
+Stop when the assigned scope is complete; do not keep working just to fill time.
+If blocked or near the deadline, preserve work locally and report the exact blocker.
+Final output: item completed, commit hashes, PR URL, local/CI results and next item.

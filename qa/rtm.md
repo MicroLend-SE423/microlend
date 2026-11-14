@@ -40,13 +40,13 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-10 | Grace period defers the first instalment while interest accrues | BR-13 | products | `GracePeriodPolicy` | *planned* | TC-PRD-03 | EP + BVA | planned |
 | FR-11 | Instalments sum exactly to principal plus total interest | BR-14, BR-15 | products | `ScheduleAssembler`, `Schedule`, `Instalment` | *planned* | TC-PRD-04 | INV | planned |
 | FR-12 | A schedule contains exactly `tenureMonths` instalments | BR-16 | products | `ScheduleAssembler` | *planned* | TC-PRD-05 | EP | planned |
-| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | *planned* | TC-LED-01 | **BP** (CC ≈ 11) | planned |
-| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | *planned* | TC-LED-02 | BVA | planned |
-| FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | *planned* | TC-LED-03 | BVA | planned |
-| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | *planned* | TC-LED-04 | INV | planned |
+| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | implemented (2026-11-14; awaiting PR CI) |
+| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | implemented (2026-11-14; awaiting PR CI) |
+| FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | `ledger/SettlementPolicy.java`, `SettlementOutcome.java`, `EarlySettlementRebate.java` (rebate amount supplied by `products`, not yet implemented) | TC-LED-03 → `SettlementPolicyTest` | BVA | partial (2026-11-14; per-product rebate outstanding) |
+| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | `ledger/CoreRepaymentPoster.java`, `LedgerImbalanceException.java`; `LedgerWriter.appendAll` (`persistence/SqliteLedgerRepository.java`) | TC-LED-04 → `CoreRepaymentPosterTest`, `SqliteLedgerRepositoryTest.appendAllIsAtomic` | INV | implemented for repayment postings (2026-11-14; awaiting PR CI); rebate and end-of-day postings not covered |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
-| FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | *planned* | TC-LED-06 | EP | planned |
-| FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | *planned* | TC-LED-07 | EP | planned |
+| FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | `ledger/IdempotencyGuardPoster.java`, `PaymentReferences.java`, `InMemoryPaymentReferences.java`, `DuplicatePaymentException.java` | TC-LED-06 → `IdempotencyGuardPosterTest` | EP | partial (2026-11-14): guard implemented, awaiting PR CI; references held in memory only, durable store pending |
+| FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | verified |
 | FR-20 | Repayments importable from each supported bank's statement format | — | ledger.importing | `HblStatementAdapter`, `McbStatementAdapter` | *planned* | TC-LED-08 | EP | planned |
 | FR-21 | Penalty accrues at 0.05%/day on overdue principal, capped at 10% | BR-27, BR-28 | delinquency | `PenaltyAccruer` | *planned* | TC-DEL-01 | BVA | planned |
 | FR-22 | Days past due counted from the day after the due date | BR-29 | delinquency | `DaysPastDueCalculator` | *planned* | TC-DEL-02 | BVA | planned |
@@ -58,7 +58,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-28 | Customer statement for a date range with running balance | BR-35 | reporting | `StatementRenderer` | *planned* | TC-REP-01 | EP | planned |
 | FR-29 | Portfolio reports: PAR30, provision coverage, collection efficiency | BR-36–BR-38 | reporting | `PortfolioReporter` | *planned* | TC-REP-02 | Golden file | planned |
 | FR-30 | Reports reproducible as at any past business date | BR-39 | reporting | `PortfolioReporter` | *planned* | TC-REP-03 | EP | planned |
-| FR-31 | Teller postings record an audit line naming the operator; imports record one line per file | — | ledger | `AuditLoggingPoster` (teller); import job (per file) | *planned* | TC-LED-09 | EP | planned |
+| FR-31 | Teller postings record an audit line naming the operator; imports record one line per file | — | ledger | `AuditLoggingPoster` (teller); import job (per file) | `ledger/AuditLoggingPoster.java`, `AuditRecord.java`, `AuditJournal.java` (teller half only) | TC-LED-09 → `AuditLoggingPosterTest` | EP | partial (2026-11-14): teller half implemented, awaiting PR CI; per-file import line not built |
 | FR-32 | Portfolio reports exportable as CSV | — | reporting | `ReportExporter`, `CsvReportExporter` | *planned* | TC-REP-04 | EP | planned |
 
 ## 2. Quality requirements
@@ -79,9 +79,136 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | C-01 | No `double` or `float` for monetary values | Checkstyle rule, build fails | **active** |
 | C-02 | `BigDecimal` compared with `compareTo() == 0` | Inspection checklist (no automated rule at M1) | active |
 | C-03 | No cyclic dependencies between module packages | ArchUnit test in CI from M2 | planned |
-| C-04 | Monetary columns stored as integer minor units | Schema DDL review | planned |
+| C-04 | Monetary columns stored as integer minor units | Schema DDL review; `SchemaMigratorTest.moneyColumnsAreInteger` (`persistence/SchemaMigrator.java`); `SqliteLedgerRepositoryTest.moneyStoredAsPaisa` | verified (PR CI run 42982638575) |
 
 ## 4. Coverage summary
+
+M2 incremental evidence (2026-11-06): `LoanId`, `LedgerEntry`, `EntryType`,
+`LedgerWriter` and `LedgerReader` now implement the L-01/L-02 foundations.
+`LoanIdTest`, `LedgerEntryTest` and `InMemoryLedgerRepositoryTest` pass locally.
+The test-only repository verifies loan isolation, append order, immutable
+snapshots, repeated movements and null rejection. This is partial evidence for
+FR-16, FR-17 and QR-05: balanced transactional posting, persistence and compensating
+reversals remain unimplemented, so those requirements retain their planned status.
+
+M2 incremental evidence (2026-11-08): `LoanAccount`, `LoanStatus` and
+`LoanClosedException` implement FR-19. `LoanAccountTest` (TC-LED-07) covers the
+three equivalence classes of BR-26 (active, closed, written-off) and passes
+locally; FR-19 moves to *verified* once PR CI passes. The rejection is only
+reachable from a posting path once `CoreRepaymentPoster` (queue item L-08) calls it.
+
+M2 incremental evidence (2026-11-09): FR-19 is *verified*: PR #8 CI run
+42471721763 passed for ff8d352. `Allocation` (the four BR-18 tiers, value
+equality, every tier required) and `LoanAccount.applyAllocation()` (principal
+tier reduces outstanding principal, over-allocation rejected, closed loans refuse
+it) are implemented and tested in `AllocationTest` and `LoanAccountTest`. This is
+supporting work for FR-13 only: `RepaymentAllocator.allocate()`, which applies the
+waterfall and the oldest-first order (TC-LED-01, TC-LED-02), is not implemented, so
+FR-13 and FR-14 stay *planned*. `applyAllocation` returns a new account instead of
+the `void` shown in M1 View 2, because `LoanAccount` is immutable.
+
+M2 incremental evidence (2026-11-11): `RepaymentCommand` and
+`InvalidRepaymentException` (queue item L-07) give the posting pipeline one
+validated input. `RepaymentCommandTest` covers the cash and bank equivalence
+classes of BR-25, the 0.00 / 0.01 amount boundary, missing fields and a blank
+bank or reference. The command only *carries* the (bank, reference) pair; the
+duplicate check itself is `IdempotencyGuardPoster` (L-11), so FR-18 stays
+*planned*.
+
+M2 incremental evidence (2026-11-11): `CompensatingEntryService.reverse()` and
+`LedgerEntry.reversalOf()` (queue item L-12) implement correction by reversal:
+a `REVERSAL` entry in the opposite column that references the original and
+records a non-blank reason (BR-24). `CompensatingEntryServiceTest` (TC-LED-05)
+and `LedgerImmutabilityTest` show the write role offers only `append` and a
+correction leaves the original in place with debits equal to credits. This is
+partial evidence for FR-17 and QR-05 only: the SQLite repository (L-14) and its
+"no `UPDATE`/`DELETE` against `ledger_entry`" check, the Fagan checklist item and
+the static-analysis rule do not exist yet, so both keep their planned status.
+
+M2 incremental evidence (2026-11-11): `SchemaMigrator` and `SqliteDatabase`
+(queue item L-13) create the seven tables of M1 section 3.7 on the first
+connection and turn on foreign keys for every connection. `SchemaMigratorTest`
+checks that the database itself refuses rows the code would never write:
+negative, zero-zero or two-sided ledger lines (BR-43), a reversal without an
+existing original or a reason (BR-24), a repeated (bank, reference) pair while
+cash rows and the same reference from another bank are accepted (BR-25), a
+second snapshot for the same loan and business date (BR-33), and a loan whose
+status and closure date disagree (FR-19). Money columns are `INTEGER` paisa
+(C-04). This is schema support only: FR-18 (the guard), FR-26/BR-33 (the
+engine) and QR-05 (the repository with no `UPDATE`/`DELETE`, L-14) keep their
+planned status.
+
+M2 incremental evidence (2026-11-14): C-04 is *verified*: PR #8 CI run
+42982638575 passed for 1091877. `SqliteLedgerRepository` (queue item L-14,
+`persistence/SqliteLedgerRepository.java`) implements `LedgerWriter` and
+`LedgerReader` against SQLite. `SqliteLedgerRepositoryTest` checks round trips
+in append order per loan, paisa storage at the 0.01 and 12,345,678.99
+boundaries, reversals stored against the original's row (identical originals
+reversed separately), refusal of a reversal whose original is not in the
+ledger, translation of storage failures into `PersistenceException`, durability
+across instances, and a source scan finding no `UPDATE`/`DELETE` against
+`ledger_entry` in production code. This is partial evidence for QR-05 (the
+repository half); the Fagan checklist item is still owed, so QR-05 stays
+*planned*. FR-17 likewise stays *planned* until the posting path uses it.
+
+M2 incremental evidence (2026-11-14): `RepaymentAllocator.allocate()` (queue
+item L-05) applies the BR-18 waterfall tier by tier with the oldest instalment
+first in each tier, the BR-19 reading adopted by Tughral on 2026-11-14 and
+pending team confirmation. Its input is the ledger-owned `InstalmentDue`
+record; Hassan's `products.Instalment` is mapped to it once that class exists,
+and the accrued penalty is an input amount (Ibrahim's `PenaltyAccruer` not
+required). `RepaymentAllocatorTest` covers part of each tier, fees before
+interest, two and three overdue instalments (input out of order), and the
+BR-20 boundaries 0 / 0.01 / due − 0.01 / exactly due, plus due + 0.01 returned
+as unapplied (the BR-21 hand-off). FR-13 and FR-14 move to *implemented*; they
+become *verified* when PR CI passes. The allocator is not yet called from a
+posting path (L-08).
+
+M2 incremental evidence (2026-11-14): `SettlementPolicy` (queue item L-06,
+partial) turns a surplus into advance credit while principal is owed (BR-21,
+boundary due + 0.01), and on payoff closes the account through
+`LoanAccount.closeAsRepaid()` and takes the rebate from a caller-supplied
+`EarlySettlementRebate` (BR-22, boundaries exact payoff and payoff + 0.01).
+`SettlementPolicyTest` (TC-LED-03) covers those boundaries with a stub rebate.
+The per-product rebate arithmetic is `products` knowledge and is not
+implemented, so FR-15 is recorded as *partial*, not *implemented*.
+
+M2 incremental evidence (2026-11-14): `CoreRepaymentPoster` (queue item L-08)
+reads the loan, allocates, settles, and writes one `PAYMENT_RECEIVED` debit
+balanced by tier and advance-credit credits through `LedgerWriter.appendAll`,
+which the SQLite repository runs in one transaction. `CoreRepaymentPosterTest`
+(TC-LED-04) asserts Σ debits = Σ credits after every posting in a sequence,
+`LedgerImbalanceException` on unbalanced lines, refusal of closed and unknown
+loans, and that the loan is not saved when the ledger write fails;
+`SqliteLedgerRepositoryTest.appendAllIsAtomic` shows a failing last line leaves
+no line written. FR-16 is *implemented* for repayment postings only: the BR-22
+rebate line and end-of-day postings are not written by this class. QR-03 stays
+*planned* until the fault-injection test (L-16). `EntryType.PAYMENT_RECEIVED`
+and its schema `CHECK` value were added for the debit leg; schema version 1 was
+edited in place because it has not been merged or deployed anywhere.
+
+M2 incremental evidence (2026-11-14): `RepaymentPosterDecorator` and
+`TimingPoster` (queue item L-09) implement the Decorator of M1 section 5.3.
+`TimingPosterTest` checks the IS-A/HAS-A structure by reflection, unchanged
+delegation, and that both successful and refused postings are timed. Timing
+traces to the design (GQM measurement), not to a numbered FR; no requirement
+status changes.
+
+M2 incremental evidence (2026-11-14): `AuditLoggingPoster` (queue item L-10)
+journals one line per teller posting naming the trimmed operator, for posted
+and refused attempts, and refuses a posting with no operator before it is
+forwarded. `AuditLoggingPosterTest` (TC-LED-09) covers named, blank, null and
+whitespace operators. FR-31 is *partial*: the one-line-per-file audit of
+imports belongs to the import job, which does not exist yet.
+
+M2 incremental evidence (2026-11-14): `IdempotencyGuardPoster` (queue item
+L-11) claims the (bank, reference) pair atomically before forwarding and
+releases it if the posting fails. `IdempotencyGuardPosterTest` (TC-LED-06)
+covers the BR-25 classes (same pair twice, same reference from two banks, cash)
+plus a failed-then-retried posting and eight concurrent duplicates forwarded
+exactly once. FR-18 is *partial*: the claimed pairs live in
+`InMemoryPaymentReferences` and are lost on restart; a store on the `payment`
+table's `UNIQUE (source_bank, bank_reference)` is still to be built.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
