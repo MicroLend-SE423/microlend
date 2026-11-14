@@ -1,6 +1,5 @@
 package pk.edu.giki.microlend.persistence;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -104,8 +103,8 @@ public final class SqliteLedgerRepository implements LedgerWriter, LedgerReader 
         try (PreparedStatement insert = connection.prepareStatement(INSERT)) {
             insert.setString(1, entry.loanId().value());
             insert.setString(2, entry.type().name());
-            insert.setLong(3, toPaisa(entry.debit()));
-            insert.setLong(4, toPaisa(entry.credit()));
+            insert.setLong(3, Paisa.of(entry.debit()));
+            insert.setLong(4, Paisa.of(entry.credit()));
             insert.setString(5, entry.postedAt().toString());
             if (reversedRow == null) {
                 insert.setNull(6, Types.INTEGER);
@@ -156,9 +155,9 @@ public final class SqliteLedgerRepository implements LedgerWriter, LedgerReader 
             return LedgerEntry.reversalOf(original, row.getString("reason"), postedAt);
         }
         final EntryType type = EntryType.valueOf(row.getString("entry_type"));
-        final Money debit = fromPaisa(row.getLong("debit"));
+        final Money debit = Paisa.toMoney(row.getLong("debit"));
         return debit.isZero()
-            ? LedgerEntry.credit(loanId, type, fromPaisa(row.getLong("credit")), postedAt)
+            ? LedgerEntry.credit(loanId, type, Paisa.toMoney(row.getLong("credit")), postedAt)
             : LedgerEntry.debit(loanId, type, debit, postedAt);
     }
 
@@ -190,13 +189,5 @@ public final class SqliteLedgerRepository implements LedgerWriter, LedgerReader 
             }
         }
         return matches.get(0);
-    }
-
-    private static long toPaisa(final Money amount) {
-        return new BigDecimal(amount.toPlainString()).movePointRight(Money.SCALE).longValueExact();
-    }
-
-    private static Money fromPaisa(final long paisa) {
-        return Money.of(BigDecimal.valueOf(paisa, Money.SCALE));
     }
 }
