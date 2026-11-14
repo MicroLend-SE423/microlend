@@ -73,6 +73,11 @@ tier by tier (see the dated note under BR-19 in `docs/business-rules.md`,
 pending team confirmation).
 L-05 implemented (red dd914b9) and passes the full local build; tick once PR CI
 passes.
+L-06 **partial** (red 7e8f4b8): advance credit (BR-21), payoff detection and
+closure are implemented; the per-product rebate (BR-22) is taken from a
+caller-supplied `EarlySettlementRebate` because it is Hassan's product
+knowledge. Open team decisions: who implements the rebate in `products`, and
+what happens to money left over after a payoff (reported as `excess`, not posted).
 
 ## Queue
 

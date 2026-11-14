@@ -42,7 +42,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-12 | A schedule contains exactly `tenureMonths` instalments | BR-16 | products | `ScheduleAssembler` | *planned* | TC-PRD-05 | EP | planned |
 | FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | implemented (2026-11-14; awaiting PR CI) |
 | FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | implemented (2026-11-14; awaiting PR CI) |
-| FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | *planned* | TC-LED-03 | BVA | planned |
+| FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | `ledger/SettlementPolicy.java`, `SettlementOutcome.java`, `EarlySettlementRebate.java` (rebate amount supplied by `products`, not yet implemented) | TC-LED-03 → `SettlementPolicyTest` | BVA | partial (2026-11-14; per-product rebate outstanding) |
 | FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | *planned* | TC-LED-04 | INV | planned |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
 | FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | *planned* | TC-LED-06 | EP | planned |
@@ -163,6 +163,15 @@ BR-20 boundaries 0 / 0.01 / due − 0.01 / exactly due, plus due + 0.01 returned
 as unapplied (the BR-21 hand-off). FR-13 and FR-14 move to *implemented*; they
 become *verified* when PR CI passes. The allocator is not yet called from a
 posting path (L-08).
+
+M2 incremental evidence (2026-11-14): `SettlementPolicy` (queue item L-06,
+partial) turns a surplus into advance credit while principal is owed (BR-21,
+boundary due + 0.01), and on payoff closes the account through
+`LoanAccount.closeAsRepaid()` and takes the rebate from a caller-supplied
+`EarlySettlementRebate` (BR-22, boundaries exact payoff and payoff + 0.01).
+`SettlementPolicyTest` (TC-LED-03) covers those boundaries with a stub rebate.
+The per-product rebate arithmetic is `products` knowledge and is not
+implemented, so FR-15 is recorded as *partial*, not *implemented*.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
