@@ -15,6 +15,12 @@ final class InMemoryLedgerRepository implements LedgerWriter, LedgerReader {
     }
 
     @Override
+    public void appendAll(final List<LedgerEntry> batch) {
+        final List<LedgerEntry> checked = List.copyOf(Objects.requireNonNull(batch, "batch is required"));
+        entries.addAll(checked);
+    }
+
+    @Override
     public List<LedgerEntry> entriesFor(final LoanId loanId) {
         Objects.requireNonNull(loanId, "loan id is required");
         return entries.stream().filter(entry -> entry.loanId().equals(loanId)).toList();
