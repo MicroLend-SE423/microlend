@@ -104,6 +104,9 @@ and the BR-22 rebate until `products`/`delinquency` provide them.
 L-18 implemented (red bdd34c8) and passes the full local build: teller form on
 127.0.0.1:8080 via `gradlew run`; the end-of-day page reports that Ibrahim's
 engine is not available yet.
+L-19 implemented (red 196cd5c) and passes the full local build: ArchUnit cycle
+rule for C-03 plus two §4.5 layering rules. No item was skipped. Tick L-16 to
+L-19 once PR CI passes for their green commits; L-06 stays partial.
 
 ## Queue
 

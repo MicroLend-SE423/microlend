@@ -78,7 +78,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 |---|---|---|---|
 | C-01 | No `double` or `float` for monetary values | Checkstyle rule, build fails | **active** |
 | C-02 | `BigDecimal` compared with `compareTo() == 0` | Inspection checklist (no automated rule at M1) | active |
-| C-03 | No cyclic dependencies between module packages | ArchUnit test in CI from M2 | planned |
+| C-03 | No cyclic dependencies between module packages | ArchUnit test in CI from M2: `ArchitectureTest.noCyclesBetweenModules`, run by `./gradlew build` | implemented (2026-11-14; awaiting PR CI) |
 | C-04 | Monetary columns stored as integer minor units | Schema DDL review; `SchemaMigratorTest.moneyColumnsAreInteger` (`persistence/SchemaMigrator.java`); `SqliteLedgerRepositoryTest.moneyStoredAsPaisa` | verified (PR CI run 42982638575) |
 
 ## 4. Coverage summary
@@ -251,6 +251,15 @@ without leaking it to the next request, 400 for malformed amount, date or a
 zero amount, 404/409 for domain refusals, HTML escaping, and 404/405 routing.
 The end-of-day page states that the engine (Muhammad Ibrahim) is not available
 yet and a trigger returns 503, so FR-26 and the delinquency FRs are unaffected.
+
+M2 incremental evidence (2026-11-14): `ArchitectureTest` (queue item L-19,
+ArchUnit 1.3.0 as a test dependency) enforces C-03 on every build: the module
+packages (`common`, `ledger`, `persistence`, `web`) are free of cycles. Two
+further rules restate M1 section 4.5: `common` and `ledger` never depend on
+`persistence` or `web`, and `common` depends on no module. The rules passed on
+their first compiled run (the red commit failed only because ArchUnit was not
+on the classpath), so no cycle existed to remove. Teammates' packages are
+covered automatically once they exist under `pk.edu.giki.microlend`.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
