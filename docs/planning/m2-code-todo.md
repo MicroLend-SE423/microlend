@@ -61,6 +61,17 @@ basis points, amount and tenure bands), `instalment` (sequence, due date,
 principal, interest, as in M1 View 1) and `delinquency_snapshot` (days past due,
 classification). Only the M1-stated constraints were added to these tables.
 
+2026-11-14 (expedited run, decisions approved by Tughral on 2026-11-14): L-07,
+L-12 and L-13 ticked; PR #8 CI passed for their green commits (runs
+42981906284 for 3f26e6a, 42982228533 for fb783d8, 42982638575 for 1091877).
+L-14 continues from the kept red commit 7d826f3; it passes the full local build
+and is ticked once PR CI passes. L-05 is unblocked by three owner decisions:
+the allocator takes a ledger-owned `InstalmentDue` input (to be mapped from
+Hassan's `products.Instalment` once it exists), the accrued penalty is an input
+amount (no dependency on Ibrahim's `PenaltyAccruer`), and BR-18/BR-19 are read
+tier by tier (see the dated note under BR-19 in `docs/business-rules.md`,
+pending team confirmation).
+
 ## Queue
 
 - [x] **L-01** `LoanId` value object (`common`) and `LedgerEntry` immutable value with
@@ -81,7 +92,7 @@ classification). Only the M1-stated constraints were added to these tables.
       coordinate with Hassan.
 - [ ] **L-06** `SettlementPolicy`: overpayment becomes advance credit; exact payoff
       triggers early settlement with per-product rebate rules. BR-21, BR-22; FR-15.
-- [ ] **L-07** `RepaymentCommand` (validated factory) and `InvalidRepaymentException`.
+- [x] **L-07** `RepaymentCommand` (validated factory) and `InvalidRepaymentException`.
       BR-25 data (bank, reference) carried for the idempotency guard.
 - [ ] **L-08** `RepaymentPoster` interface and `CoreRepaymentPoster`: read → allocate →
       write balanced debit and credit lines; invariant test Σ debits = Σ credits after
@@ -91,10 +102,10 @@ classification). Only the M1-stated constraints were added to these tables.
 - [ ] **L-10** `AuditLoggingPoster` (operator named on every teller posting). FR-31.
 - [ ] **L-11** `IdempotencyGuardPoster` (rejects a repeated (bank, reference) pair).
       BR-25; FR-18.
-- [ ] **L-12** `CompensatingEntryService.reverse(LedgerEntry, reason)` and
+- [x] **L-12** `CompensatingEntryService.reverse(LedgerEntry, reason)` and
       `LedgerImmutabilityTest` (no mutator on `LedgerEntry`, corrections only by
       reversal). BR-24; FR-17, QR-05.
-- [ ] **L-13** SQLite schema DDL for the seven tables (§3.7): CHECK and UNIQUE
+- [x] **L-13** SQLite schema DDL for the seven tables (§3.7): CHECK and UNIQUE
       constraints, FKs, `PRAGMA foreign_keys = ON`, money as INTEGER paisa (C-04).
       Schema applied by a `SchemaMigrator` on first connection.
 - [ ] **L-14** `SqliteLedgerRepository` implementing `LedgerWriter` and `LedgerReader`;

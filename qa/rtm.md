@@ -79,7 +79,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | C-01 | No `double` or `float` for monetary values | Checkstyle rule, build fails | **active** |
 | C-02 | `BigDecimal` compared with `compareTo() == 0` | Inspection checklist (no automated rule at M1) | active |
 | C-03 | No cyclic dependencies between module packages | ArchUnit test in CI from M2 | planned |
-| C-04 | Monetary columns stored as integer minor units | Schema DDL review; `SchemaMigratorTest.moneyColumnsAreInteger` (`persistence/SchemaMigrator.java`) | implemented (2026-11-11; tested, awaiting PR CI) |
+| C-04 | Monetary columns stored as integer minor units | Schema DDL review; `SchemaMigratorTest.moneyColumnsAreInteger` (`persistence/SchemaMigrator.java`); `SqliteLedgerRepositoryTest.moneyStoredAsPaisa` | verified (PR CI run 42982638575) |
 
 ## 4. Coverage summary
 
@@ -137,6 +137,19 @@ status and closure date disagree (FR-19). Money columns are `INTEGER` paisa
 (C-04). This is schema support only: FR-18 (the guard), FR-26/BR-33 (the
 engine) and QR-05 (the repository with no `UPDATE`/`DELETE`, L-14) keep their
 planned status.
+
+M2 incremental evidence (2026-11-14): C-04 is *verified*: PR #8 CI run
+42982638575 passed for 1091877. `SqliteLedgerRepository` (queue item L-14,
+`persistence/SqliteLedgerRepository.java`) implements `LedgerWriter` and
+`LedgerReader` against SQLite. `SqliteLedgerRepositoryTest` checks round trips
+in append order per loan, paisa storage at the 0.01 and 12,345,678.99
+boundaries, reversals stored against the original's row (identical originals
+reversed separately), refusal of a reversal whose original is not in the
+ledger, translation of storage failures into `PersistenceException`, durability
+across instances, and a source scan finding no `UPDATE`/`DELETE` against
+`ledger_entry` in production code. This is partial evidence for QR-05 (the
+repository half); the Fagan checklist item is still owed, so QR-05 stays
+*planned*. FR-17 likewise stays *planned* until the posting path uses it.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|

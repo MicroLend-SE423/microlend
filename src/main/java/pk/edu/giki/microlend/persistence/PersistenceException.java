@@ -11,6 +11,16 @@ public final class PersistenceException extends LoanDomainException {
     private static final long serialVersionUID = 1L;
 
     /**
+     * Creates the exception for a refusal detected by the persistence layer
+     * itself rather than by the database.
+     *
+     * @param message what was refused and why
+     */
+    public PersistenceException(final String message) {
+        super(message);
+    }
+
+    /**
      * Creates the exception.
      *
      * @param message what the persistence layer was trying to do
