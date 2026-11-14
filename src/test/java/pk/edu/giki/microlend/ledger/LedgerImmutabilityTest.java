@@ -35,8 +35,9 @@ class LedgerImmutabilityTest {
         final List<String> methods = Arrays.stream(LedgerWriter.class.getDeclaredMethods())
             .filter(method -> !Modifier.isStatic(method.getModifiers()))
             .map(Method::getName)
+            .sorted()
             .toList();
-        assertEquals(List.of("append"), methods);
+        assertEquals(List.of("append", "appendAll"), methods);
     }
 
     @Test

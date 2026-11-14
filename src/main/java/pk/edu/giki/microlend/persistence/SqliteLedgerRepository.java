@@ -65,6 +65,27 @@ public final class SqliteLedgerRepository implements LedgerWriter, LedgerReader 
         }
     }
 
+    @Override
+    public void appendAll(final List<LedgerEntry> entries) {
+        final List<LedgerEntry> lines = List.copyOf(Objects.requireNonNull(entries,
+            "entries are required"));
+        try (Connection connection = database.connect()) {
+            connection.setAutoCommit(false);
+            try {
+                for (final LedgerEntry line : lines) {
+                    append(connection, line);
+                }
+                connection.commit();
+            } catch (SQLException | PersistenceException e) {
+                connection.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            throw new PersistenceException("could not append a posting of "
+                + lines.size() + " lines; none was written", e);
+        }
+    }
+
     /**
      * Appends one entry on a connection the caller controls, so a posting
      * service can write several lines inside its own transaction.

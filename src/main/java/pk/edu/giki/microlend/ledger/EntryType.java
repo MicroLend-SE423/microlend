@@ -15,6 +15,12 @@ public enum EntryType {
     /** Penalty charged by the end-of-day engine (BR-27). */
     PENALTY_ACCRUAL,
 
+    /**
+     * Money received from the borrower: the debit leg of a repayment posting,
+     * balanced by the repayment and advance-credit credits (BR-23).
+     */
+    PAYMENT_RECEIVED,
+
     /** Repayment applied to outstanding penalty. */
     PENALTY_REPAYMENT,
 
