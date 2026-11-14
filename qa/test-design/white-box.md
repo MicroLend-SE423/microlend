@@ -1,7 +1,7 @@
 # MicroLend - White-Box Test Design (M2)
 
-**Deliverable:** SE431 M2, "White-box test design" Â· **Document lead:** to be assigned (M2 leads not yet chosen)
-**Code baseline:** `feature/ledger-entry` at `923755b` (14 Nov 2026). Re-checked against the M2 build before submission.
+**Deliverable:** SE431 M2, "White-box test design" · **Document lead:** to be assigned (M2 leads not yet chosen)
+**Code baseline:** `feature/ledger-entry` at `87c5caf` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Re-check against the M2 build before submission.
 **Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
 ## 1. Method
@@ -23,7 +23,7 @@ These methods were chosen because they are on the money path and have the highes
 | `RepaymentAllocator.allocate(Money, List<InstalmentDue>)` | FR-13, FR-14 (BR-18, BR-19, BR-20) | Decides where every rupee of every repayment goes; an error here corrupts penalties, ageing and provisioning downstream (risk R1) |
 | `LoanAccount.restore(LoanId, LoanStatus, Money, LocalDate)` | FR-19 (BR-26) | Guards the status/closure-date invariant every repository load relies on |
 | `LedgerEntry.requireValid(LoanId, EntryType, Money, Instant)` | FR-17 (BR-23, BR-24) | Gate for every ledger line; a zero or incomplete entry breaks the balanced-ledger invariant |
-| `CoreRepaymentPoster.post(...)` | FR-16 (BR-23) | Added when queue item L-08 lands, using the same method |
+| `CoreRepaymentPoster.post(RepaymentCommand)` | FR-16, FR-19, QR-03 (BR-21, BR-23, BR-24, BR-26) | The one place a repayment changes both the ledger and the loan; its failure paths decide whether the ledger stays balanced (section 5) |
 
 ### Complexity summary
 
@@ -32,6 +32,7 @@ These methods were chosen because they are on the money path and have the highes
 | `RepaymentAllocator.allocate` | 9 | 26 | 18 | **10** | 10 | 13 | 18 / 18 |
 | `LoanAccount.restore` | 7 | 22 | 16 | **8** | 8 | 13 | 14 / 14 |
 | `LedgerEntry.requireValid` | 5 | 16 | 12 | **6** | 6 | 11 | 10 / 10 |
+| `CoreRepaymentPoster.post` | 5 (4 are exception exits) | 16 | 12 | **6** | 2 | below threshold | 2 / 2 |
 
 PMD's figure is higher by exactly the number of `throw` statements in each method (3, 5 and 5). That is consistent with PMD counting each `throw` as an extra decision. The McCabe value from the graph, which JaCoCo confirms, is the one used for basis paths. The M1 RTM estimated "CC about 11" for the allocator, and the built method came in at 10.
 
@@ -166,23 +167,72 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/LedgerEntry.java`. There are
 | BP-5 | postedAt null | | `InvalidLedgerEntryException` | `rejectsNullFields` |
 | BP-6 | amount 0.00 | | `InvalidLedgerEntryException` ("must move money") | `rejectsZeroAmount` |
 
-JaCoCo reports 10 of 10 branches covered. The class as a whole is at 35 of 44 branches. The uncovered branches are in `equals` and `reversalOf`, which section 5 tracks.
+JaCoCo reports 10 of 10 branches covered. The class as a whole is at 37 of 44 branches. The uncovered branches are in `equals` and `reversalOf`, which section 6 tracks.
 
 ---
 
-## 5. Coverage baseline and gaps (M2)
+## 5. `CoreRepaymentPoster.post`
 
-Measured with `.\gradlew.bat test jacocoTestReport` on `923755b`:
+Source: `src/main/java/pk/edu/giki/microlend/ledger/CoreRepaymentPoster.java`. This is the concrete component that the Decorator chain wraps (M1 section 5.3).
+
+### 5.1 Why exception edges are drawn as decisions
+
+JaCoCo gives `post` a complexity of only **2**, because it counts bytecode branches, and `post` has just one `if` (payment above the payoff). Its other outcomes leave the method as exceptions thrown by collaborators:
+- `orElseThrow` for an unknown loan;
+- `ensureAcceptsPayment` for a closed loan;
+- `appendAll` failing;
+- `save` failing, which leads to the compensating reversal.
+
+These exits are the requirements this method exists to meet (BR-26, QR-03). So the CFG below draws each of them as a decision node, and the basis paths are derived from that graph.
+
+| Node | Statement | Decision |
+|---|---|---|
+| N1 | `loans.findById(loanId)` found? | P1 |
+| N2 | `throw LoanNotFoundException` | |
+| N3 | `account.ensureAcceptsPayment()` passes? (BR-26) | P2 |
+| N4 | `throw LoanClosedException` | |
+| N5 | allocate, settle; `!outcome.excess().isZero()`? | P3 |
+| N6 | `throw InvalidRepaymentException` (excess over payoff) | |
+| N7 | build lines; `requireBalanced`; `ledger.appendAll(lines)` succeeds? | P4 |
+| N8 | exception propagates; nothing written, loan not saved | |
+| N9 | `loans.save(outcome.account())` succeeds? | P5 |
+| N10 | `reverse(lines, saveFailed)`; rethrow | |
+| N11 | `return new PostingResult(...)` | |
+| N12 | exit | |
+
+Each of the 5 decision nodes has two out-edges (10 edges). N2, N4, N6, N8, N10 and N11 each have one edge to the exit (6 edges). E = 16, N = 12, **V(G) = 16 - 12 + 2 = 6** = P + 1.
+
+### 5.2 Basis paths
+
+| Path | Decisions | Input | Expected | Automated test |
+|---|---|---|---|---|
+| BP-1 | P1 found, P2 pass, P3 no excess, P4 ok, P5 ok | active loan, partial payment | 1 `PAYMENT_RECEIVED` debit balanced by the tier credits; loan saved with reduced principal | `CoreRepaymentPosterTest.partialPaymentLines`, `principalReducesAccount`, `ledgerBalancesAfterEveryPosting` |
+| BP-2 | P1 not found | unknown loan id | `LoanNotFoundException`; nothing written | `unknownLoan` |
+| BP-3 | P2 closed | CLOSED or WRITTEN_OFF loan | `LoanClosedException`; nothing written | `closedLoanRefused` |
+| BP-4 | P3 excess | payoff amount + 0.01 | `InvalidRepaymentException`; nothing written | `excessOverPayoffIsRefused` |
+| BP-5 | P4 append fails | ledger writer that throws | exception propagates; loan not saved | `failedWriteDoesNotSaveLoan` |
+| BP-6 | P5 save fails | loan repository that throws on save | every posted line reversed (BR-24), then the failure is rethrown; the ledger nets to zero | `PostingFaultInjectionTest.failureLeavesLedgerBalancedWithNoOrphans` (loan-save failure points) |
+
+Variants of BP-1 cover BR-21 (`surplusBecomesAdvanceCredit`) and the BR-22 payoff (`exactPayoffClosesLoan`). These follow the same graph path with different data, so they are boundary cases, not extra basis paths.
+
+### 5.3 `requireBalanced` (BR-23)
+
+This method has one loop and one `if`, so V(G) = 3. JaCoCo agrees: complexity 3, with 4 of 4 branches covered. Its paths are: empty list (loop skipped, balanced), balanced lines, and unbalanced lines. `post` always builds balanced lines, so the unbalanced path cannot be reached through `post`. That is why `requireBalanced` is package-private and tested directly by `imbalanceDetected`. This is a guard against a future change to `linesFor`, not dead code.
+
+---
+
+## 6. Coverage baseline and gaps (M2)
+
+Measured with `.\gradlew.bat build jacocoTestReport` on `87c5caf`: 182 tests, 0 failures.
 
 | Counter | Covered / total | % |
 |---|---|---|
-| Lines | 470 / 515 | 91.3 |
-| Branches | 186 / 216 | 86.1 |
-| Methods | 121 / 125 | 96.8 |
+| Lines | 773 / 818 | 94.5 |
+| Branches | 244 / 282 | 86.5 |
+| Methods | 184 / 188 | 97.9 |
 
-This covers only the code that exists: `common`, `ledger` and `persistence`. The 60% target applies to core business logic at M3, once `origination`, `products` and `delinquency` are built.
+This covers only the code that exists: `common`, `ledger`, `persistence` and `web`. The 60% target applies to core business logic at M3, once `origination`, `products` and `delinquency` are built.
 
 Open gaps feed `qa/defect-log.md` only if a test reveals a fault:
-- `LedgerEntry`: 9 branches in `equals` and in the null and blank checks of `reversalOf` are not executed.
-- `CoreRepaymentPoster.post`: CFG and basis paths are added when L-08 lands.
+- `LedgerEntry`: 7 branches in `equals` and in the null and blank checks of `reversalOf` are not executed.
 - Ibrahim's `DelinquencyClassifier.classify` (RTM estimate CC about 6) and Hassan's schedule assembler get their white-box design when their code exists.
