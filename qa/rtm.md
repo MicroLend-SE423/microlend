@@ -187,6 +187,13 @@ rebate line and end-of-day postings are not written by this class. QR-03 stays
 and its schema `CHECK` value were added for the debit leg; schema version 1 was
 edited in place because it has not been merged or deployed anywhere.
 
+M2 incremental evidence (2026-11-14): `RepaymentPosterDecorator` and
+`TimingPoster` (queue item L-09) implement the Decorator of M1 section 5.3.
+`TimingPosterTest` checks the IS-A/HAS-A structure by reflection, unchanged
+delegation, and that both successful and refused postings are timed. Timing
+traces to the design (GQM measurement), not to a numbered FR; no requirement
+status changes.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |
