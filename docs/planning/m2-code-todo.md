@@ -85,6 +85,8 @@ L-08 implemented (red bc379d0) and passes the full local build. It adds
 Open team question: which instalments the source lists (due to date only, or
 all remaining so a payoff can be detected).
 L-09 implemented (red 709dfb6) and passes the full local build.
+L-10 implemented (red 48515d3) and passes the full local build; the operator
+is supplied by the teller session, not carried on `RepaymentCommand`.
 
 ## Queue
 
