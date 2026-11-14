@@ -93,7 +93,7 @@ public final class RepaymentCommand {
 
     private static String requireText(final String value, final String field,
                                       final String source) {
-        if (value == null || value.trim().isEmpty()) {
+        if (value == null || value.isBlank()) {
             throw new InvalidRepaymentException(
                 field + " is required for a bank payment and may not be blank",
                 String.valueOf(value), source);
