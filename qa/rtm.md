@@ -40,8 +40,8 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-10 | Grace period defers the first instalment while interest accrues | BR-13 | products | `GracePeriodPolicy` | *planned* | TC-PRD-03 | EP + BVA | planned |
 | FR-11 | Instalments sum exactly to principal plus total interest | BR-14, BR-15 | products | `ScheduleAssembler`, `Schedule`, `Instalment` | *planned* | TC-PRD-04 | INV | planned |
 | FR-12 | A schedule contains exactly `tenureMonths` instalments | BR-16 | products | `ScheduleAssembler` | *planned* | TC-PRD-05 | EP | planned |
-| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | *planned* | TC-LED-01 | **BP** (CC ≈ 11) | planned |
-| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | *planned* | TC-LED-02 | BVA | planned |
+| FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | implemented (2026-11-14; awaiting PR CI) |
+| FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | implemented (2026-11-14; awaiting PR CI) |
 | FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | *planned* | TC-LED-03 | BVA | planned |
 | FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | *planned* | TC-LED-04 | INV | planned |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
@@ -150,6 +150,19 @@ across instances, and a source scan finding no `UPDATE`/`DELETE` against
 `ledger_entry` in production code. This is partial evidence for QR-05 (the
 repository half); the Fagan checklist item is still owed, so QR-05 stays
 *planned*. FR-17 likewise stays *planned* until the posting path uses it.
+
+M2 incremental evidence (2026-11-14): `RepaymentAllocator.allocate()` (queue
+item L-05) applies the BR-18 waterfall tier by tier with the oldest instalment
+first in each tier, the BR-19 reading adopted by Tughral on 2026-11-14 and
+pending team confirmation. Its input is the ledger-owned `InstalmentDue`
+record; Hassan's `products.Instalment` is mapped to it once that class exists,
+and the accrued penalty is an input amount (Ibrahim's `PenaltyAccruer` not
+required). `RepaymentAllocatorTest` covers part of each tier, fees before
+interest, two and three overdue instalments (input out of order), and the
+BR-20 boundaries 0 / 0.01 / due − 0.01 / exactly due, plus due + 0.01 returned
+as unapplied (the BR-21 hand-off). FR-13 and FR-14 move to *implemented*; they
+become *verified* when PR CI passes. The allocator is not yet called from a
+posting path (L-08).
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
