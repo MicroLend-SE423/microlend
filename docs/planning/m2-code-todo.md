@@ -87,6 +87,8 @@ all remaining so a payoff can be detected).
 L-09 implemented (red 709dfb6) and passes the full local build.
 L-10 implemented (red 48515d3) and passes the full local build; the operator
 is supplied by the teller session, not carried on `RepaymentCommand`.
+L-11 implemented (red 7b0faf4) and passes the full local build; references are
+held in memory, so a durable store on the `payment` table is a follow-up.
 
 ## Queue
 
