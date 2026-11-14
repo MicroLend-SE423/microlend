@@ -45,7 +45,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | `ledger/SettlementPolicy.java`, `SettlementOutcome.java`, `EarlySettlementRebate.java` (rebate amount supplied by `products`, not yet implemented) | TC-LED-03 → `SettlementPolicyTest` | BVA | partial (2026-11-14; per-product rebate outstanding) |
 | FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | `ledger/CoreRepaymentPoster.java`, `LedgerImbalanceException.java`; `LedgerWriter.appendAll` (`persistence/SqliteLedgerRepository.java`) | TC-LED-04 → `CoreRepaymentPosterTest`, `SqliteLedgerRepositoryTest.appendAllIsAtomic` | INV | implemented for repayment postings (2026-11-14; awaiting PR CI); rebate and end-of-day postings not covered |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
-| FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | *planned* | TC-LED-06 | EP | planned |
+| FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | `ledger/IdempotencyGuardPoster.java`, `PaymentReferences.java`, `InMemoryPaymentReferences.java`, `DuplicatePaymentException.java` | TC-LED-06 → `IdempotencyGuardPosterTest` | EP | partial (2026-11-14): guard implemented, awaiting PR CI; references held in memory only, durable store pending |
 | FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | verified |
 | FR-20 | Repayments importable from each supported bank's statement format | — | ledger.importing | `HblStatementAdapter`, `McbStatementAdapter` | *planned* | TC-LED-08 | EP | planned |
 | FR-21 | Penalty accrues at 0.05%/day on overdue principal, capped at 10% | BR-27, BR-28 | delinquency | `PenaltyAccruer` | *planned* | TC-DEL-01 | BVA | planned |
@@ -200,6 +200,15 @@ and refused attempts, and refuses a posting with no operator before it is
 forwarded. `AuditLoggingPosterTest` (TC-LED-09) covers named, blank, null and
 whitespace operators. FR-31 is *partial*: the one-line-per-file audit of
 imports belongs to the import job, which does not exist yet.
+
+M2 incremental evidence (2026-11-14): `IdempotencyGuardPoster` (queue item
+L-11) claims the (bank, reference) pair atomically before forwarding and
+releases it if the posting fails. `IdempotencyGuardPosterTest` (TC-LED-06)
+covers the BR-25 classes (same pair twice, same reference from two banks, cash)
+plus a failed-then-retried posting and eight concurrent duplicates forwarded
+exactly once. FR-18 is *partial*: the claimed pairs live in
+`InMemoryPaymentReferences` and are lost on restart; a store on the `payment`
+table's `UNIQUE (source_bank, bank_reference)` is still to be built.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
