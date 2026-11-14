@@ -65,7 +65,7 @@ public final class SchemaMigrator {
             + " id INTEGER PRIMARY KEY,"
             + " loan_id TEXT NOT NULL REFERENCES loan (id),"
             + " entry_type TEXT NOT NULL CHECK (entry_type IN ('PRINCIPAL_DISBURSEMENT',"
-            + "   'PENALTY_ACCRUAL', 'PENALTY_REPAYMENT', 'FEE_REPAYMENT', 'INTEREST_REPAYMENT',"
+            + "   'PENALTY_ACCRUAL', 'PAYMENT_RECEIVED', 'PENALTY_REPAYMENT', 'FEE_REPAYMENT', 'INTEREST_REPAYMENT',"
             + "   'PRINCIPAL_REPAYMENT', 'ADVANCE_CREDIT', 'INTEREST_REBATE', 'WRITE_OFF',"
             + "   'REVERSAL')),"
             + " debit INTEGER NOT NULL,"

@@ -78,6 +78,12 @@ closure are implemented; the per-product rebate (BR-22) is taken from a
 caller-supplied `EarlySettlementRebate` because it is Hassan's product
 knowledge. Open team decisions: who implements the rebate in `products`, and
 what happens to money left over after a payoff (reported as `excess`, not posted).
+L-08 implemented (red bc379d0) and passes the full local build. It adds
+`LoanRepository` (needed now; L-15 implements it in SQLite), an
+`InstalmentsDueSource` role for the schedule/penalty inputs, a
+`PAYMENT_RECEIVED` debit leg, and an all-or-nothing `LedgerWriter.appendAll`.
+Open team question: which instalments the source lists (due to date only, or
+all remaining so a payoff can be detected).
 
 ## Queue
 

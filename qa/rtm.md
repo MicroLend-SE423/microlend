@@ -43,7 +43,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 | FR-13 | Payments applied penalty → fees → interest → principal, oldest first | BR-18, BR-19 | ledger | `RepaymentAllocator.allocate()`, `Allocation` | `ledger/RepaymentAllocator.java`, `InstalmentDue.java`, `AllocationResult.java` | TC-LED-01 → `RepaymentAllocatorTest` (TierOrder, OldestFirst) | **BP** (CC ≈ 11) | implemented (2026-11-14; awaiting PR CI) |
 | FR-14 | Partial payment applied as far as it reaches | BR-20 | ledger | `RepaymentAllocator` | `ledger/RepaymentAllocator.java` | TC-LED-02 → `RepaymentAllocatorTest.PartialPayment` | BVA | implemented (2026-11-14; awaiting PR CI) |
 | FR-15 | Overpayment becomes advance credit, or triggers early settlement | BR-21, BR-22 | ledger | `SettlementPolicy` | `ledger/SettlementPolicy.java`, `SettlementOutcome.java`, `EarlySettlementRebate.java` (rebate amount supplied by `products`, not yet implemented) | TC-LED-03 → `SettlementPolicyTest` | BVA | partial (2026-11-14; per-product rebate outstanding) |
-| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | *planned* | TC-LED-04 | INV | planned |
+| FR-16 | Every posting writes balanced debit and credit lines | BR-23 | ledger | `CoreRepaymentPoster` | `ledger/CoreRepaymentPoster.java`, `LedgerImbalanceException.java`; `LedgerWriter.appendAll` (`persistence/SqliteLedgerRepository.java`) | TC-LED-04 → `CoreRepaymentPosterTest`, `SqliteLedgerRepositoryTest.appendAllIsAtomic` | INV | implemented for repayment postings (2026-11-14; awaiting PR CI); rebate and end-of-day postings not covered |
 | FR-17 | Ledger entries are immutable; corrections are compensating entries | BR-24 | ledger | `LedgerEntry`, `CompensatingEntryService` | *planned* | TC-LED-05 | INSP + unit | planned |
 | FR-18 | Duplicate (bank, reference) pair is rejected | BR-25 | ledger | `IdempotencyGuardPoster` | *planned* | TC-LED-06 | EP | planned |
 | FR-19 | Payment against a closed or written-off loan is rejected | BR-26 | ledger | `LoanAccount`, `LoanClosedException` | `ledger/LoanAccount.java`, `LoanStatus.java`, `LoanClosedException.java` | TC-LED-07 → `LoanAccountTest` | EP | verified |
@@ -172,6 +172,20 @@ boundary due + 0.01), and on payoff closes the account through
 `SettlementPolicyTest` (TC-LED-03) covers those boundaries with a stub rebate.
 The per-product rebate arithmetic is `products` knowledge and is not
 implemented, so FR-15 is recorded as *partial*, not *implemented*.
+
+M2 incremental evidence (2026-11-14): `CoreRepaymentPoster` (queue item L-08)
+reads the loan, allocates, settles, and writes one `PAYMENT_RECEIVED` debit
+balanced by tier and advance-credit credits through `LedgerWriter.appendAll`,
+which the SQLite repository runs in one transaction. `CoreRepaymentPosterTest`
+(TC-LED-04) asserts Σ debits = Σ credits after every posting in a sequence,
+`LedgerImbalanceException` on unbalanced lines, refusal of closed and unknown
+loans, and that the loan is not saved when the ledger write fails;
+`SqliteLedgerRepositoryTest.appendAllIsAtomic` shows a failing last line leaves
+no line written. FR-16 is *implemented* for repayment postings only: the BR-22
+rebate line and end-of-day postings are not written by this class. QR-03 stays
+*planned* until the fault-injection test (L-16). `EntryType.PAYMENT_RECEIVED`
+and its schema `CHECK` value were added for the debit leg; schema version 1 was
+edited in place because it has not been merged or deployed anywhere.
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
