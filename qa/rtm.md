@@ -210,6 +210,17 @@ exactly once. FR-18 is *partial*: the claimed pairs live in
 `InMemoryPaymentReferences` and are lost on restart; a store on the `payment`
 table's `UNIQUE (source_bank, bank_reference)` is still to be built.
 
+M2 incremental evidence (2026-11-14): `SqliteLoanRepository` (queue item L-15)
+implements the ledger's `LoanRepository` role on the `loan` table: status,
+outstanding principal (paisa) and closure date, each save in a
+`BEGIN IMMEDIATE` transaction, refusing to insert a loan origination never
+created. `SqliteDatabase` now sets `PRAGMA busy_timeout = 5000` on every
+connection. `SqliteLoanRepositoryTest` shows a save waiting for another
+writer's lock and then succeeding. This supports the concurrency strategy of
+M1 section 3.6 and QR-06, which stays *planned* until the end-of-day engine
+(Ibrahim) and `EndOfDayConcurrencyTest` exist. The ledger write and the loan
+save are still two transactions.
+
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|
 | Functional requirements defined | 32 | | |
