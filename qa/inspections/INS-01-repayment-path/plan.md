@@ -45,7 +45,7 @@ Supporting context, read but not inspected line by line: `common/Money.java` (~8
 BR-18 and BR-19 can be read two ways. The allocator implements the literal reading,
 **tier by tier**: all penalties oldest instalment first, then all fees oldest first,
 then all interest oldest first, then all principal oldest first. This reading was
-adopted by Tughral Hussain on 2026-11-14 and is **pending team confirmation**.
+adopted by Tughral Hussain on 2026-11-14 and confirmed as team decision **D-01** on 2026-11-16 (`docs/planning/team-decisions.md`).
 Inspectors should check the code against this reading and may log the ambiguity itself
 as a Documentation defect against `docs/business-rules.md` if they consider it
 unresolved.
@@ -60,9 +60,9 @@ is outside this inspection.
 | Role | Name | Team |
 |---|---|---|
 | Author | Tughral Hussain (2023532) | MicroLend |
-| Moderator | to be agreed | MicroLend |
-| Reader | to be agreed | MicroLend |
-| Recorder | to be agreed | MicroLend |
+| Moderator | Muhammad Ibrahim (Team Lead) | MicroLend |
+| Reader | Hassan Khalid | MicroLend |
+| Recorder | Muhammad Ibrahim (moderator also records in a three-person team) | MicroLend |
 | External inspector | name, team and reg. no. to be filled after instructor pairing | ______ |
 
 The author does not moderate, read or record.

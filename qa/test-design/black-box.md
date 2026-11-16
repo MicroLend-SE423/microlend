@@ -1,8 +1,8 @@
 # MicroLend - Black-box Test Design (EP and BVA)
 
 **Milestone:** M2 (SE431) - Black-box test design
-**Document lead:** to be assigned (M2 leads not yet chosen)
-**Version:** 0.1 draft, 2026-11-14
+**Document lead:** Muhammad Ibrahim (M2 Team Lead)
+**Version:** 0.2, 2026-11-16 (refreshed against the final ledger build `87c5caf`, 182 tests)
 **Sources:** `docs/business-rules.md` v1.1 (BR-01 to BR-43), `qa/rtm.md` (FR, QR and TC IDs),
 `docs/M1-SE431-Quality-Requirements-RTM-SQAP.md`, and the test code under `src/test/java`.
 
@@ -39,7 +39,7 @@ Two techniques are used:
 
 | Decision | Effect on test design | Status |
 |---|---|---|
-| **BR-18/BR-19, tier by tier.** All penalties are settled oldest instalment first, then all fees oldest first, then all interest oldest first, then all principal oldest first. | Expected results of TC-LED-01 and TC-LED-02 | Adopted by Tughral Hussain on 2026-11-14, **pending team confirmation**. If the team chooses "settle each instalment fully before the next", the expected allocations in section 4.1 change, but the classes and boundaries do not. |
+| **BR-18/BR-19, tier by tier.** All penalties are settled oldest instalment first, then all fees oldest first, then all interest oldest first, then all principal oldest first. | Expected results of TC-LED-01 and TC-LED-02 | Adopted by the team on 2026-11-16 (recorded by Tughral Hussain) as decision D-01, and noted under BR-19 in `docs/business-rules.md`. The expected allocations in section 4.1 follow this reading. |
 | Fees tier is always zero at M1 (BR-18) | A non-zero fee is an untestable class until a fee type is introduced by a recorded deviation | Frozen rule |
 | Product amount and tenure bands are per product (BR-06, BR-07) | Boundaries are written relative to `min` and `max`; concrete values come from the product table | Product values not yet fixed in code |
 
@@ -63,7 +63,7 @@ Two techniques are used:
 |---|---|---|---|---|
 | TC-CMN-01.1 | -0.01 | `InvalidMoneyException` | EC-03, lower bound - 0.01 | automated `MoneyTest#rejectsNegativeAmount` |
 | TC-CMN-01.2 | 0.00 | accepted, `isZero()` true | EC-01, lower bound | automated `MoneyTest#permitsZero` |
-| TC-CMN-01.3 | 0.01 | accepted | EC-01, lower bound + 0.01 | designed |
+| TC-CMN-01.3 | 0.01 | accepted | EC-01, lower bound + 0.01 | automated `RepaymentCommandTest#acceptsOnePaisa` (builds and accepts `Money` 0.01) |
 | TC-CMN-01.4 | 10.005 | `InvalidMoneyException` | EC-04, scale 3 | automated `MoneyTest#rejectsExcessiveScale` |
 | TC-CMN-01.5 | 5 | held as 5.00 | EC-02 | automated `MoneyTest#normalisesScale` |
 | TC-CMN-01.6 | null | `InvalidMoneyException` | EC-05 | automated `MoneyTest#rejectsNull` |
@@ -258,8 +258,14 @@ automated in `SchemaMigratorTest#productBands`.
 **Inputs:** payment amount; the list of unpaid instalments, each with outstanding penalty,
 fees, interest and principal.
 
-**Reading used:** tier by tier, adopted 2026-11-14 pending team confirmation (section 1).
-The fees tier is always 0.00 at M1.
+**Reading used:** tier by tier, adopted by the team on 2026-11-16, decision D-01 (section 1).
+The fees tier is always 0.00 at M1 in real data; the allocator still orders it, so one case
+uses a non-zero fee to show the order. The input type is the ledger-owned `InstalmentDue`
+record (sequence, due date, penalty, fees, interest, principal).
+
+The cases below use the inputs of the automated tests in `RepaymentAllocatorTest`, so each
+expected result is the one the test asserts. Dates: I1 due 2026-01-15, I2 2026-02-15,
+I3 2026-03-15.
 
 | EC | Class | Type |
 |---|---|---|
@@ -268,35 +274,25 @@ The fees tier is always 0.00 at M1.
 | EC-42 | payment covers penalties and interest and part of principal | V |
 | EC-43 | one overdue instalment | V |
 | EC-44 | two overdue instalments | V |
-| EC-45 | three overdue instalments | V |
-| EC-46 | no unpaid instalments | rule silent at the allocator (BR-21 treats it as advance credit) |
-| EC-47 | null payment or null instalment list | I |
+| EC-45 | three overdue instalments, given out of due-date order | V |
+| EC-46 | no unpaid instalments | V: the whole payment is returned unapplied, for settlement (BR-21) |
+| EC-47 | null payment, null list or null element | I |
+| EC-82 | two instalments with the same sequence number | I |
+| EC-83 | instalment with sequence below 1 or a missing field | I |
 
-**Fixture A, two instalments overdue:**
+| TC | Input (penalty / fees / interest / principal) | Payment | Expected allocation | Covers | Status |
+|---|---|---|---|---|---|
+| TC-LED-01.1 | I1 10.00 / 0.00 / 100.00 / 1,000.00 | 60.00 | penalty 10.00, interest 50.00; principal 0.00 | EC-41, EC-43 | automated `RepaymentAllocatorTest#partOfEachTier` |
+| TC-LED-01.2 | I1 10.00 / 20.00 / 100.00 / 1,000.00 | 25.00 | penalty 10.00, fees 15.00; interest 0.00 | BR-18 fees between penalty and interest | automated `RepaymentAllocatorTest#feesBeforeInterest` |
+| TC-LED-01.3 | I1 10.00 / 0.00 / 100.00 / 1,000.00 | 110.01 | penalty 10.00, interest 100.00, principal 0.01 | EC-42, first paisa into principal (BVA) | automated `RepaymentAllocatorTest#principalLast` |
+| TC-LED-01.4 | I1 10.00 / 0.00 / 100.00 / 1,000.00; I2 5.00 / 0.00 / 100.00 / 1,000.00 | 120.00 | I1 penalty 10.00, interest 100.00; I2 penalty 5.00, interest 5.00 | EC-44, both penalties before any interest | automated `RepaymentAllocatorTest#twoOverdueTierByTier` |
+| TC-LED-01.5 | I3 0.00 / 0.00 / 100.00 / 1,000.00; I1 20.00 / 0.00 / 100.00 / 1,000.00; I2 10.00 / 0.00 / 100.00 / 1,000.00 (listed in that order) | 2,350.00 | I1 and I2 paid in full; I3 interest 100.00, principal 20.00 | EC-45, order by due date, not list position | automated `RepaymentAllocatorTest#threeOverdueOutOfOrder` |
+| TC-LED-01.6 | I1 10.00 / 0.00 / 100.00 / 1,000.00; I2 0.00 / 0.00 / 100.00 / 1,000.00 | 10.00 | I1 penalty 10.00; I2 reported with a zero allocation | EC-40, penalty tier exactly (BVA) | automated `RepaymentAllocatorTest#untouchedInstalmentIsZero` |
+| TC-LED-01.7 | no instalments | 50.00 | nothing allocated; 50.00 unapplied | EC-46 | automated `RepaymentAllocatorTest#nothingOwed` |
+| TC-LED-01.8 | null payment; null list; list with a null element | 1.00 | `InvalidAllocationException` | EC-47 | automated `RepaymentAllocatorTest#rejectsMissingInput` |
+| TC-LED-01.9 | two instalments, both sequence 1 | 1.00 | `InvalidAllocationException` | EC-82 | automated `RepaymentAllocatorTest#rejectsDuplicateSequence` |
 
-| Instalment | Penalty | Fees | Interest | Principal |
-|---|---|---|---|---|
-| I1 (older) | 10.00 | 0.00 | 50.00 | 400.00 |
-| I2 | 5.00 | 0.00 | 50.00 | 400.00 |
-
-| TC | Payment | Expected allocation | Covers | Status |
-|---|---|---|---|---|
-| TC-LED-01.1 | 8.00 | I1 penalty 8.00; nothing else | EC-40, EC-44 | designed |
-| TC-LED-01.2 | 15.00 | I1 penalty 10.00, I2 penalty 5.00 | penalty tier exactly | designed |
-| TC-LED-01.3 | 70.00 | penalties 15.00; I1 interest 50.00; I2 interest 5.00 | EC-41, crosses tier and instalment | designed |
-| TC-LED-01.4 | 150.00 | penalties 15.00; interest 100.00; I1 principal 35.00 | EC-42 | designed |
-| TC-LED-01.5 | 915.00 | everything owed in fixture A | all tiers exactly | designed |
-
-**Fixture B, three instalments overdue.** Each has penalty 2.00, interest 30.00 and principal 300.00.
-
-| TC | Payment | Expected allocation | Covers | Status |
-|---|---|---|---|---|
-| TC-LED-01.6 | 6.00 | 2.00 penalty to each of I1, I2, I3 | EC-45, penalties before any interest | designed |
-| TC-LED-01.7 | 40.00 | penalties 6.00; I1 interest 30.00; I2 interest 4.00 | EC-45, oldest first within interest | designed |
-| TC-LED-01.8 | single instalment, penalty 3.00, interest 20.00, payment 10.00 | penalty 3.00, interest 7.00 | EC-43 | designed |
-| TC-LED-01.9 | null payment / null list | rejected with a typed exception | EC-47 | designed |
-
-**Supporting value object.** `Allocation` holds the four tiers.
+**Supporting value objects.** `Allocation` holds the four tiers; `InstalmentDue` is the allocator's input.
 
 | TC | Input | Expected | Status |
 |---|---|---|---|
@@ -304,25 +300,29 @@ The fees tier is always 0.00 at M1.
 | TC-LED-01.11 | all tiers 0.00 | valid, total 0.00 | automated `AllocationTest#allZeroAllocation` |
 | TC-LED-01.12 | any tier null | `InvalidAllocationException` | automated `AllocationTest#rejectsNullTiers` |
 | TC-LED-01.13 | principal tier vs outstanding principal 1,000.00 | 1,000.00 leaves 0.00; 1,000.01 rejected | automated `LoanAccountTest#exactPrincipalLeavesZero`, `#principalAboveOutstandingRejected` |
+| TC-LED-01.14 | `InstalmentDue` with sequence 0 (min - 1), or a null date or amount | `InvalidAllocationException`; a valid one totals its four amounts | automated `RepaymentAllocatorTest#instalmentDueInvariants` (EC-83) |
 
 ### 4.2 FR-14 - partial payment (BR-20) - TC-LED-02
 
-**Input:** payment amount against one instalment that is due 460.00 (penalty 10.00,
-interest 50.00, principal 400.00).
+**Input:** payment amount against two overdue instalments due 2,230.00 in total
+(I1 10.00 / 0.00 / 100.00 / 1,000.00; I2 20.00 / 0.00 / 100.00 / 1,000.00), as in
+`RepaymentAllocatorTest.PartialPayment`.
 
 | EC | Class | Type |
 |---|---|---|
 | EC-48 | 0.01 <= payment < amount due (partial) | V |
 | EC-49 | payment = amount due | V |
-| EC-50 | payment = 0.00 | I (rejected at the command, see TC-LED-02.1) |
+| EC-50 | payment = 0.00 | I at the command and the web form; at the allocator it allocates nothing |
+| EC-84 | payment > amount due | V: everything due is paid and the remainder is returned unapplied (hand-off to BR-21) |
 
 | TC | Payment | Expected | Covers | Status |
 |---|---|---|---|---|
-| TC-LED-02.1 | 0.00 | `InvalidRepaymentException` | EC-50, min - 0.01 | automated `RepaymentCommandTest#rejectsZeroAmount` |
-| TC-LED-02.2 | 0.01 | 0.01 to penalty; 459.99 outstanding | EC-48, min | automated at the command (`RepaymentCommandTest#acceptsOnePaisa`); allocation designed |
-| TC-LED-02.3 | 459.99 | penalty 10.00, interest 50.00, principal 399.99; 0.01 outstanding | EC-48, due - 0.01 | designed |
-| TC-LED-02.4 | 460.00 | instalment fully paid; 0.00 outstanding | EC-49, exactly due | designed |
-| TC-LED-02.5 | 230.00 | penalty 10.00, interest 50.00, principal 170.00 | EC-48, nominal | designed |
+| TC-LED-02.1 | 0.00 | `InvalidRepaymentException` at the command; HTTP 400 at the teller form; 0.00 allocated if it reached the allocator | EC-50, min - 0.01 | automated `RepaymentCommandTest#rejectsZeroAmount`, `TellerWebServerTest#malformedInputIs400`, `RepaymentAllocatorTest#boundaries` |
+| TC-LED-02.2 | 0.01 | penalty 0.01; nothing else | EC-48, min | automated `RepaymentAllocatorTest#boundaries`, `RepaymentCommandTest#acceptsOnePaisa` |
+| TC-LED-02.3 | 2,229.99 | penalty 30.00, interest 200.00, principal 1,999.99; 0.01 of I2's principal outstanding | EC-48, due - 0.01 | automated `RepaymentAllocatorTest#boundaries`, `#oneRupeeShortOnNewestPrincipal` |
+| TC-LED-02.4 | 2,230.00 | everything paid; 0.00 unapplied | EC-49, exactly due | automated `RepaymentAllocatorTest#boundaries` |
+| TC-LED-02.5 | 2,230.01 | everything paid; 0.01 unapplied | EC-84, due + 0.01 | automated `RepaymentAllocatorTest#boundaries` |
+| TC-LED-02.6 | 0.00, 0.01, 17.35, 2,230.00, 9,999.99 | allocated + unapplied = payment in every case | EC-48, EC-49, EC-84, conservation | automated `RepaymentAllocatorTest#conservesThePayment` |
 
 ### 4.3 FR-15 - overpayment and early settlement (BR-21, BR-22) - TC-LED-03
 
@@ -333,22 +333,23 @@ Due now is 460.00 and the payoff is 2,000.00.
 |---|---|---|
 | EC-51 | due < payment < payoff (overpayment) | V, advance credit |
 | EC-52 | payment = payoff | V, early settlement |
-| EC-53 | payment > payoff | V, settlement plus credit of the excess (handling of the excess is rule silent) |
+| EC-53 | payment > payoff | handling of the excess is rule silent: the settlement policy reports it and the poster refuses the posting until a rule exists |
 | EC-54 | product flat-rate | no rebate |
 | EC-55 | product reducing-balance | unearned interest refunded |
 | EC-56 | product bullet | unaccrued monthly interest refunded |
 
 | TC | Payment | Expected | Covers | Status |
 |---|---|---|---|---|
-| TC-LED-03.1 | 460.01 | instalment paid; 0.01 advance credit | EC-51, due + 0.01 | designed |
-| TC-LED-03.2 | 1,999.99 | advance credit; loan stays active | EC-51, payoff - 0.01 | designed |
-| TC-LED-03.3 | 2,000.00, flat-rate | settled; rebate 0.00 | EC-52, EC-54 | designed |
+| TC-LED-03.1 | 460.01 | instalment paid; 0.01 advance credit; loan stays active | EC-51, due + 0.01 | automated `SettlementPolicyTest#overpaymentBecomesAdvanceCredit` (surplus 0.01 with principal owing); posted as an `ADVANCE_CREDIT` line in `CoreRepaymentPosterTest#surplusBecomesAdvanceCredit` |
+| TC-LED-03.2 | 1,999.99 | advance credit; loan stays active | EC-51, payoff - 0.01 | designed (needs the `products` implementation of `InstalmentsDueSource`, decision D-02: only instalments due by the business date) |
+| TC-LED-03.3 | 2,000.00, flat-rate | settled (loan CLOSED on the business date); rebate 0.00 | EC-52, EC-54 | automated with a stub rebate: `SettlementPolicyTest#exactPayoffClosesTheLoan`, `#zeroRebate`, `CoreRepaymentPosterTest#exactPayoffClosesLoan`; the flat-rate product itself is designed (`products`) |
 | TC-LED-03.4 | 2,000.00, reducing-balance | settled; unearned interest refunded | EC-52, EC-55 | designed (rebate amount from `products`) |
 | TC-LED-03.5 | 2,000.00, bullet | settled; unaccrued monthly interest refunded | EC-52, EC-56 | designed (rebate amount from `products`) |
-| TC-LED-03.6 | 2,000.01 | settled; 0.01 excess (treatment rule silent) | EC-53, payoff + 0.01 | designed |
+| TC-LED-03.6 | 2,000.01 | policy reports 0.01 excess (not advance credit); the poster refuses the payment with `InvalidRepaymentException` and writes nothing | EC-53, payoff + 0.01 | automated `SettlementPolicyTest#payoffPlusOneIsExcess`, `CoreRepaymentPosterTest#excessOverPayoffIsRefused` |
 
-The per-product rebate amounts are product knowledge owned by Hassan Khalid, so TC-LED-03.4
-and .5 need his calculators to provide expected values.
+The per-product rebate amounts are product knowledge owned by Hassan Khalid. The ledger asks
+for them through `EarlySettlementRebate`, so TC-LED-03.4 and .5 need his calculators to
+provide expected values.
 
 ### 4.4 FR-16 - balanced posting (BR-23) - TC-LED-04
 
@@ -361,11 +362,16 @@ posting paths instead.
 | EC-58 | bank payment from an import | V |
 | EC-59 | reversal of a posted entry | V |
 | EC-60 | posting that fails part-way (fault injection, QR-03) | I, must leave the ledger balanced |
+| EC-85 | a set of posting lines whose debits and credits differ | I, refused before anything is written |
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
-| TC-LED-04.1 to .3 | one posting per path EC-57 to EC-59 | sum of debits = sum of credits after the posting | EC-57 to EC-59 | .3 automated (`LedgerImmutabilityTest#correctionKeepsOriginalAndNetsToZero`); .1 and .2 designed |
-| TC-LED-04.4 | failure injected at each write point | ledger still balanced; 0 orphan lines | EC-60, QR-03 | designed (`PostingFaultInjectionTest`) |
+| TC-LED-04.1 | teller cash postings in sequence | one `PAYMENT_RECEIVED` debit balanced by the tier credits; sum of debits = sum of credits after every posting | EC-57 | automated `CoreRepaymentPosterTest#partialPaymentLines`, `#ledgerBalancesAfterEveryPosting`; on SQLite through the teller chain in `CompositionRootTest#tellerChainPostsAuditsAndTimes` |
+| TC-LED-04.2 | bank payment HBL / TX-1, 50.00, through the import chain | posted once by the core poster | EC-58 | partly automated: `CompositionRootTest#importChainGuardsOutermost` posts it on SQLite but does not assert the balance; statement parsing (FR-20) is designed |
+| TC-LED-04.3 | reversal of a posted entry | each column nets to zero; original kept | EC-59 | automated `LedgerImmutabilityTest#correctionKeepsOriginalAndNetsToZero` |
+| TC-LED-04.4 | failure injected at each of 14 points: every line of postings of 60.00, 1,300.00 and 2,210.00 (11 line points), and the loan save after each (3 points) | ledger still balanced; loan unchanged; 0 unreversed lines of the failed posting | EC-60, QR-03 | automated `PostingFaultInjectionTest#failureLeavesLedgerBalancedWithNoOrphans` (real SQLite file) |
+| TC-LED-04.5 | debit 10.00 against credit 9.99 | `LedgerImbalanceException` | EC-85, imbalance of 0.01 (BVA) | automated `CoreRepaymentPosterTest#imbalanceDetected` |
+| TC-LED-04.6 | ledger write fails; last line of a batch is invalid | loan not saved; no line of the batch written | EC-60 | automated `CoreRepaymentPosterTest#failedWriteDoesNotSaveLoan`, `SqliteLedgerRepositoryTest#appendAllIsAtomic` |
 
 ### 4.5 FR-17 - immutable entries and compensating reversals (BR-24, BR-43) - TC-LED-05
 
@@ -402,14 +408,17 @@ posting paths instead.
 | EC-69 | bank payment, pair already in the ledger | I, duplicate |
 | EC-70 | same reference, different bank | V |
 | EC-71 | bank payment with blank bank or reference | I |
+| EC-86 | retry of a pair whose earlier posting failed | V, accepted (the failed attempt releases the pair) |
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
-| TC-LED-06.1 | cash, no reference | accepted | EC-67 | automated `RepaymentCommandTest#cashPaymentHasNoReference` |
-| TC-LED-06.2 | HBL / REF-1 first time | accepted | EC-68 | automated at the command (`RepaymentCommandTest#bankPaymentCarriesPair`); guard designed |
-| TC-LED-06.3 | HBL / REF-1 again | rejected as duplicate | EC-69 | schema level automated (`SchemaMigratorTest#paymentIdempotencyKey`); `IdempotencyGuardPoster` designed |
-| TC-LED-06.4 | HBL / REF-1 then MCB / REF-1 | both accepted | EC-70 | automated `RepaymentCommandTest#sameReferenceFromTwoBanksDiffers` |
+| TC-LED-06.1 | cash, no reference | accepted; never treated as a duplicate | EC-67 | automated `RepaymentCommandTest#cashPaymentHasNoReference`, `IdempotencyGuardPosterTest#cashIsNeverADuplicate` |
+| TC-LED-06.2 | HBL / REF-1 first time | accepted and forwarded | EC-68 | automated `RepaymentCommandTest#bankPaymentCarriesPair`, `IdempotencyGuardPosterTest#samePairTwice` (first posting) |
+| TC-LED-06.3 | HBL / REF-1 again | `DuplicatePaymentException`; not forwarded | EC-69 | automated `IdempotencyGuardPosterTest#samePairTwice`, `CompositionRootTest#importChainGuardsOutermost`; schema key `SchemaMigratorTest#paymentIdempotencyKey`. Pairs are held in memory only (FR-18 partial) |
+| TC-LED-06.4 | HBL / REF-1 then MCB / REF-1 | both accepted | EC-70 | automated `RepaymentCommandTest#sameReferenceFromTwoBanksDiffers`, `IdempotencyGuardPosterTest#sameReferenceTwoBanks` |
 | TC-LED-06.5 | bank "" or reference "  " | `InvalidRepaymentException` | EC-71 | automated `RepaymentCommandTest#rejectsBlankBankOrReference` |
+| TC-LED-06.6 | HBL / REF-1 posting fails, then is retried | retry accepted | EC-86 | automated `IdempotencyGuardPosterTest#failedPostingReleasesReference` |
+| TC-LED-06.7 | 8 threads post HBL / REF-1 at the same moment | forwarded exactly once; 7 duplicates refused | EC-69 under concurrency | automated `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce` |
 
 ### 4.7 FR-19 - payment against closed or written-off loan (BR-26) - TC-LED-07
 
@@ -425,6 +434,8 @@ posting paths instead.
 | TC-LED-07.2 | CLOSED | `LoanClosedException` | EC-73 | automated `LoanAccountTest#closedLoanRejectsPayment` |
 | TC-LED-07.3 | WRITTEN_OFF | `LoanClosedException` | EC-74 | automated `LoanAccountTest#writtenOffLoanRejectsPayment` |
 | TC-LED-07.4 | allocation applied to CLOSED loan | rejected | EC-73 | automated `LoanAccountTest#closedLoanRefusesAllocation` |
+| TC-LED-07.5 | repayment posted against a CLOSED loan | `LoanClosedException` before any line is written | EC-73 | automated `CoreRepaymentPosterTest#closedLoanRefused` |
+| TC-LED-07.6 | settlement of a loan already CLOSED | `LoanClosedException` | EC-73 | automated `SettlementPolicyTest#closedLoanRefused` |
 
 ### 4.8 FR-20 - bank statement import - TC-LED-08
 
@@ -450,12 +461,15 @@ No business rule fixes the statement formats, so the boundaries are rule silent.
 | EC-79 | teller posting with named operator | V, one audit line naming the operator |
 | EC-80 | teller posting with blank operator | I |
 | EC-81 | import of one file | V, one audit line per file |
+| EC-87 | teller posting refused by the domain | V, audited with the reason, then the refusal is rethrown |
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
-| TC-LED-09.1 | teller "ali" posts 100.00 | audit line names "ali" | EC-79 | designed |
-| TC-LED-09.2 | operator blank | rejected | EC-80 | designed |
-| TC-LED-09.3 | file with 3 rows imported | exactly 1 audit line | EC-81 | designed |
+| TC-LED-09.1 | teller "teller.amina" posts 10.00; operator given as "  teller.amina " | one audit line naming "teller.amina" (trimmed) | EC-79 | automated `AuditLoggingPosterTest#auditsSuccess`, `#trimsOperator`; on SQLite in `CompositionRootTest#tellerChainPostsAuditsAndTimes` |
+| TC-LED-09.2 | operator null, "" or "   " | refused; nothing forwarded or audited | EC-80 | automated `AuditLoggingPosterTest#refusesAnonymousPosting` |
+| TC-LED-09.3 | file with 3 rows imported | exactly 1 audit line | EC-81 | designed (the import job is not built; the import chain has no per-posting audit, `CompositionRootTest#importChainGuardsOutermost`) |
+| TC-LED-09.4 | posting refused by the wrapped poster | audit line with the reason; same exception rethrown | EC-87 | automated `AuditLoggingPosterTest#auditsRefusal` |
+| TC-LED-09.5 | operator named on the teller web form | the posting is made as that operator, and the name does not carry over to the next request | EC-79 | automated `TellerWebServerTest#postsCashPayment` |
 
 ## 5. Products and schedules (owner: Hassan Khalid)
 
@@ -645,21 +659,24 @@ listed so every RTM row has a test basis.
 |---|---|---|
 | QR-01 | 10,000 loans, 4 threads, 5 runs: median <= 20 s, none > 25 s | designed (`EndOfDayPerformanceTest`) |
 | QR-02 | 30 golden schedules, 0 discrepancies | designed (`GoldenScheduleTest`) |
-| QR-03 | failure at >= 10 injected points leaves the ledger balanced | designed (`PostingFaultInjectionTest`, TC-LED-04.4) |
-| QR-05 | 0 mutators; 0 `UPDATE`/`DELETE` on `ledger_entry` | automated in part: `LedgerEntryTest#noMutators`, `SqliteLedgerRepositoryTest#noMutatingSqlAgainstLedger`; the Fagan checklist item is still owed |
-| QR-06 | 50 concurrent runs: 0 lost updates, 0 double accruals | designed (`EndOfDayConcurrencyTest`) |
+| QR-03 | failure at >= 10 injected points leaves the ledger balanced | automated: 14 points in `PostingFaultInjectionTest#failureLeavesLedgerBalancedWithNoOrphans` (TC-LED-04.4), plus `SqliteLedgerRepositoryTest#appendAllIsAtomic`; the demonstration half of the verification method is still owed |
+| QR-05 | 0 mutators; 0 `UPDATE`/`DELETE` on `ledger_entry` | automated in part: `LedgerEntryTest#noMutators`, `LedgerImmutabilityTest#writerCanOnlyAppend`, `SqliteLedgerRepositoryTest#noMutatingSqlAgainstLedger`; the Fagan checklist item (INS-01) is still owed |
+| QR-06 | 50 concurrent runs: 0 lost updates, 0 double accruals | designed (`EndOfDayConcurrencyTest`; the end-of-day engine is not built). Supporting concurrency checks exist on the posting side: `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce`, `SqliteLoanRepositoryTest#saveWaitsForConcurrentWriter` |
 
-QR-04 (complexity limits) is an analysis requirement and belongs to the static-analysis report.
+QR-04 (complexity limits) is an analysis requirement and belongs to the static-analysis report
+(`qa/static-analysis-report.md`). Constraint C-03 (no cycles between module packages) is not an
+input domain either; it is enforced on every build by `ArchitectureTest#noCyclesBetweenModules`.
 
 ## 9. Coverage summary
 
 Counts are equivalence classes and BVA cases defined in this document. "Automated" counts
-test cases already implemented in JUnit at commit `737a47a`, including partial automation at
-the command or schema level.
+test cases already implemented in JUnit at commit `87c5caf` (182 tests, all passing),
+including partial automation at the command or schema level. The "designed only" column
+includes TC-REP-02.4, which is blocked on a rule decision.
 
 | Requirement | BR | EP classes | BVA cases | Test cases | Automated | Designed only |
 |---|---|---|---|---|---|---|
-| Money (common) | BR-40, BR-43 | 5 | 4 | 13 | 11 | 2 |
+| Money (common) | BR-40, BR-43 | 5 | 4 | 13 | 12 | 1 |
 | LoanId (common) | - | 4 | 0 | 4 | 4 | 0 |
 | FR-01 | BR-01, BR-02 | 4 | 6 | 7 | 0 | 7 |
 | FR-02 | BR-03 | 4 | 3 | 6 | 0 | 6 |
@@ -668,15 +685,15 @@ the command or schema level.
 | FR-05 | BR-08 | 3 | 0 | 9 | 0 | 9 |
 | FR-06 | BR-09, BR-10 | 3 | 8 | 11 | 0 | 11 |
 | FR-07 | BR-06, BR-07 | 6 | 6 | 7 | 0 | 7 |
-| FR-13 | BR-18, BR-19 | 8 | 3 | 13 | 4 | 9 |
-| FR-14 | BR-20 | 3 | 4 | 5 | 2 | 3 |
-| FR-15 | BR-21, BR-22 | 6 | 4 | 6 | 0 | 6 |
-| FR-16 | BR-23 | 4 | 0 | 4 | 1 | 3 |
+| FR-13 | BR-18, BR-19 | 10 | 4 | 14 | 14 | 0 |
+| FR-14 | BR-20 | 4 | 5 | 6 | 6 | 0 |
+| FR-15 | BR-21, BR-22 | 6 | 4 | 6 | 3 | 3 (rebates and instalment source from `products`) |
+| FR-16 | BR-23 | 5 | 1 | 6 | 6 | 0 (TC-LED-04.2 partly automated) |
 | FR-17 | BR-24, BR-43 | 6 | 2 | 8 | 8 | 0 |
-| FR-18 | BR-25 | 5 | 0 | 5 | 5 | 0 (guard still designed) |
-| FR-19 | BR-26 | 3 | 0 | 4 | 4 | 0 |
+| FR-18 | BR-25 | 6 | 0 | 7 | 7 | 0 (pairs held in memory only) |
+| FR-19 | BR-26 | 3 | 0 | 6 | 6 | 0 |
 | FR-20 | - | 4 | 0 | 4 | 0 | 4 |
-| FR-31 | - | 3 | 0 | 3 | 0 | 3 |
+| FR-31 | - | 4 | 0 | 5 | 4 | 1 (per-file import audit) |
 | FR-08 | BR-11, BR-17 | 3 | 0 | 3 | 0 | 3 |
 | FR-09 | BR-12 | 4 | 6 | 6 | 0 | 6 |
 | FR-10 | BR-13 | 3 | 5 | 5 | 0 | 5 |
@@ -692,10 +709,14 @@ the command or schema level.
 | FR-28 | BR-35 | 3 | 2 | 3 | 0 | 3 |
 | FR-29 | BR-36 to BR-38 | 3 | 2 | 4 | 0 | 3 (1 blocked on a rule decision) |
 | FR-30, FR-32 | BR-39 | 2 | 0 | 2 | 0 | 2 |
-| **Total** | | **121** | **85** | **176** | **40** | **136** |
+| **Total** | | **127** | **88** | **186** | **71** | **115** |
 
-FR-13 and FR-14 move to mostly automated when `RepaymentAllocator` (queue item L-05) lands on
-PR #8 with these cases as its tests.
+The ledger module (sections 4.1 to 4.9) has 62 test cases, of which 54 are automated. The 8
+designed only are TC-LED-03.2, .4 and .5 (product rebates and the `products` instalment source, decision D-02),
+TC-LED-08.1 to .4 (bank statement import, owner Muhammad Ibrahim) and TC-LED-09.3 (per-file
+import audit). Every case in `origination`, `products`, `delinquency` and `reporting` is
+designed only, because none of those modules is built on `develop` or PR #8 yet (Hassan's
+`DueDateCalculator` is in open PR #6); they are the test basis for their owners.
 
 ### Rule gaps found while designing
 
@@ -703,8 +724,12 @@ These are inputs the business rules do not cover. Each needs a team decision, re
 deviation under SQAP section 6.3, before its test can have an expected result:
 
 1. Declared monthly income of 0.00 in the burden ratio (BR-04).
-2. Payment larger than the full payoff: the excess beyond settlement (BR-21, BR-22).
+2. Payment larger than the full payoff: the excess beyond settlement (BR-21, BR-22). Until a
+   rule exists, the poster refuses such a payment and writes nothing (TC-LED-03.6).
 3. Zero denominators in PAR30, provision coverage and collection efficiency (BR-36 to BR-38).
 4. Whether a statement date range includes both ends (BR-35).
-5. The BR-18/BR-19 reading, adopted tier by tier on 2026-11-14 pending team confirmation.
+5. The BR-18/BR-19 reading. **Resolved:** tier by tier, adopted by the team on 2026-11-16
+   (decision D-01, recorded by Tughral Hussain).
 6. Maximum length and character set of a loan ID.
+7. Resolved by decision D-02 (16 Nov): the instalment source passed to the allocator lists only instalments due by the
+   business date, not every remaining instalment (TC-LED-03.2).

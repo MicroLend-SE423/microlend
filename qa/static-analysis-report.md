@@ -1,6 +1,6 @@
 # MicroLend - Static Analysis Report (M2)
 
-**Deliverable:** SE431 M2, "Static analysis report" · **Document lead:** to be assigned (M2 leads not yet chosen)
+**Deliverable:** SE431 M2, "Static analysis report" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
 **Code analysed:** `feature/ledger-entry`, main source set: `common`, `ledger`, `persistence`, `web`.
 - First run: `923755b` (14 Nov 2026, part-way through the ledger queue).
 - Final M2 run: `dd4dd7e` (whole ledger queue L-01 to L-19).

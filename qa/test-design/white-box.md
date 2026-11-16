@@ -1,6 +1,6 @@
 # MicroLend - White-Box Test Design (M2)
 
-**Deliverable:** SE431 M2, "White-box test design" · **Document lead:** to be assigned (M2 leads not yet chosen)
+**Deliverable:** SE431 M2, "White-box test design" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
 **Code baseline:** `feature/ledger-entry` at `87c5caf` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Re-check against the M2 build before submission.
 **Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
@@ -40,14 +40,14 @@ PMD's figure is higher by exactly the number of `throw` statements in each metho
 
 ## 2. `RepaymentAllocator.allocate`
 
-Source: `src/main/java/pk/edu/giki/microlend/ledger/RepaymentAllocator.java`. Tier-by-tier reading of BR-18/BR-19, adopted 14 Nov 2026 pending team confirmation.
+Source: `src/main/java/pk/edu/giki/microlend/ledger/RepaymentAllocator.java`. Tier-by-tier reading of BR-18/BR-19, team decision D-01 (16 Nov 2026).
 
 ### 2.1 Nodes
 
 | Node | Statement(s) | Decision |
 |---|---|---|
 | N1 | `if (payment == null` | P1 |
-| N2 | `\|\| owing == null)` | P2 |
+| N2 | second operand of the OR: `owing == null` | P2 |
 | N3 | `throw` "a payment and a list ... are required" | |
 | N4 | create `sequences`; `for (instalment : owing)`, has next? | P3 |
 | N5 | `if (instalment == null)` | P4 |
