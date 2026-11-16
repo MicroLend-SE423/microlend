@@ -48,7 +48,9 @@ delinquency buckets, provisioning, write-off), plus statements and portfolio rep
 - SE431 deliverable leads rotate every milestone so each member leads each kind of
   artifact once. M1 leads: Ibrahim (SQAP outline, risk register), Hassan (25010 quality
   requirements, RTM v1), Tughral (standards awareness, Cost of Quality, repo setup).
-  **M2 leads have not been assigned yet** — ask the team rather than assuming.
+  M2: Muhammad Ibrahim is Team Lead and the named document lead for every M2 document
+  (decision D-05 in `docs/planning/team-decisions.md`, recorded by Tughral on 16 Nov 2026).
+  Rotation for M3 is still to be agreed.
 - The person running Claude here is usually **Tughral**. Individual marks depend on
   attributable commits and on each member being able to defend their own work, so do
   not write large parts of another member's module unless asked, and keep commits
@@ -113,22 +115,37 @@ cd docs; npm install; npm run build       # rebuild the submission PDFs (Paged.j
 permission error, run `gh auth switch --user tughral1`. If `./gradlew` fails in CI with
 "Permission denied", the executable bit was lost: `git update-index --chmod=+x gradlew`.
 
-## Where things stand (as of 4 Nov 2026)
+## Where things stand (as of 16 Nov 2026)
 
 **M1 (Week 6, 15%) — submitted.** Both PDFs in `docs/`, tag `m1-baseline` on main. Still
 owed by the members themselves: signing the AI-log declaration (Claude must not sign or
 tick it on their behalf).
 
-**Code so far:** only `common/` — `Money`, `LoanDomainException`, `InvalidMoneyException`,
-`MoneyTest` (11 tests), and a stub `MicroLendApplication`. None of the five modules is
-implemented yet.
+**M2 submission is 18-19 Nov 2026; the team's target is the evening of 17 Nov.**
+
+**If you are working for Hassan or Ibrahim, start here:** `docs/planning/m2-handoff-hassan.md`
+or `docs/planning/m2-handoff-ibrahim.md` (ordered queues, integration points, M2-critical
+items first), and `docs/planning/team-decisions.md` (decisions D-01 to D-05 already taken).
+
+**Code so far (PR #8, `feature/ledger-entry` → `develop`, Tughral):** `common`, the whole
+`ledger` queue L-01 to L-19 (`docs/planning/m2-code-todo.md`: allocator, settlement, posting
+pipeline with the Decorator chain, compensating reversals), `persistence` (SQLite schema,
+ledger and loan repositories) and `web` (local teller page), plus `CompositionRoot` with
+named placeholders for the other modules. 182 tests; Checkstyle and ArchUnit (C-03) in the
+build. `origination`, `products`, `delinquency`, `reporting` and `ledger.importing` have no
+code yet, so Factory Method, Adapter and the concurrent end-of-day engine are still owed.
 
 **Open PR #6 (Hassan, `feat/hassan-product-schedule-tests`): `DueDateCalculator` + test.**
-It targets `main` instead of `develop`, its CI check is failing, and it has no review.
-It needs retargeting to `develop`, a fix for the failing check, and a review — it is
-Hassan's module, so help him rather than rewriting it.
+It targets `main` instead of `develop` and its CI check is failing. It needs retargeting to
+`develop` and a fix (see Hassan's handoff file).
 
-**M2 (Week 10, 35%) is due now or within days — check the exact date on Teams.**
+**M2 documents:** SE431 artifacts live in `qa/` and are assembled into
+`docs/M2-SE431-MicroLend.pdf` from `docs/M2-SE431-Verification-Baseline.md`; the SE423
+report is `docs/M2-SE423-Architecture-Implementation.md` → `docs/M2-SE423-MicroLend.pdf`.
+Subsections marked "owner to complete" are for Ibrahim and Hassan. Rebuild both PDFs with
+`cd docs; npm install; npm run build` after any change.
+
+**M2 (Week 10, 35%) rubric summary:**
 The full rubric is in `docs/course/joint-project-requirements.md`. In short:
 
 SE423 M2: core architecture builds and runs end-to-end; ≥ 3 patterns implemented and
