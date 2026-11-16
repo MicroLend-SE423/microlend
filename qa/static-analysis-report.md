@@ -80,8 +80,8 @@ Disposition key:
 
 | Finding | Defect | CAPA | Owner | Due | Verification |
 |---|---|---|---|---|---|
-| SA-01 | DEF-001 | CAPA-002: use `isBlank()`; the INS-01 checklist covers blank-text checks | Tughral Hussain | before `m2-baseline` | Done locally in `f359765`: PMD re-run has 0 InefficientEmptyStringCheck; 182 tests pass. CI on push still to be recorded |
-| SA-02 | DEF-002 | CAPA-002: check `ResultSet.next()` | Tughral Hussain | before `m2-baseline` | Done locally in `87c5caf`: PMD re-run has 0 CheckResultSet; `SchemaMigratorTest` passes. CI on push still to be recorded |
+| SA-01 | DEF-001 | CAPA-002: use `isBlank()`; the INS-01 checklist covers blank-text checks | Tughral Hussain | before `m2-baseline` | Verified: `f359765`, PMD re-run has 0 InefficientEmptyStringCheck; 182 tests pass; CI run 43829233377 passed |
+| SA-02 | DEF-002 | CAPA-002: check `ResultSet.next()` | Tughral Hussain | before `m2-baseline` | Verified: `87c5caf`, PMD re-run has 0 CheckResultSet; `SchemaMigratorTest` passes; CI run 43829233377 passed |
 | SA-03 | DEF-003 | CAPA-003: stub replaced by L-17/L-18 | Tughral Hussain | M2 build | Done in `2bb5355`: SystemPrintln went from 9 to 1, and the remaining line is accepted |
 | SA-05 to SA-07 | DEF-004, DEF-005 | CAPA-003: M3 refactoring with before/after metrics | Tughral Hussain | M3 (Week 13) | PMD and JaCoCo complexity before and after; tests unchanged and passing |
 
