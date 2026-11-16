@@ -1,4 +1,4 @@
-# Fagan inspections - MicroLend
+# MicroLend - Fagan inspection process
 
 How the team runs formal Fagan-style inspections from M2 onward. The SE431 M2 rubric
 (Fagan inspection report, 20 marks) requires an inspection of real code or design, roles

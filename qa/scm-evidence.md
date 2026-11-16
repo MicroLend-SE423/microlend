@@ -1,6 +1,6 @@
 # MicroLend - SCM Quality-Gate Evidence (M2)
 
-**Deliverable:** SE431 M2, "SCM quality-gate evidence" · **Document lead:** to be assigned (M2 leads not yet chosen)
+**Deliverable:** SE431 M2, "SCM quality-gate evidence" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
 **Evidence collected:** 14 Nov 2026 from the GitHub API (`gh api`, `gh pr`, `gh run`) and `git` on the
 repository `github.com/MicroLend-SE423/microlend`. Figures are re-collected immediately before submission.
 

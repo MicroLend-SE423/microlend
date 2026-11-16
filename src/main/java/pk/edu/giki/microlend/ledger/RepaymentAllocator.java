@@ -17,7 +17,7 @@ import pk.edu.giki.microlend.common.Money;
  * <p>The waterfall is applied <em>tier by tier</em>: all penalties, oldest
  * instalment first, then all fees oldest first, then all interest oldest
  * first, then all principal oldest first. This is the reading of BR-18/BR-19
- * adopted by Tughral Hussain on 2026-11-14, pending team confirmation (see the
+ * adopted on 2026-11-14 and confirmed as team decision D-01 on 2026-11-16 (see the
  * note under BR-19 in {@code docs/business-rules.md}). A partial payment is
  * applied as far as it reaches (BR-20); whatever is left once everything is
  * paid is returned as unapplied for settlement to handle (BR-21).</p>

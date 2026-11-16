@@ -149,13 +149,13 @@ L-19 once PR CI passes for their green commits; L-06 stays partial.
       no UPDATE or DELETE against `ledger_entry` anywhere. QR-05.
 - [x] **L-15** `SqliteLoanRepository` implementing `LoanRepository`, with
       `BEGIN IMMEDIATE` transactions and a busy timeout (§3.6).
-- [ ] **L-16** Fault-injection test: a `LedgerWriter` stub that throws at each write
+- [x] **L-16** Fault-injection test: a `LedgerWriter` stub that throws at each write
       point leaves the ledger balanced (`PostingFaultInjectionTest`). QR-03.
-- [ ] **L-17** Composition root wiring the two production decorator chains from §5.3
+- [x] **L-17** Composition root wiring the two production decorator chains from §5.3
       (import chain: Idempotency → Timing → Core; teller chain: Audit → Timing → Core).
-- [ ] **L-18** Minimal local web interface (`web`): teller posting form and a page that
+- [x] **L-18** Minimal local web interface (`web`): teller posting form and a page that
       triggers end-of-day. Served from a local process only; never deployed.
-- [ ] **L-19** ArchUnit test for constraint C-03 (no cycles between module packages),
+- [x] **L-19** ArchUnit test for constraint C-03 (no cycles between module packages),
       wired into `./gradlew build`.
 
 ## Rules for every run
