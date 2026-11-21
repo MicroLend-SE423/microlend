@@ -42,15 +42,14 @@ final class InMemoryDailyResultStore implements DailyResultStore {
     }
 
     @Override
-    public Optional<Classification> classificationBefore(final LoanId loanId,
-                                                         final LocalDate businessDate) {
+    public Optional<DailySnapshot> lastSnapshot(final LoanId loanId) {
         checkLocked(loanId);
         final ConcurrentSkipListMap<LocalDate, Classification> history = snapshots.get(loanId);
-        if (history == null) {
+        if (history == null || history.isEmpty()) {
             return Optional.empty();
         }
-        final Map.Entry<LocalDate, Classification> earlier = history.lowerEntry(businessDate);
-        return earlier == null ? Optional.empty() : Optional.of(earlier.getValue());
+        final Map.Entry<LocalDate, Classification> last = history.lastEntry();
+        return Optional.of(new DailySnapshot(last.getKey(), last.getValue()));
     }
 
     @Override

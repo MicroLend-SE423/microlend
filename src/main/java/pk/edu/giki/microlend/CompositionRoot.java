@@ -15,7 +15,6 @@ import pk.edu.giki.microlend.ledger.AuditRecord;
 import pk.edu.giki.microlend.ledger.CoreRepaymentPoster;
 import pk.edu.giki.microlend.ledger.EarlySettlementRebate;
 import pk.edu.giki.microlend.ledger.IdempotencyGuardPoster;
-import pk.edu.giki.microlend.ledger.InMemoryPaymentReferences;
 import pk.edu.giki.microlend.ledger.InstalmentsDueSource;
 import pk.edu.giki.microlend.ledger.LockingPoster;
 import pk.edu.giki.microlend.ledger.RepaymentAllocator;
@@ -32,6 +31,7 @@ import pk.edu.giki.microlend.persistence.SqliteDailyResultStore;
 import pk.edu.giki.microlend.persistence.SqliteDatabase;
 import pk.edu.giki.microlend.persistence.SqliteLedgerRepository;
 import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
+import pk.edu.giki.microlend.persistence.SqlitePaymentReferences;
 
 /**
  * The one place that calls {@code new} on infrastructure and assembles the
@@ -42,7 +42,8 @@ import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
  * <ul>
  *   <li>import chain: {@code IdempotencyGuardPoster -> TimingPoster -> LockingPoster
  *       -> Core}; the guard is outermost so a duplicate is refused before anything is
- *       timed or posted;</li>
+ *       timed or posted, and its claimed pairs are kept in SQLite so a duplicate is
+ *       refused across restarts;</li>
  *   <li>teller chain: {@code AuditLoggingPoster -> TimingPoster -> LockingPoster
  *       -> Core}.</li>
  * </ul>
@@ -85,7 +86,7 @@ public final class CompositionRoot {
             instalments, locks, clock);
         this.importPoster = new IdempotencyGuardPoster(
             new TimingPoster(core, System::nanoTime, (c, elapsed, ok) -> timings.add(elapsed)),
-            new InMemoryPaymentReferences());
+            new SqlitePaymentReferences(database));
         this.tellerPoster = new AuditLoggingPoster(
             new TimingPoster(core, System::nanoTime, (c, elapsed, ok) -> timings.add(elapsed)),
             operator, auditTrail::add, clock);

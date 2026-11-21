@@ -12,7 +12,8 @@ import pk.edu.giki.microlend.common.Money;
  *
  * @param businessDate the date processed
  * @param recorded loans recorded by this run
- * @param alreadyRecorded loans skipped because the date was already recorded (BR-33)
+ * @param alreadyRecorded loans skipped because this date, or a later one, was already
+ *     recorded for them (BR-33); nothing is accrued for them
  * @param penaltyAccrued total penalty accrued by this run
  * @param classificationChanges one event per changed classification (BR-34)
  * @param writeOffsDue loans more than 180 days past due (BR-32); listed, not yet posted

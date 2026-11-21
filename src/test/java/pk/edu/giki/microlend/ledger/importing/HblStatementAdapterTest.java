@@ -75,6 +75,22 @@ class HblStatementAdapterTest {
     }
 
     @Test
+    @DisplayName("blank lines are skipped, and an error names the row's physical line in the file")
+    void physicalLineNumbers() throws IOException {
+        assertEquals(1, adapter(HEADER + "\n" + GOOD_ROW + "\n").nextBatch().size());
+        final InvalidStatementException thrown = assertThrows(InvalidStatementException.class,
+            () -> adapter(HEADER + "\n" + GOOD_ROW + "\n"
+                + "31022026,HBL-2,LN-1,no such date,500,CR\n").nextBatch());
+        assertEquals(5, thrown.line());
+    }
+
+    @Test
+    @DisplayName("a UTF-8 byte-order mark before the header, as spreadsheet exports write, is ignored")
+    void byteOrderMark() throws IOException {
+        assertEquals(1, adapter("\uFEFF" + HEADER + GOOD_ROW).nextBatch().size());
+    }
+
+    @Test
     @DisplayName("broken CSV quoting is reported as a typed statement error, not a parser exception")
     void brokenQuoting() {
         final InvalidStatementException thrown = assertThrows(InvalidStatementException.class,

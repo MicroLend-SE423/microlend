@@ -27,6 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
 import pk.edu.giki.microlend.common.LoanId;
 import pk.edu.giki.microlend.common.Money;
 import pk.edu.giki.microlend.delinquency.Classification;
+import pk.edu.giki.microlend.delinquency.DailySnapshot;
 import pk.edu.giki.microlend.ledger.EntryType;
 import pk.edu.giki.microlend.ledger.LedgerEntry;
 
@@ -126,15 +127,14 @@ class SqliteDailyResultStoreTest {
     }
 
     @Test
-    @DisplayName("the classification before a date is the latest earlier snapshot")
-    void classificationBefore() {
-        store.record(LOAN, DAY, 10, Classification.WATCH, List.of());
+    @DisplayName("the last snapshot is the loan's latest recorded date with its classification")
+    void lastSnapshot() {
+        assertEquals(Optional.empty(), store.lastSnapshot(LOAN));
         store.record(LOAN, DAY.plusDays(2), 40, Classification.SUBSTANDARD, List.of());
-        assertEquals(Optional.empty(), store.classificationBefore(LOAN, DAY));
-        assertEquals(Optional.of(Classification.WATCH),
-            store.classificationBefore(LOAN, DAY.plusDays(2)));
-        assertEquals(Optional.of(Classification.SUBSTANDARD),
-            store.classificationBefore(LOAN, DAY.plusDays(3)));
+        store.record(LOAN, DAY, 10, Classification.WATCH, List.of());
+        assertEquals(Optional.of(new DailySnapshot(DAY.plusDays(2), Classification.SUBSTANDARD)),
+            store.lastSnapshot(LOAN));
+        assertEquals(Optional.empty(), store.lastSnapshot(LoanId.of("LN-2")));
     }
 
     @Test

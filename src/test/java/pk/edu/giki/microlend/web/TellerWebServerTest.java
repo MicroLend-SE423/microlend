@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,7 @@ import pk.edu.giki.microlend.ledger.PostingResult;
 import pk.edu.giki.microlend.ledger.RepaymentCommand;
 import pk.edu.giki.microlend.ledger.RepaymentPoster;
 import pk.edu.giki.microlend.ledger.SettlementOutcome;
+import pk.edu.giki.microlend.persistence.PersistenceException;
 
 /**
  * Tests for {@link TellerWebServer} (queue item L-18): the local teller
@@ -55,6 +57,7 @@ class TellerWebServerTest {
     private final List<String> operatorsSeen = new CopyOnWriteArrayList<>();
     private final List<RepaymentCommand> posted = new CopyOnWriteArrayList<>();
     private final List<LocalDate> endOfDayDates = new ArrayList<>();
+    private Function<LocalDate, EodReport> endOfDayRunner = this::runEndOfDay;
     private final OperatorContext operator = new OperatorContext();
     private RepaymentPoster poster = this::accept;
     private TellerWebServer server;
@@ -84,8 +87,8 @@ class TellerWebServerTest {
 
     @BeforeEach
     void start() throws IOException {
-        server = new TellerWebServer(command -> poster.post(command), this::runEndOfDay,
-            operator, 0);
+        server = new TellerWebServer(command -> poster.post(command),
+            date -> endOfDayRunner.apply(date), operator, 0);
         server.start();
     }
 
@@ -223,6 +226,18 @@ class TellerWebServerTest {
         assertTrue(body.contains("LN-7: WATCH to SUBSTANDARD"), body);
         assertTrue(body.contains("LN-9"), body);
         assertTrue(body.contains("schedule &lt;unreadable&gt;"), body);
+    }
+
+    @Test
+    @DisplayName("an end-of-day run that fails as a whole is a 503 page naming the cause")
+    void endOfDayFailureIsReported() throws Exception {
+        endOfDayRunner = date -> {
+            throw new PersistenceException("could not list active loans");
+        };
+        final HttpResponse<String> response = post("/end-of-day",
+            Map.of("businessDate", "2027-03-11"));
+        assertEquals(503, response.statusCode());
+        assertTrue(response.body().contains("could not list active loans"), response.body());
     }
 
     @Test

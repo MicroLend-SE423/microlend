@@ -169,15 +169,23 @@ public final class TellerWebServer {
                 + escape(e.getParsedString()) + "</p>" + backLink()));
             return;
         }
-        respond(exchange, 200, page("End of day " + businessDate,
-            eodSummary(endOfDay.apply(businessDate)) + backLink()));
+        final EodReport report;
+        try {
+            report = endOfDay.apply(businessDate);
+        } catch (LoanDomainException | IllegalStateException failed) {
+            respond(exchange, 503, page("End of day not run", "<p>"
+                + escape(failed.getMessage()) + "</p>" + backLink()));
+            return;
+        }
+        respond(exchange, 200, page("End of day " + businessDate, eodSummary(report) + backLink()));
     }
 
     private static String eodSummary(final EodReport report) {
         final StringBuilder html = new StringBuilder()
             .append("<p>Business date: ").append(report.businessDate()).append("</p>")
             .append("<p>Loans recorded: ").append(report.recorded())
-            .append("; already recorded for this date: ").append(report.alreadyRecorded())
+            .append("; already recorded for this or a later date: ")
+            .append(report.alreadyRecorded())
             .append("</p><p>Penalty accrued: ")
             .append(escape(report.penaltyAccrued().toPlainString())).append("</p>")
             .append("<h2>Classification changes</h2><ul>");

@@ -32,6 +32,22 @@ class McbStatementAdapterTest {
     }
 
     @Test
+    @DisplayName("blank lines are skipped, and an error names the row's physical line in the file")
+    void physicalLineNumbers() throws IOException {
+        assertEquals(1, adapter(HEADER + "\n" + GOOD_ROW + "\n").nextBatch().size());
+        final InvalidStatementException thrown = assertThrows(InvalidStatementException.class,
+            () -> adapter(HEADER + "\n" + GOOD_ROW + "\n"
+                + "MCB-2,31/02/2026,no such date,LN-1,5.00\n").nextBatch());
+        assertEquals(5, thrown.line());
+    }
+
+    @Test
+    @DisplayName("a UTF-8 byte-order mark before the header, as spreadsheet exports write, is ignored")
+    void byteOrderMark() throws IOException {
+        assertEquals(1, adapter("\uFEFF" + HEADER + GOOD_ROW).nextBatch().size());
+    }
+
+    @Test
     @DisplayName("TC-LED-08.2: one command per positive row; rupees kept, dd/MM/yyyy a date; negative rows skipped")
     void mapsCreditRows() throws IOException {
         final McbStatementAdapter adapter =
