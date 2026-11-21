@@ -14,11 +14,16 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Function;
 import pk.edu.giki.microlend.common.InvalidLoanIdException;
 import pk.edu.giki.microlend.common.InvalidMoneyException;
 import pk.edu.giki.microlend.common.LoanDomainException;
 import pk.edu.giki.microlend.common.LoanId;
 import pk.edu.giki.microlend.common.Money;
+import pk.edu.giki.microlend.delinquency.ClassificationChangeEvent;
+import pk.edu.giki.microlend.delinquency.EodReport;
 import pk.edu.giki.microlend.ledger.DuplicatePaymentException;
 import pk.edu.giki.microlend.ledger.InvalidRepaymentException;
 import pk.edu.giki.microlend.ledger.LoanClosedException;
@@ -40,26 +45,36 @@ public final class TellerWebServer {
 
     private static final String HTML = "text/html; charset=utf-8";
 
+    /** Requests served at once, so tellers at several counters are not queued. */
+    private static final int REQUEST_THREADS = 4;
+
     private final RepaymentPoster tellerPoster;
+    private final Function<LocalDate, EodReport> endOfDay;
     private final OperatorContext operator;
     private final HttpServer server;
+    private final ExecutorService requestThreads = Executors.newFixedThreadPool(REQUEST_THREADS);
 
     /**
      * Creates the server; nothing listens until {@link #start()}.
      *
-     * @param tellerPoster the teller chain (Audit -> Timing -> Core)
+     * @param tellerPoster the teller chain (Audit -> Timing -> Locking -> Core)
+     * @param endOfDay runs end of day for a business date, normally
+     *     {@code EndOfDayEngine::run}
      * @param operator the context the audit decorator reads the operator from
      * @param port the port on 127.0.0.1; 0 picks a free one
      * @throws IOException if the port cannot be bound
      * @throws NullPointerException if a collaborator is null
      */
-    public TellerWebServer(final RepaymentPoster tellerPoster, final OperatorContext operator,
-                           final int port) throws IOException {
+    public TellerWebServer(final RepaymentPoster tellerPoster,
+                           final Function<LocalDate, EodReport> endOfDay,
+                           final OperatorContext operator, final int port) throws IOException {
         this.tellerPoster = Objects.requireNonNull(tellerPoster, "teller poster is required");
+        this.endOfDay = Objects.requireNonNull(endOfDay, "end-of-day runner is required");
         this.operator = Objects.requireNonNull(operator, "operator context is required");
         this.server = HttpServer.create(
             new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
         server.createContext("/", this::route);
+        server.setExecutor(requestThreads);
     }
 
     /** Starts listening. */
@@ -67,9 +82,10 @@ public final class TellerWebServer {
         server.start();
     }
 
-    /** Stops listening at once. */
+    /** Stops listening at once and releases the request threads. */
     public void stop() {
         server.stop(0);
+        requestThreads.shutdownNow();
     }
 
     /**
@@ -137,16 +153,48 @@ public final class TellerWebServer {
     }
 
     private void endOfDay(final HttpExchange exchange, final String method) throws IOException {
-        // TODO(delinquency, Muhammad Ibrahim): trigger EndOfDayEngine here once it exists.
-        final String notYet = "<p>The end-of-day engine (delinquency module, owner Muhammad"
-            + " Ibrahim) is not available yet, so it cannot be triggered from here.</p>";
-        if ("POST".equals(method)) {
-            respond(exchange, 503, page("End of day", notYet + backLink()));
-        } else {
-            respond(exchange, 200, page("End of day", notYet
-                + "<form method=\"post\" action=\"/end-of-day\"><button disabled>"
-                + "Run end of day</button></form>" + backLink()));
+        if (!"POST".equals(method)) {
+            respond(exchange, 200, page("End of day",
+                "<form method=\"post\" action=\"/end-of-day\">"
+                    + field("Business date (YYYY-MM-DD)", "businessDate", "date")
+                    + "<button type=\"submit\">Run end of day</button></form>" + backLink()));
+            return;
         }
+        final LocalDate businessDate;
+        try {
+            businessDate = LocalDate.parse(readForm(exchange).getOrDefault("businessDate", "")
+                .trim());
+        } catch (DateTimeParseException e) {
+            respond(exchange, 400, page("End of day not run", "<p>Invalid business date: "
+                + escape(e.getParsedString()) + "</p>" + backLink()));
+            return;
+        }
+        respond(exchange, 200, page("End of day " + businessDate,
+            eodSummary(endOfDay.apply(businessDate)) + backLink()));
+    }
+
+    private static String eodSummary(final EodReport report) {
+        final StringBuilder html = new StringBuilder()
+            .append("<p>Business date: ").append(report.businessDate()).append("</p>")
+            .append("<p>Loans recorded: ").append(report.recorded())
+            .append("; already recorded for this date: ").append(report.alreadyRecorded())
+            .append("</p><p>Penalty accrued: ")
+            .append(escape(report.penaltyAccrued().toPlainString())).append("</p>")
+            .append("<h2>Classification changes</h2><ul>");
+        for (final ClassificationChangeEvent change : report.classificationChanges()) {
+            html.append("<li>").append(escape(change.loanId().value())).append(": ")
+                .append(change.from()).append(" to ").append(change.to()).append("</li>");
+        }
+        html.append("</ul><h2>Due for write-off (over 180 days)</h2><ul>");
+        for (final LoanId loan : report.writeOffsDue()) {
+            html.append("<li>").append(escape(loan.value())).append("</li>");
+        }
+        html.append("</ul><h2>Failed (nothing written)</h2><ul>");
+        for (final Map.Entry<LoanId, String> failure : report.failures().entrySet()) {
+            html.append("<li>").append(escape(failure.getKey().value())).append(": ")
+                .append(escape(failure.getValue())).append("</li>");
+        }
+        return html.append("</ul>").toString();
     }
 
     private static String formPage() {

@@ -34,7 +34,8 @@ public final class MicroLendApplication {
         final OperatorContext operator = new OperatorContext();
         final CompositionRoot root = CompositionRoot.withPlaceholders(
             new SqliteDatabase("jdbc:sqlite:microlend.db"), operator);
-        final TellerWebServer server = new TellerWebServer(root.tellerPoster(), operator, PORT);
+        final TellerWebServer server = new TellerWebServer(root.tellerPoster(),
+            root.endOfDayEngine()::run, operator, PORT);
         server.start();
         System.out.println("MicroLend teller interface: " + server.baseUrl()
             + "  (local only; stop with Ctrl+C)");

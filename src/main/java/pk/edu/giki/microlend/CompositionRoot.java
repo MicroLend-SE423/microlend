@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Supplier;
+import pk.edu.giki.microlend.common.LockRegistry;
+import pk.edu.giki.microlend.delinquency.EndOfDayEngine;
 import pk.edu.giki.microlend.ledger.AuditLoggingPoster;
 import pk.edu.giki.microlend.ledger.AuditRecord;
 import pk.edu.giki.microlend.ledger.CoreRepaymentPoster;
@@ -13,10 +15,12 @@ import pk.edu.giki.microlend.ledger.EarlySettlementRebate;
 import pk.edu.giki.microlend.ledger.IdempotencyGuardPoster;
 import pk.edu.giki.microlend.ledger.InMemoryPaymentReferences;
 import pk.edu.giki.microlend.ledger.InstalmentsDueSource;
+import pk.edu.giki.microlend.ledger.LockingPoster;
 import pk.edu.giki.microlend.ledger.RepaymentAllocator;
 import pk.edu.giki.microlend.ledger.RepaymentPoster;
 import pk.edu.giki.microlend.ledger.SettlementPolicy;
 import pk.edu.giki.microlend.ledger.TimingPoster;
+import pk.edu.giki.microlend.persistence.SqliteDailyResultStore;
 import pk.edu.giki.microlend.persistence.SqliteDatabase;
 import pk.edu.giki.microlend.persistence.SqliteLedgerRepository;
 import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
@@ -28,11 +32,15 @@ import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
  * <p>Two production Decorator chains are built over one shared
  * {@link CoreRepaymentPoster}:</p>
  * <ul>
- *   <li>import chain: {@code IdempotencyGuardPoster -> TimingPoster -> Core};
- *       the guard is outermost so a duplicate is refused before anything is
+ *   <li>import chain: {@code IdempotencyGuardPoster -> TimingPoster -> LockingPoster
+ *       -> Core}; the guard is outermost so a duplicate is refused before anything is
  *       timed or posted;</li>
- *   <li>teller chain: {@code AuditLoggingPoster -> TimingPoster -> Core}.</li>
+ *   <li>teller chain: {@code AuditLoggingPoster -> TimingPoster -> LockingPoster
+ *       -> Core}.</li>
  * </ul>
+ *
+ * <p>The {@link EndOfDayEngine} shares one {@link LockRegistry} with both chains, so a
+ * posting and the engine's work on the same loan never interleave (M1 section 3.6).</p>
  *
  * <p>Only components that exist are wired. What still comes from teammates'
  * modules is supplied through ledger role interfaces; {@link #withPlaceholders}
@@ -45,9 +53,10 @@ public final class CompositionRoot {
     private final List<Duration> timings = new CopyOnWriteArrayList<>();
     private final RepaymentPoster importPoster;
     private final RepaymentPoster tellerPoster;
+    private final EndOfDayEngine endOfDayEngine;
 
     /**
-     * Wires both chains.
+     * Wires both chains and the end-of-day engine.
      *
      * @param database the local SQLite database
      * @param clock source of posting and audit timestamps
@@ -59,9 +68,13 @@ public final class CompositionRoot {
     public CompositionRoot(final SqliteDatabase database, final Clock clock,
                            final InstalmentsDueSource instalments,
                            final EarlySettlementRebate rebates, final Supplier<String> operator) {
-        final RepaymentPoster core = new CoreRepaymentPoster(new RepaymentAllocator(),
-            new SettlementPolicy(rebates), new SqliteLoanRepository(database), instalments,
-            new SqliteLedgerRepository(database), clock);
+        final LockRegistry locks = new LockRegistry();
+        final RepaymentPoster core = new LockingPoster(new CoreRepaymentPoster(
+            new RepaymentAllocator(), new SettlementPolicy(rebates),
+            new SqliteLoanRepository(database), instalments,
+            new SqliteLedgerRepository(database), clock), locks);
+        this.endOfDayEngine = new EndOfDayEngine(new SqliteDailyResultStore(database),
+            instalments, locks, clock);
         this.importPoster = new IdempotencyGuardPoster(
             new TimingPoster(core, System::nanoTime, (c, elapsed, ok) -> timings.add(elapsed)),
             new InMemoryPaymentReferences());
@@ -80,8 +93,9 @@ public final class CompositionRoot {
     public static CompositionRoot withPlaceholders(final SqliteDatabase database,
                                                    final Supplier<String> operator) {
         Objects.requireNonNull(database, "database is required");
-        // TODO(products, Hassan Khalid; delinquency, Muhammad Ibrahim): replace with a source
-        //  that maps products.Instalment and the accrued penalty to ledger.InstalmentDue.
+        // TODO(products, Hassan Khalid; decision D-02): replace with the source that maps
+        //  products.Instalment and the accrued penalty to ledger.InstalmentDue. Until then
+        //  postings are refused and each end-of-day task reports this failure.
         final InstalmentsDueSource instalmentsNotAvailable = (loan, date) -> {
             throw new ModuleNotAvailableException("products", "Hassan Khalid",
                 "listing the instalments owed on " + loan);
@@ -96,7 +110,16 @@ public final class CompositionRoot {
     }
 
     /**
-     * Returns the CSV-import chain: Idempotency -> Timing -> Core.
+     * Returns the end-of-day engine, which shares the account locks with both chains.
+     *
+     * @return the engine
+     */
+    public EndOfDayEngine endOfDayEngine() {
+        return endOfDayEngine;
+    }
+
+    /**
+     * Returns the CSV-import chain: Idempotency -> Timing -> Locking -> Core.
      *
      * @return the import poster
      */
@@ -105,7 +128,7 @@ public final class CompositionRoot {
     }
 
     /**
-     * Returns the teller chain: Audit -> Timing -> Core.
+     * Returns the teller chain: Audit -> Timing -> Locking -> Core.
      *
      * @return the teller poster
      */
