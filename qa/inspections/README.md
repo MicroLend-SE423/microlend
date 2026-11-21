@@ -11,7 +11,7 @@ which is the single defect and CAPA register for the project.
 
 | Inspection | Work product | Status |
 |---|---|---|
-| [INS-01](INS-01-repayment-path/plan.md) | Repayment and ledger money path (`ledger`, `persistence`) | Planned |
+| [INS-01](INS-01-repayment-path/plan.md) | Repayment and ledger money path (`ledger`, `persistence`) | Planned, not held: on 21 Nov 2026 no inspector from another team has been assigned (risk R3). Package complete; scope recounted on the merged code (meeting A about 228 NCLOC) |
 
 ## Roles
 
