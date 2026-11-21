@@ -1,7 +1,7 @@
 # Milestone 2 - SE431 Software Quality Assurance
 
 **Companion document:** `docs/M2-SE423-Architecture-Implementation.md`, the construction-side report for the same build.
-**Build verified:** `feature/delinquency-origination-import` at code head `4067d2f` (21 Nov 2026). It contains the ledger work of PR #8, merged into `develop` on 21 Nov, plus the `origination`, `delinquency` and statement-import code, the durable bank-reference store, and the fixes from the independent code review. The ledger-only figures of 16 Nov were measured at `701c161`. PR number and CI run for this code: *to be filled by the lead*. **Document lead:** Muhammad Ibrahim (M2 Team Lead).
+**Build verified:** `feature/delinquency-origination-import` at code head `4067d2f` (21 Nov 2026). It contains the ledger work of PR #8, merged into `develop` on 21 Nov, plus the `origination`, `delinquency` and statement-import code, the durable bank-reference store, and the fixes from the independent code review. The ledger-only figures of 16 Nov were measured at `701c161`. This code reached `develop` through PR #9 (approved and merged by Tughral Hussain on 21 Nov 2026), whose CI passed in run 44930290499; `develop` passed CI after the merge (run 44931805244 at `ac14ba9`). **Document lead:** Muhammad Ibrahim (M2 Team Lead).
 **Submission:** 22 Nov 2026 (date extended by the instructor).
 **Repository:** github.com/MicroLend-SE423/microlend. Every artifact below is a file in the repository's `qa/` folder. This PDF is built from those files by `docs/build-pdf.mjs`, so the submitted text and the repository cannot drift apart.
 
@@ -44,15 +44,17 @@ The instructor assigns the inspecting team. **On 21 Nov 2026 no inspector from a
 
 | Measure | Value | Source |
 |---|---|---|
-| Automated tests | 384 in 46 test classes, 0 failures, 0 skipped (182 at `701c161`) | `./gradlew clean build jacocoTestReport` at `4067d2f`; PR CI *to be filled by the lead* |
+| Automated tests | 384 in 46 test classes, 0 failures, 0 skipped (182 at `701c161`) | `./gradlew clean build jacocoTestReport` at `4067d2f`; PR #9 CI, run 44930290499 passed; `develop` run 44931805244 passed |
 | Line / branch / method coverage (code that exists) | 95.2% / 88.8% / 98.7% (1,309/1,375; 437/492; 294/298) | JaCoCo report totals, section 10 |
 | Checkstyle findings (gate, includes C-01 no `double`/`float`) | 0 | section 7 |
 | PMD 7.7.0 findings at `4067d2f` | 100 open: 10 accepted, 20 deferred, 70 false positive. 39 are new in the 21 Nov code (8 accepted, 9 deferred, 22 false positive). The ledger code had 66, of which 4 were fixed | section 7 |
 | Highest cyclomatic complexity | 12 (`origination.Applicant` constructor); on the money path 10 (`RepaymentAllocator.allocate`; hand-drawn CFG equals JaCoCo); mean 1.8; none above 15 | sections 7 and 10 |
 | White-box designs (CFG, V(G) computed two ways, basis paths) | 6 methods: `RepaymentAllocator.allocate` (10), `LoanAccount.restore` (8), `LedgerEntry.requireValid` (6), `CoreRepaymentPoster.post` (6), `DelinquencyClassifier.classify` (6), `EndOfDayEngine.collect` (7) | section 10 |
 | Black-box test cases (EP, BVA) | 186 designed, 152 automated (71 at `701c161`) | section 9 |
-| RTM | 26 of 38 requirements with executed, passing tests (8 of them only partly met); 92 of 92 production classes traced; no rogue code | section 12 |
-| CI runs (4 Oct to 14 Nov) | 50: 45 passed, 3 failed with causes recorded, 2 in progress | section 11 |
+| RTM | 26 of 38 requirements with executed, passing tests (8 of them only partly met); 17 functional requirements and 2 constraints *verified* in CI; 92 of 92 production classes traced; no rogue code | section 12 |
+| CI runs (4 Oct to 21 Nov) | 81: 78 passed, 3 failed with causes recorded | section 11 |
+| Pull requests since the review gate (4 Nov) | 2 merged (PR #8, PR #9), each with one non-author approval and merged by its reviewer; PR #6 open with changes requested | section 11 |
+| TDD trail | 19 red/green pairs in PR #8, 9 in PR #9 | section 11 |
 | Defects logged / CAPA opened | 23 / 8. DEF-009 to DEF-016 come from the code review of PR #8 and DEF-018 to DEF-023 from the independent code review. 8 Major in all; 11 fixed or verified, 5 deferred, 7 open; 6 CAPA open | section 6 |
 | Open money-path limitations carried to M3 | Imports must run with the server stopped (DEF-022); the BR-22 rebate line is not written (DEF-013); the write-off is listed, not posted (FR-25) | sections 6 and 12 |
 | Fagan inspection INS-01 | Planned, not held (no external inspector assigned) | sections 2 to 5 |

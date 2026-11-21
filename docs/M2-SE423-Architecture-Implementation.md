@@ -2,7 +2,7 @@
 
 **Team Lead / Integrator (M2):** Muhammad Ibrahim
 **Companion documents:** `docs/M1-SE423-Proposal-OOD-Pattern-Plan.md` (the design this build is measured against), `docs/M2-SE431-Verification-Baseline.md` (the quality evidence for the same build).
-**Build described:** commit `4067d2f` (21 Nov 2026), the last code commit of `feature/delinquency-origination-import`, merged into `develop` by pull request #9 on top of the ledger work of pull request #8. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
+**Build described:** commit `4067d2f` (21 Nov 2026), the last code commit of `feature/delinquency-origination-import`, merged into `develop` by pull request #9 (merge commit `ac14ba9`, 21 Nov 2026) on top of the ledger work of pull request #8. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
 
 ## 0. Module status at writing
 
@@ -526,8 +526,8 @@ Full evidence is in `qa/scm-evidence.md`, collected from the GitHub API.
 | Step | Author | Reviewer and outcome | Merged |
 |---|---|---|---|
 | PR #8, `feature/ledger-entry` -> `develop` | Tughral Hussain | Muhammad Ibrahim, 21 Nov 2026: approved with seven follow-ups recorded in the review (the defects raised from it are in `qa/defect-log.md`) | 21 Nov 2026, merge commit `47c713e` |
-| PR #9, `feature/delinquency-origination-import` -> `develop` | Muhammad Ibrahim | TODO-BASELINE | TODO-BASELINE |
-| `develop` -> `main` ("M2 baseline") | Muhammad Ibrahim | TODO-BASELINE | TODO-BASELINE |
-| Tag `m2-baseline` | Muhammad Ibrahim | annotated, on the merge commit on `main` | TODO-BASELINE |
+| PR #9, `feature/delinquency-origination-import` -> `develop` | Muhammad Ibrahim | Tughral Hussain, 21 Nov 2026: approved; CI passed (run 44930290499) | 21 Nov 2026 by the reviewer, merge commit `ac14ba9`; `develop` CI passed (run 44931805244) |
+| `develop` -> `main` ("M2 baseline") | Muhammad Ibrahim | a non-author approval, recorded on that pull request | merge commit on `main`; it carries this document |
+| Tag `m2-baseline` | Muhammad Ibrahim | annotated, on that merge commit | `git rev-list -n 1 m2-baseline` |
 
 **A controlled exception to the no-force-push rule.** On 21 Nov 2026, with the team lead's approval, the ruleset was switched off for a few minutes so that `develop` could be force-pushed once. The commit messages since the M1 baseline were rewritten to remove tool-generated trailer lines. File contents and commit order did not change: every rewritten commit has the same tree as the one it replaced, which was checked before the push. The ruleset was switched back on straight afterwards. Rewriting changes commit hashes, so every hash quoted in these documents and in `qa/` was updated to the new value in commit `7784a6a` (141 references). GitHub's page for PR #8 still shows that pull request's original hashes. The event is recorded in `qa/scm-evidence.md`.

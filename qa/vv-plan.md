@@ -179,13 +179,13 @@ Status of each M2 exit criterion on 21 Nov 2026, the day before submission:
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| CI green on `develop` with all module PRs merged | **Not met.** PR #8 (ledger) is merged. Ibrahim's branch (`origination`, `delinquency`, `ledger.importing`) builds and passes 384 tests locally at `4067d2f`; its PR and CI run are pending. `products` and `reporting` have no PR except PR #6, which targets `main` with a failing check (DEF-007) | PR number and CI run: *to be filled by the lead* |
+| CI green on `develop` with all module PRs merged | **Not met.** PR #8 (ledger) is merged. Ibrahim's branch (`origination`, `delinquency`, `ledger.importing`) builds and passes 384 tests locally at `4067d2f`; PR #9 passed CI (run 44930290499) and was merged on 21 Nov; `develop` passed CI after the merge (run 44931805244). `products` and `reporting` have no PR except PR #6, which targets `main` with a failing check (DEF-007) | PR #8 and PR #9 merged; `develop` CI run 44931805244 green at `ac14ba9` |
 | Fagan inspection held with an external inspector, defects logged | **Not met.** No inspector from another team has been assigned, so INS-01 has not been held (risk R3). The package is complete | `qa/inspections/` |
 | Static-analysis findings triaged | Met | `qa/static-analysis-report.md`: 100 PMD findings at `4067d2f`, each with a disposition; Checkstyle 0 |
 | EP/BVA and basis-path designs traced to RTM IDs | Met for every module with code | `qa/test-design/black-box.md` (186 cases, 152 automated); `qa/test-design/white-box.md` (6 methods) |
 | Coverage measured and reported | Met | 95.2% lines, 88.8% branches, 98.7% methods at `4067d2f` |
 | RTM, risk register and defect log updated | Met | `qa/rtm.md` v2.1; `qa/risk-register.md` (21 Nov update); `qa/defect-log.md` (DEF-009 to DEF-023, CAPA-004 to CAPA-008) |
-| `m2-baseline` tag on `main` | **Pending** | Tag commit and date: *to be filled by the lead* |
+| `m2-baseline` tag on `main` | **Final submission step** | Annotated tag on the merge commit of the `develop` -> `main` pull request that carries these documents; `git rev-list -n 1 m2-baseline` gives the commit |
 
 **M3 exit criteria (acceptance):** the SQAP 5.1.3 gate in section 4 above; designed tests
 executed with results recorded against RTM IDs; QR-01, QR-03 and QR-06 evidenced; all M2 CAPA
