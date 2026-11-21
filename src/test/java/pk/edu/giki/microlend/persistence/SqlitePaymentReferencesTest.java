@@ -43,9 +43,13 @@ class SqlitePaymentReferencesTest {
     private SqlitePaymentReferences references;
 
     @BeforeEach
-    void openDatabase() {
+    void openDatabase() throws SQLException {
         url = "jdbc:sqlite:" + dir.resolve("references.db");
-        references = new SqlitePaymentReferences(new SqliteDatabase(url));
+        final SqliteDatabase database = new SqliteDatabase(url);
+        // Create the file and schema before any thread opens it: on Windows, a connection
+        // opened while another is creating the file can come back read-only (SQLITE_READONLY).
+        database.connect().close();
+        references = new SqlitePaymentReferences(database);
     }
 
     /** A new handle on the same database file, as the application has after a restart. */
