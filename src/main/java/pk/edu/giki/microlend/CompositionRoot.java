@@ -1,5 +1,7 @@
 package pk.edu.giki.microlend;
 
+import java.io.IOException;
+import java.io.Reader;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
@@ -20,6 +22,12 @@ import pk.edu.giki.microlend.ledger.RepaymentAllocator;
 import pk.edu.giki.microlend.ledger.RepaymentPoster;
 import pk.edu.giki.microlend.ledger.SettlementPolicy;
 import pk.edu.giki.microlend.ledger.TimingPoster;
+import pk.edu.giki.microlend.ledger.importing.HblStatementAdapter;
+import pk.edu.giki.microlend.ledger.importing.ImportReport;
+import pk.edu.giki.microlend.ledger.importing.InvalidStatementException;
+import pk.edu.giki.microlend.ledger.importing.McbStatementAdapter;
+import pk.edu.giki.microlend.ledger.importing.RepaymentSource;
+import pk.edu.giki.microlend.ledger.importing.StatementImportJob;
 import pk.edu.giki.microlend.persistence.SqliteDailyResultStore;
 import pk.edu.giki.microlend.persistence.SqliteDatabase;
 import pk.edu.giki.microlend.persistence.SqliteLedgerRepository;
@@ -107,6 +115,32 @@ public final class CompositionRoot {
         };
         return new CompositionRoot(database, Clock.systemUTC(), instalmentsNotAvailable,
             rebateNotAvailable, operator);
+    }
+
+    /**
+     * Imports one bank statement through the import chain (I-04, FR-20). The bank name
+     * selects the Adapter; the job and the chain never see a bank format.
+     *
+     * @param bank {@code HBL} or {@code MCB}
+     * @param statement the statement text; the caller closes it
+     * @param sourceName the file name, quoted in any error
+     * @return how many rows were posted and which were refused as duplicates (BR-25)
+     * @throws IOException if the statement cannot be read
+     * @throws InvalidStatementException if no adapter exists for the bank, or the file is
+     *     malformed; nothing from a malformed file is posted
+     */
+    public ImportReport importStatement(final String bank, final Reader statement,
+                                        final String sourceName) throws IOException {
+        final RepaymentSource source;
+        if ("HBL".equals(bank)) {
+            source = new HblStatementAdapter(statement, sourceName);
+        } else if ("MCB".equals(bank)) {
+            source = new McbStatementAdapter(statement, sourceName);
+        } else {
+            throw new InvalidStatementException(sourceName, 1,
+                "no statement adapter for bank '" + bank + "'; expected HBL or MCB");
+        }
+        return new StatementImportJob(source, importPoster).run();
     }
 
     /**
