@@ -1,7 +1,7 @@
 # Milestone 2 - SE431 Software Quality Assurance
 
 **Companion document:** `docs/M2-SE423-Architecture-Implementation.md`, the construction-side report for the same build.
-**Build verified:** `feature/ledger-entry` (PR #8 into `develop`) at `87c5caf`. **Document lead:** Muhammad Ibrahim (M2 Team Lead).
+**Build verified:** `feature/ledger-entry` (PR #8 into `develop`) at `701c161`. **Document lead:** Muhammad Ibrahim (M2 Team Lead).
 **Repository:** github.com/MicroLend-SE423/microlend. Every artifact below is a file in the repository's `qa/` folder. This PDF is built from those files by `docs/build-pdf.mjs`, so the submitted text and the repository cannot drift apart.
 
 ## 1. Overview
@@ -43,7 +43,7 @@ The instructor assigns the inspecting team. The inspection package (sections 2 t
 
 | Measure | Value | Source |
 |---|---|---|
-| Automated tests | 182, all passing | `.\gradlew.bat build` at `87c5caf`; PR #8 CI |
+| Automated tests | 182, all passing | `.\gradlew.bat build` at `701c161`; PR #8 CI |
 | Line / branch coverage (code that exists) | 94.5% / 86.5% | JaCoCo, section 10 |
 | Checkstyle findings (CI gate, includes C-01 no `double`/`float`) | 0 | section 7 |
 | PMD 7.7.0 findings on the final M2 code | 66: 4 fixed, 2 accepted, 12 deferred, 48 false positive | section 7 |

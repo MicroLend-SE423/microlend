@@ -2,7 +2,7 @@
 
 **Milestone:** M2 (SE431) - Black-box test design
 **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Version:** 0.2, 2026-11-16 (refreshed against the final ledger build `87c5caf`, 182 tests)
+**Version:** 0.2, 2026-11-16 (refreshed against the final ledger build `701c161`, 182 tests)
 **Sources:** `docs/business-rules.md` v1.1 (BR-01 to BR-43), `qa/rtm.md` (FR, QR and TC IDs),
 `docs/M1-SE431-Quality-Requirements-RTM-SQAP.md`, and the test code under `src/test/java`.
 
@@ -670,7 +670,7 @@ input domain either; it is enforced on every build by `ArchitectureTest#noCycles
 ## 9. Coverage summary
 
 Counts are equivalence classes and BVA cases defined in this document. "Automated" counts
-test cases already implemented in JUnit at commit `87c5caf` (182 tests, all passing),
+test cases already implemented in JUnit at commit `701c161` (182 tests, all passing),
 including partial automation at the command or schema level. The "designed only" column
 includes TC-REP-02.4, which is blocked on a rule decision.
 

@@ -1,7 +1,7 @@
 # MicroLend - White-Box Test Design (M2)
 
 **Deliverable:** SE431 M2, "White-box test design" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Code baseline:** `feature/ledger-entry` at `87c5caf` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Re-check against the M2 build before submission.
+**Code baseline:** `feature/ledger-entry` at `701c161` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Re-check against the M2 build before submission.
 **Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
 ## 1. Method
@@ -223,7 +223,7 @@ This method has one loop and one `if`, so V(G) = 3. JaCoCo agrees: complexity 3,
 
 ## 6. Coverage baseline and gaps (M2)
 
-Measured with `.\gradlew.bat build jacocoTestReport` on `87c5caf`: 182 tests, 0 failures.
+Measured with `.\gradlew.bat build jacocoTestReport` on `701c161`: 182 tests, 0 failures.
 
 | Counter | Covered / total | % |
 |---|---|---|

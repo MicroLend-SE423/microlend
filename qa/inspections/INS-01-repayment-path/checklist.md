@@ -4,7 +4,7 @@ Use during individual preparation and in the meeting. Answer each question for e
 file in scope. A "No" is a candidate defect: log the file, line, checklist ID and a
 one-line description in your preparation log.
 
-References: **C-xx** constraints in CLAUDE.md and the M1 design; **BR-xx**
+References: **C-xx** constraints in the M1 design; **BR-xx**
 `docs/business-rules.md`; **FR/QR-xx** `qa/rtm.md`.
 
 ## A. Money and arithmetic

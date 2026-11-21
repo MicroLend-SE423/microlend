@@ -1,9 +1,9 @@
 # M2 handoff - Hassan Khalid (`products`, `reporting`)
 
-## How to use this file with your AI assistant
+## How to use this file
 
-Give your assistant this file and tell it to do the following:
-1. Read `CLAUDE.md` first, then `docs/planning/team-decisions.md`, then the M1 design sections
+Work through it in this order:
+1. Read `README.md` first, then `docs/planning/team-decisions.md`, then the M1 design sections
    named in each item (`docs/M1-SE423-Proposal-OOD-Pattern-Plan.md`).
 2. Take the items below **top to bottom**, one test-first cycle each.
 3. Do only your own modules. Never edit `ledger`, `persistence` or `web` classes without asking

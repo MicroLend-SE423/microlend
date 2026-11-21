@@ -2,7 +2,7 @@
 
 **Team Lead / Integrator (M2):** Muhammad Ibrahim
 **Companion documents:** `docs/M1-SE423-Proposal-OOD-Pattern-Plan.md` (the design this build is measured against), `docs/M2-SE431-Verification-Baseline.md` (the quality evidence for the same build).
-**Build described:** `feature/ledger-entry` at `87c5caf` (16 Nov 2026), pull request #8 into `develop`. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
+**Build described:** `feature/ledger-entry` at `701c161` (16 Nov 2026), pull request #8 into `develop`. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
 
 ## 0. Module status at writing
 
@@ -106,12 +106,12 @@ Which of these apply depends on the call path, and they combine (M1 section 5.3,
 
 | GoF role | Class (`src/main/java/pk/edu/giki/microlend/ledger/`) | Queue item, green commit |
 |---|---|---|
-| Component | `RepaymentPoster` (interface, `post(RepaymentCommand)`) | L-08, `2211bb7` |
-| ConcreteComponent | `CoreRepaymentPoster`: reads the loan, allocates, settles, writes balanced lines, saves | L-08, `2211bb7` |
-| Decorator | `RepaymentPosterDecorator`: abstract; IS-A `RepaymentPoster` and HAS-A `RepaymentPoster` (`private final RepaymentPoster wrapped`); `post` forwards | L-09, `29f9c1c` |
-| ConcreteDecorator | `TimingPoster`: measures with an injected nanosecond ticker and reports to `PostingTimeRecorder`, for both success and refusal | L-09, `29f9c1c` |
-| ConcreteDecorator | `AuditLoggingPoster`: refuses a posting with no operator; journals posted and refused attempts to `AuditJournal` | L-10, `04102ea` |
-| ConcreteDecorator | `IdempotencyGuardPoster`: claims (bank, reference) atomically through `PaymentReferences`, and releases the claim if the inner posting fails; cash passes through | L-11, `022dcea` |
+| Component | `RepaymentPoster` (interface, `post(RepaymentCommand)`) | L-08, `34a7bb7` |
+| ConcreteComponent | `CoreRepaymentPoster`: reads the loan, allocates, settles, writes balanced lines, saves | L-08, `34a7bb7` |
+| Decorator | `RepaymentPosterDecorator`: abstract; IS-A `RepaymentPoster` and HAS-A `RepaymentPoster` (`private final RepaymentPoster wrapped`); `post` forwards | L-09, `9f7b423` |
+| ConcreteDecorator | `TimingPoster`: measures with an injected nanosecond ticker and reports to `PostingTimeRecorder`, for both success and refusal | L-09, `9f7b423` |
+| ConcreteDecorator | `AuditLoggingPoster`: refuses a posting with no operator; journals posted and refused attempts to `AuditJournal` | L-10, `a43c681` |
+| ConcreteDecorator | `IdempotencyGuardPoster`: claims (bank, reference) atomically through `PaymentReferences`, and releases the claim if the inner posting fails; cash passes through | L-11, `71d8b3f` |
 
 ```mermaid
 classDiagram
@@ -285,33 +285,33 @@ Until this exists, the posting path's own guarantees in 4.2 are the only concurr
 
 - **Coupling.** It is one-directional and checked by ArchUnit (1.1). The heaviest dependency is `persistence -> ledger`, which runs in the intended direction.
 - **Complexity.** The most complex method is `RepaymentAllocator.allocate`, with McCabe V(G) = 10, which JaCoCo confirms. It is kept as one method on purpose as the Fagan inspection target, as planned at M1. Full complexity tables are in `qa/test-design/white-box.md`.
-- **Static analysis.** Checkstyle 10.18.2 is a zero-warning CI gate and reports 0 findings, so C-01 holds: no `double` or `float`. PMD 7.7.0 found 66 findings on the final code, all triaged in `qa/static-analysis-report.md`: 4 fixed (`f359765`, `87c5caf`), 2 accepted, 12 deferred to M3 refactoring, and 48 false positives with reasons.
+- **Static analysis.** Checkstyle 10.18.2 is a zero-warning CI gate and reports 0 findings, so C-01 holds: no `double` or `float`. PMD 7.7.0 found 66 findings on the final code, all triaged in `qa/static-analysis-report.md`: 4 fixed (`e3f585d`, `701c161`), 2 accepted, 12 deferred to M3 refactoring, and 48 false positives with reasons.
 - **Known weaknesses kept for M3 refactoring evidence.** These are the guard-clause runs in `LoanAccount.restore` and `LedgerEntry.requireValid`, and `TellerWebServer`, which does routing, parsing and rendering in one class (DEF-004, DEF-005).
 
 ## 6. TDD and test baseline
 
 ### 6.1 Red-green-refactor history
 
-Each queue item in `docs/planning/m2-code-todo.md` was built as a `test(red):` commit with the failing test, followed by a `feat(green):` commit with the code. Pull request #8 has **19 red/green pairs**, one per item from L-01 to L-19. They are followed by 2 `refactor:` commits (`82ba753` shared `Paisa` converter, `f359765` `isBlank`) and 1 `fix:` commit (`87c5caf`).
+Each queue item in `docs/planning/m2-code-todo.md` was built as a `test(red):` commit with the failing test, followed by a `feat(green):` commit with the code. Pull request #8 has **19 red/green pairs**, one per item from L-01 to L-19. They are followed by 2 `refactor:` commits (`6a93ca4` shared `Paisa` converter, `e3f585d` `isBlank`) and 1 `fix:` commit (`701c161`).
 
 | Item | Red | Green | Item | Red | Green |
 |---|---|---|---|---|---|
-| L-01 | `578fac5` | `6c6a3b2` | L-11 | `7b0faf4` | `022dcea` |
-| L-02 | `a33c187` | `3fb9d25` | L-12 | `3d2b794` | `fb783d8` |
-| L-03 | `6172131` | `ff8d352` | L-13 | `0e6d91c` | `1091877` |
-| L-04 | `72fe2c3` | `525d7cc` | L-14 | `7d826f3` | `737a47a` |
-| L-05 | `dd914b9` | `46c5ea1` | L-15 | `f20f08e` | `b75b9bd` |
-| L-06 | `7e8f4b8` | `923755b` | L-16 | `01d739b` | `8e0ac30` |
-| L-07 | `212a064` | `3f26e6a` | L-17 | `5d7dd40` | `0d4d73d` |
-| L-08 | `bc379d0` | `2211bb7` | L-18 | `bdd34c8` | `2bb5355` |
-| L-09 | `709dfb6` | `29f9c1c` | L-19 | `196cd5c` | `dd4dd7e` |
-| L-10 | `48515d3` | `04102ea` | | | |
+| L-01 | `131164a` | `d09780d` | L-11 | `3a85d3e` | `71d8b3f` |
+| L-02 | `ba36509` | `b6a0c4f` | L-12 | `d34dffa` | `48f9378` |
+| L-03 | `c6bfa3e` | `61febe9` | L-13 | `32ea473` | `c04b41c` |
+| L-04 | `89063cc` | `512cd86` | L-14 | `8be61ef` | `92210a7` |
+| L-05 | `e386629` | `c17052f` | L-15 | `65266d9` | `c2e3879` |
+| L-06 | `4a353b4` | `c80b9c9` | L-16 | `535fa82` | `5502ccf` |
+| L-07 | `db4b263` | `40586be` | L-17 | `33efd9a` | `038bd08` |
+| L-08 | `83934ce` | `34a7bb7` | L-18 | `69f3d76` | `9db0657` |
+| L-09 | `81b1a2f` | `9f7b423` | L-19 | `5835019` | `e0f9ecb` |
+| L-10 | `4f79a3c` | `a43c681` | | | |
 
-Most red commits fail to compile, because the type under test does not exist yet. L-16 is a genuine behavioural red. `PostingFaultInjectionTest` failed at 3 of its 14 failure points, where a failed loan save left the posting's lines in the ledger. Green commit `8e0ac30` added the compensating reversal. Squash and rebase merges are disabled on the repository, so this history reaches `develop` intact.
+Most red commits fail to compile, because the type under test does not exist yet. L-16 is a genuine behavioural red. `PostingFaultInjectionTest` failed at 3 of its 14 failure points, where a failed loan save left the posting's lines in the ledger. Green commit `5502ccf` added the compensating reversal. Squash and rebase merges are disabled on the repository, so this history reaches `develop` intact.
 
 ### 6.2 Tests and coverage
 
-`.\gradlew.bat build jacocoTestReport` at `87c5caf`:
+`.\gradlew.bat build jacocoTestReport` at `701c161`:
 
 | Measure | Result |
 |---|---|

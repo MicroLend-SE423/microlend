@@ -152,7 +152,7 @@ stated with it. Until then, build against these decisions.
 
 ## D-05 M2 Team Lead and document lead
 
-- **Context.** M2 document leads were not assigned. CLAUDE.md asks that leads be agreed by the
+- **Context.** M2 document leads were not assigned. The M1 plan asks that leads be agreed by the
   team.
 - **Decision.** Muhammad Ibrahim is the M2 Team Lead and Integrator, and the document lead
   for **all M2 documents**. That covers the SE423 M2 document and every SE431 M2 deliverable

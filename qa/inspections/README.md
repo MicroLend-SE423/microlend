@@ -79,7 +79,7 @@ inspector is a full inspector, not an observer.
 | Logic | Wrong allocation order, wrong comparison, off-by-one at a BVA boundary, missing branch |
 | Data | Wrong scale or rounding, `double`/`float` use, paisa conversion errors, wrong column or constraint |
 | Interface | Wrong contract between modules, null passed across a boundary, misuse of `LedgerWriter`/`LedgerReader`, transaction handled by the wrong caller |
-| Standards | Breach of CLAUDE.md constraints or Checkstyle rules not caught by the tool, generic exceptions, missing validation |
+| Standards | Breach of the C-01 to C-04 constraints or Checkstyle rules not caught by the tool, generic exceptions, missing validation |
 | Documentation | Javadoc or comments that contradict the code or the business rules |
 
 ## From defect to CAPA

@@ -2,9 +2,9 @@
 
 **Deliverable:** SE431 M2, "Static analysis report" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
 **Code analysed:** `feature/ledger-entry`, main source set: `common`, `ledger`, `persistence`, `web`.
-- First run: `923755b` (14 Nov 2026, part-way through the ledger queue).
-- Final M2 run: `dd4dd7e` (whole ledger queue L-01 to L-19).
-- After fixes: `87c5caf`.
+- First run: `c80b9c9` (14 Nov 2026, part-way through the ledger queue).
+- Final M2 run: `e0f9ecb` (whole ledger queue L-01 to L-19).
+- After fixes: `701c161`.
 
 Finding IDs stay stable between runs; new findings get new IDs.
 
@@ -28,9 +28,9 @@ Checkstyle is the gate that is already enforced. PMD was added for M2 because Ch
 
 | Run | Commit | Checkstyle | PMD findings |
 |---|---|---|---|
-| First | `923755b` | 0 | 53 |
-| Final M2 code | `dd4dd7e` | 0 | **66** |
-| After fixes | `87c5caf` | 0 | 62 |
+| First | `c80b9c9` | 0 | 53 |
+| Final M2 code | `e0f9ecb` | 0 | **66** |
+| After fixes | `701c161` | 0 | 62 |
 
 How the 66 findings on the final code were dispositioned:
 
@@ -53,8 +53,8 @@ Disposition key:
 
 | ID | PMD rule | Count | Location | Disposition | Reasoning / action |
 |---|---|---|---|---|---|
-| SA-01 | InefficientEmptyStringCheck | 3 | `LedgerEntry.reversalOf`, `RepaymentCommand.requireText`, `AuditLoggingPoster` (operator name) | **Fixed** in `f359765` | `value.trim().isEmpty()` made a trimmed copy only to test for blank text. It now uses `String.isBlank()` (Java 11+). Behaviour is the same, and the existing tests pass. DEF-001, CAPA-002 |
-| SA-02 | CheckResultSet | 1 | `SchemaMigrator.currentVersion` | **Fixed** in `87c5caf` | `rows.next()` was ignored. `PRAGMA user_version` always returns one row in SQLite, but if none came back, the code would have read an empty cursor and failed with a raw `SQLException`. It now raises an explicit error that `migrate()` wraps in `PersistenceException`. DEF-002, CAPA-002 |
+| SA-01 | InefficientEmptyStringCheck | 3 | `LedgerEntry.reversalOf`, `RepaymentCommand.requireText`, `AuditLoggingPoster` (operator name) | **Fixed** in `e3f585d` | `value.trim().isEmpty()` made a trimmed copy only to test for blank text. It now uses `String.isBlank()` (Java 11+). Behaviour is the same, and the existing tests pass. DEF-001, CAPA-002 |
+| SA-02 | CheckResultSet | 1 | `SchemaMigrator.currentVersion` | **Fixed** in `701c161` | `rows.next()` was ignored. `PRAGMA user_version` always returns one row in SQLite, but if none came back, the code would have read an empty cursor and failed with a raw `SQLException`. It now raises an explicit error that `migrate()` wraps in `PersistenceException`. DEF-002, CAPA-002 |
 | SA-03 | SystemPrintln | 1 (was 9) | `MicroLendApplication.main` | **Accepted** | L-17/L-18 replaced the M1 console stub, which removed 8 of the 9 findings (DEF-003). The one remaining line prints the local address of the teller page once at start-up. That message is meant for the operator at the console, so it is not diagnostic logging |
 | SA-04 | CyclomaticComplexity | 1 | `RepaymentAllocator.allocate` (PMD 13; McCabe 10) | **Accepted** | Kept as one method on purpose: it is the Fagan inspection target, and the queue requires it to read top to bottom. PMD counts the 3 `throw` statements as extra decisions. Its graph complexity of 10 is at, not above, McCabe's commonly used limit of 10, and all 18 branches are covered (`qa/test-design/white-box.md`). Re-assessed after inspection INS-01 |
 | SA-05 | CyclomaticComplexity | 2 | `LoanAccount.restore` (13; McCabe 8), `LedgerEntry.requireValid` (11; McCabe 6) | **Deferred** to M3 refactoring | These are sequential guard clauses, each with its own message. They are a candidate for the M3 "refactoring and code smells" evidence: extract a validation helper and measure before and after. DEF-004 |
@@ -80,9 +80,9 @@ Disposition key:
 
 | Finding | Defect | CAPA | Owner | Due | Verification |
 |---|---|---|---|---|---|
-| SA-01 | DEF-001 | CAPA-002: use `isBlank()`; the INS-01 checklist covers blank-text checks | Tughral Hussain | before `m2-baseline` | Verified: `f359765`, PMD re-run has 0 InefficientEmptyStringCheck; 182 tests pass; CI run 43829233377 passed |
-| SA-02 | DEF-002 | CAPA-002: check `ResultSet.next()` | Tughral Hussain | before `m2-baseline` | Verified: `87c5caf`, PMD re-run has 0 CheckResultSet; `SchemaMigratorTest` passes; CI run 43829233377 passed |
-| SA-03 | DEF-003 | CAPA-003: stub replaced by L-17/L-18 | Tughral Hussain | M2 build | Done in `2bb5355`: SystemPrintln went from 9 to 1, and the remaining line is accepted |
+| SA-01 | DEF-001 | CAPA-002: use `isBlank()`; the INS-01 checklist covers blank-text checks | Tughral Hussain | before `m2-baseline` | Verified: `e3f585d`, PMD re-run has 0 InefficientEmptyStringCheck; 182 tests pass; CI run 43829233377 passed |
+| SA-02 | DEF-002 | CAPA-002: check `ResultSet.next()` | Tughral Hussain | before `m2-baseline` | Verified: `701c161`, PMD re-run has 0 CheckResultSet; `SchemaMigratorTest` passes; CI run 43829233377 passed |
+| SA-03 | DEF-003 | CAPA-003: stub replaced by L-17/L-18 | Tughral Hussain | M2 build | Done in `9db0657`: SystemPrintln went from 9 to 1, and the remaining line is accepted |
 | SA-05 to SA-07 | DEF-004, DEF-005 | CAPA-003: M3 refactoring with before/after metrics | Tughral Hussain | M3 (Week 13) | PMD and JaCoCo complexity before and after; tests unchanged and passing |
 
 ## 5. Not yet analysed

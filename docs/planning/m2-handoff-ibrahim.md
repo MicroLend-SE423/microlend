@@ -1,9 +1,9 @@
 # M2 handoff - Muhammad Ibrahim (`origination`, `delinquency`, `ledger.importing`; M2 Team Lead)
 
-## How to use this file with your AI assistant
+## How to use this file
 
-Give your assistant this file and tell it to do the following:
-1. Read `CLAUDE.md` first, then `docs/planning/team-decisions.md`, then the M1 design sections
+Work through it in this order:
+1. Read `README.md` first, then `docs/planning/team-decisions.md`, then the M1 design sections
    named in each item (`docs/M1-SE423-Proposal-OOD-Pattern-Plan.md`, especially section 3.6
    on concurrency and section 5.2 on the Adapter).
 2. Do the **Team Lead checklist** first, then take the queue **top to bottom**, one test-first
@@ -176,8 +176,7 @@ end-of-day operation real, which SE423 M2 grades directly:
 - [ ] **I-04 (M2-critical, the Adapter pattern)** Bank statement import in
   `pk.edu.giki.microlend.ledger.importing`. Follow M1 section 5.2 and View 2.
   - **Target:** `RepaymentSource` (`nextBatch(): List<RepaymentCommand>`).
-  - **Adapters:** `HblStatementAdapter` and `McbStatementAdapter`. CLAUDE.md calls them "a
-    `CsvStatementAdapter` per bank format", but use the M1 class names. Each one **holds**
+  - **Adapters:** `HblStatementAdapter` and `McbStatementAdapter`. Use the M1 class names. Each one **holds**
     Apache Commons CSV `CSVParser` by composition, as the adaptee, and translates that bank's
     columns, date format, minor units and sign convention into
     `RepaymentCommand.bank(...)`.
