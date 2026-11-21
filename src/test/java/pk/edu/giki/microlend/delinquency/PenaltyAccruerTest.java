@@ -87,6 +87,33 @@ class PenaltyAccruerTest {
     }
 
     @Test
+    @DisplayName("a skipped business date is caught up: penalty runs from the previous run to this one")
+    void catchesUpSkippedDates() {
+        final LocalDate due = LocalDate.of(2027, 3, 10);
+        final List<InstalmentDue> owing = List.of(new InstalmentDue(1, due, Money.ZERO,
+            Money.ZERO, Money.ZERO, money("10000.00")));
+        final Money first = accruer.accrue(owing, PenaltyAccruer.NO_PREVIOUS_RUN, due.plusDays(1));
+        final Money catchUp = accruer.accrue(owing, due.plusDays(1), due.plusDays(5));
+        assertEquals(money("5.00"), first);
+        assertEquals(money("20.00"), catchUp);
+        assertEquals(accruer.accrued(money("10000.00"), 5), first.plus(catchUp));
+    }
+
+    @Test
+    @DisplayName("a loan never processed before accrues every overdue day up to the business date")
+    void firstRunAccruesEveryOverdueDay() {
+        assertEquals(money("50.00"), accruer.accrue(List.of(overdue(1, 10, "0.00", "10000.00")),
+            PenaltyAccruer.NO_PREVIOUS_RUN, TODAY));
+    }
+
+    @Test
+    @DisplayName("the previous run must come before the business date")
+    void previousRunMustBeEarlier() {
+        assertThrows(IllegalArgumentException.class,
+            () -> accruer.accrue(List.of(overdue(1, 10, "0.00", "10000.00")), TODAY, TODAY));
+    }
+
+    @Test
     @DisplayName("daily amounts add up exactly to the cumulative penalty, rounding included")
     void dailyAmountsSumToCumulative() {
         final Money principal = money("333.33");

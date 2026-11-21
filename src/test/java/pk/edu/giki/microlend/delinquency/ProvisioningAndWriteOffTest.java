@@ -42,7 +42,7 @@ class ProvisioningAndWriteOffTest {
     }
 
     @Test
-    @DisplayName("TC-DEL-05.3: more than 180 days is written off")
+    @DisplayName("TC-DEL-05.3 (threshold): more than 180 days past due is due for write-off")
     void writtenOffAfter180() {
         assertTrue(writeOff.shouldWriteOff(181));
     }

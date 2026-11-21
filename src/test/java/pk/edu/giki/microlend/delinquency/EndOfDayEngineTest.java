@@ -66,6 +66,12 @@ class EndOfDayEngineTest {
         return sum;
     }
 
+    /** Each loan owes 10,000.00 principal that fell due on 2027-03-10, whatever the run date. */
+    private static InstalmentsDueSource dueOnTenthOfMarch() {
+        return (loan, date) -> List.of(new InstalmentDue(1, LocalDate.of(2027, 3, 10),
+            Money.ZERO, Money.ZERO, Money.ZERO, money("10000.00")));
+    }
+
     @Test
     @DisplayName("TC-DEL-06.1: every active loan gets a snapshot and a balanced penalty pair")
     void processesEveryLoan() {
@@ -76,7 +82,8 @@ class EndOfDayEngineTest {
         assertEquals(0, report.alreadyRecorded());
         assertEquals(Map.of(), report.failures());
         assertEquals(20, store.snapshotCount());
-        assertEquals(money("100.00"), report.penaltyAccrued());
+        assertEquals(money("1000.00"), report.penaltyAccrued(),
+            "a loan never processed before accrues all ten overdue days: 20 x 50.00");
         final List<LedgerEntry> lines = store.ledger();
         assertEquals(40, lines.size());
         assertEquals(total(lines, true), total(lines, false));
@@ -101,6 +108,33 @@ class EndOfDayEngineTest {
         final EodReport tomorrow = engine.run(TODAY.plusDays(1));
         assertEquals(5, tomorrow.recorded());
         assertEquals(20, store.ledger().size());
+    }
+
+    @Test
+    @DisplayName("BR-27: dates skipped between runs are caught up, so no overdue day goes unpenalised")
+    void catchesUpSkippedDates() {
+        final InMemoryDailyResultStore store = new InMemoryDailyResultStore(loans(3), locks);
+        final EndOfDayEngine engine = engine(store, dueOnTenthOfMarch());
+        assertEquals(money("15.00"), engine.run(TODAY).penaltyAccrued());
+
+        final EodReport afterGap = engine.run(TODAY.plusDays(4));
+        assertEquals(money("60.00"), afterGap.penaltyAccrued(), "four days for each of three loans");
+        assertEquals(money("75.00"), total(store.ledger(), true),
+            "five overdue days in all for each loan: 3 x 25.00");
+    }
+
+    @Test
+    @DisplayName("a run for a date earlier than the loan's last run records nothing (no double accrual)")
+    void earlierDateAfterALaterRunIsSkipped() {
+        final InMemoryDailyResultStore store = new InMemoryDailyResultStore(loans(3), locks);
+        final EndOfDayEngine engine = engine(store, dueOnTenthOfMarch());
+        engine.run(TODAY.plusDays(4));
+
+        final EodReport backdated = engine.run(TODAY);
+        assertEquals(0, backdated.recorded());
+        assertEquals(3, backdated.alreadyRecorded());
+        assertEquals(Money.ZERO, backdated.penaltyAccrued());
+        assertEquals(3, store.snapshotCount());
     }
 
     @Test
@@ -189,7 +223,8 @@ class EndOfDayEngineTest {
     }
 
     @Test
-    @DisplayName("TC-DEL-05.3: a loan more than 180 days past due is listed for write-off")
+    @DisplayName("TC-DEL-05.3 (partial): a loan more than 180 days past due is listed for write-off;"
+        + " posting the write-off is M3")
     void writeOffDueIsReported() {
         final InMemoryDailyResultStore store = new InMemoryDailyResultStore(loans(1), locks);
         final EodReport report = engine(store, overdueBy(181)).run(TODAY);
