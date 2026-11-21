@@ -28,6 +28,7 @@ public abstract class LoanProduct {
     private final int minTenureMonths;
     private final int maxTenureMonths;
     private final DueDateCalculator dueDates = new DueDateCalculator();
+    private final GracePeriodPolicy grace = new GracePeriodPolicy();
     private final ScheduleAssembler assembler = new ScheduleAssembler();
 
     /**
@@ -64,9 +65,7 @@ public abstract class LoanProduct {
     }
 
     /**
-     * Generates the repayment schedule for a loan.
-     *
-     * <p>This is the stable workflow of the pattern and cannot be overridden.</p>
+     * Generates the repayment schedule for a loan with no grace period.
      *
      * @param principal the amount lent, within this product's band
      * @param tenureMonths the number of monthly instalments, within this product's band
@@ -77,13 +76,37 @@ public abstract class LoanProduct {
      */
     public final Schedule generateSchedule(final Money principal, final int tenureMonths,
                                            final LocalDate disbursement) {
+        return generateSchedule(principal, tenureMonths, disbursement, 0);
+    }
+
+    /**
+     * Generates the repayment schedule for a loan.
+     *
+     * <p>This is the stable workflow of the pattern and cannot be overridden: validate, build
+     * the due dates (deferred by the grace period), obtain the calculator from the factory
+     * method, and assemble. Interest accrued during grace is added to the first instalment
+     * (BR-13).</p>
+     *
+     * @param principal the amount lent, within this product's band
+     * @param tenureMonths the number of monthly instalments, within this product's band
+     * @param disbursement the date the loan is disbursed
+     * @param graceMonths the grace period in months, 0 to 3
+     * @return the schedule: exactly {@code tenureMonths} instalments that add up to the
+     *     principal plus the total interest (BR-14, BR-16)
+     * @throws InvalidScheduleException if the amount, tenure or date is not acceptable
+     * @throws InvalidGracePeriodException if the grace period is outside 0 to 3 months
+     */
+    public final Schedule generateSchedule(final Money principal, final int tenureMonths,
+                                           final LocalDate disbursement, final int graceMonths) {
         validate(principal, tenureMonths, disbursement);
-        final InterestCalculator calculator = createInterestCalculator();
         final BigDecimal rate = ratePercent();
+        final Money graceInterest = grace.accruedInterest(principal, rate, graceMonths);
+        final InterestCalculator calculator = createInterestCalculator();
         return assembler.assemble(principal,
-            dueDates.dueDates(disbursement, tenureMonths),
+            dueDates.dueDates(disbursement, 1 + graceMonths, tenureMonths),
             calculator.principalSchedule(principal, rate, tenureMonths),
-            calculator.interestSchedule(principal, rate, tenureMonths));
+            calculator.interestSchedule(principal, rate, tenureMonths),
+            graceInterest);
     }
 
     /**
