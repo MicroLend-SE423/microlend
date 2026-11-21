@@ -29,9 +29,14 @@ import pk.edu.giki.microlend.ledger.LedgerEntry;
  * is owed, computes days past due, classification and the day's penalty, and records the
  * snapshot and the balanced penalty pair in one storage transaction.
  *
+ * <p>Penalty is accrued from the loan's last recorded run up to this business date, so a
+ * date skipped between runs is caught up (BR-27). A loan whose last run is this date or a
+ * later one is skipped, so repeating a run, or running an earlier date afterwards, accrues
+ * nothing twice (BR-33).</p>
+ *
  * <p>Thread safety: the calculators are stateless; a task holds exactly one account lock
  * and never a second, so no deadlock can form; the store's unique (loan, business date)
- * key makes a repeated run add nothing. A task that throws is reported in the
+ * key backs up the skip across processes. A task that throws is reported in the
  * {@link EodReport} and has written nothing; it does not stop the other tasks.</p>
  *
  * <p>Deviation from M1 View 3, recorded in the M2 report: what is owed comes through
@@ -93,15 +98,20 @@ public final class EndOfDayEngine {
         final ReentrantLock lock = locks.lockFor(loan);
         lock.lock();
         try {
+            final Optional<DailySnapshot> last = store.lastSnapshot(loan);
+            if (last.isPresent() && !last.get().businessDate().isBefore(businessDate)) {
+                return LoanResult.alreadyRecorded();
+            }
             final List<InstalmentDue> owing = instalments.owing(loan, businessDate);
             final int daysPastDue = days.daysPastDue(owing, businessDate);
             final Classification now = classifier.classify(daysPastDue);
-            final Money penalty = penalties.accrue(owing, businessDate);
-            final Optional<Classification> before = store.classificationBefore(loan, businessDate);
+            final Money penalty = penalties.accrue(owing, last.map(DailySnapshot::businessDate)
+                .orElse(PenaltyAccruer.NO_PREVIOUS_RUN), businessDate);
             if (!store.record(loan, businessDate, daysPastDue, now, accrual(loan, penalty))) {
                 return LoanResult.alreadyRecorded();
             }
-            final ClassificationChangeEvent change = before.filter(previous -> previous != now)
+            final ClassificationChangeEvent change = last.map(DailySnapshot::classification)
+                .filter(previous -> previous != now)
                 .map(previous -> new ClassificationChangeEvent(loan, previous, now))
                 .orElse(null);
             return new LoanResult(true, penalty, change, writeOff.shouldWriteOff(daysPastDue));

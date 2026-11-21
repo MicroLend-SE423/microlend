@@ -13,6 +13,7 @@ import java.util.Optional;
 import pk.edu.giki.microlend.common.LoanId;
 import pk.edu.giki.microlend.delinquency.Classification;
 import pk.edu.giki.microlend.delinquency.DailyResultStore;
+import pk.edu.giki.microlend.delinquency.DailySnapshot;
 import pk.edu.giki.microlend.ledger.LedgerEntry;
 
 /**
@@ -26,8 +27,8 @@ import pk.edu.giki.microlend.ledger.LedgerEntry;
 public final class SqliteDailyResultStore implements DailyResultStore {
 
     private static final String ACTIVE = "SELECT id FROM loan WHERE status = 'ACTIVE' ORDER BY id";
-    private static final String BEFORE = "SELECT classification FROM delinquency_snapshot"
-        + " WHERE loan_id = ? AND business_date < ? ORDER BY business_date DESC LIMIT 1";
+    private static final String LAST = "SELECT business_date, classification"
+        + " FROM delinquency_snapshot WHERE loan_id = ? ORDER BY business_date DESC LIMIT 1";
     private static final String EXISTS = "SELECT 1 FROM delinquency_snapshot"
         + " WHERE loan_id = ? AND business_date = ?";
     private static final String INSERT = "INSERT INTO delinquency_snapshot"
@@ -60,19 +61,18 @@ public final class SqliteDailyResultStore implements DailyResultStore {
     }
 
     @Override
-    public Optional<Classification> classificationBefore(final LoanId loanId,
-                                                         final LocalDate businessDate) {
+    public Optional<DailySnapshot> lastSnapshot(final LoanId loanId) {
         try (Connection connection = database.connect();
-             PreparedStatement select = connection.prepareStatement(BEFORE)) {
+             PreparedStatement select = connection.prepareStatement(LAST)) {
             select.setString(1, loanId.value());
-            select.setString(2, businessDate.toString());
             try (ResultSet row = select.executeQuery()) {
                 return row.next()
-                    ? Optional.of(Classification.valueOf(row.getString(1)))
+                    ? Optional.of(new DailySnapshot(LocalDate.parse(row.getString(1)),
+                        Classification.valueOf(row.getString(2))))
                     : Optional.empty();
             }
         } catch (SQLException e) {
-            throw new PersistenceException("could not read the classification of " + loanId, e);
+            throw new PersistenceException("could not read the last snapshot of " + loanId, e);
         }
     }
 

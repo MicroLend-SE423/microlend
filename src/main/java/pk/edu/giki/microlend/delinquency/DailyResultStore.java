@@ -20,14 +20,14 @@ public interface DailyResultStore {
     List<LoanId> activeLoans();
 
     /**
-     * The loan's most recent classification before a business date, used to detect a
-     * classification change (BR-34).
+     * The loan's latest recorded result. Its date tells the engine from which day penalty
+     * is still owed (BR-27) and whether a date has already been processed; its
+     * classification is compared with today's to detect a change (BR-34).
      *
      * @param loanId the loan
-     * @param businessDate the date being processed
-     * @return the latest earlier classification, or empty for a loan never processed
+     * @return the latest snapshot, or empty for a loan never processed
      */
-    Optional<Classification> classificationBefore(LoanId loanId, LocalDate businessDate);
+    Optional<DailySnapshot> lastSnapshot(LoanId loanId);
 
     /**
      * Records one loan's result for one business date: the snapshot and the day's

@@ -50,7 +50,7 @@ public final class HblStatementAdapter implements RepaymentSource {
     private static final DateTimeFormatter DATE_FORMAT =
         DateTimeFormatter.ofPattern("ddMMuuuu").withResolverStyle(ResolverStyle.STRICT);
     private static final CSVFormat FORMAT = CSVFormat.DEFAULT.builder()
-        .setHeader().setSkipHeaderRecord(true).setTrim(true).build();
+        .setHeader().setSkipHeaderRecord(true).setTrim(true).setIgnoreEmptyLines(false).build();
 
     private final CSVParser parser;
     private final String sourceName;
@@ -67,7 +67,7 @@ public final class HblStatementAdapter implements RepaymentSource {
     public HblStatementAdapter(final Reader statement, final String sourceName)
         throws IOException {
         this.sourceName = Objects.requireNonNull(sourceName, "source name is required");
-        this.parser = FORMAT.parse(statement);
+        this.parser = FORMAT.parse(StatementText.withoutByteOrderMark(statement));
         final List<String> missing = new ArrayList<>(
             List.of(DATE, REFERENCE, LOAN, AMOUNT, DIRECTION));
         missing.removeAll(parser.getHeaderNames());
@@ -91,13 +91,17 @@ public final class HblStatementAdapter implements RepaymentSource {
         final List<RepaymentCommand> batch = new ArrayList<>();
         try {
             for (final CSVRecord row : parser) {
+                if (StatementText.isBlank(row)) {
+                    continue;
+                }
                 try {
                     if (isCredit(row.get(DIRECTION))) {
                         batch.add(toCommand(row));
                     }
                 } catch (final IllegalArgumentException | DateTimeException
                                | LoanDomainException badRow) {
-                    // + 1 because the header is line 1 and records are numbered from 1.
+                    // + 1 for the header; blank lines are records too, so this is the
+                    // row's physical line.
                     throw new InvalidStatementException(sourceName, row.getRecordNumber() + 1,
                         badRow.getMessage(), badRow);
                 }

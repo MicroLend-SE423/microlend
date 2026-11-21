@@ -48,7 +48,7 @@ public final class McbStatementAdapter implements RepaymentSource {
     private static final DateTimeFormatter DATE_FORMAT =
         DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
     private static final CSVFormat FORMAT = CSVFormat.DEFAULT.builder()
-        .setHeader().setSkipHeaderRecord(true).setTrim(true).build();
+        .setHeader().setSkipHeaderRecord(true).setTrim(true).setIgnoreEmptyLines(false).build();
 
     private final CSVParser parser;
     private final String sourceName;
@@ -65,7 +65,7 @@ public final class McbStatementAdapter implements RepaymentSource {
     public McbStatementAdapter(final Reader statement, final String sourceName)
         throws IOException {
         this.sourceName = Objects.requireNonNull(sourceName, "source name is required");
-        this.parser = FORMAT.parse(statement);
+        this.parser = FORMAT.parse(StatementText.withoutByteOrderMark(statement));
         final List<String> missing = new ArrayList<>(List.of(REFERENCE, DATE, LOAN, AMOUNT));
         missing.removeAll(parser.getHeaderNames());
         if (!missing.isEmpty()) {
@@ -89,6 +89,9 @@ public final class McbStatementAdapter implements RepaymentSource {
         final List<RepaymentCommand> batch = new ArrayList<>();
         try {
             for (final CSVRecord row : parser) {
+                if (StatementText.isBlank(row)) {
+                    continue;
+                }
                 try {
                     final BigDecimal amount = new BigDecimal(row.get(AMOUNT));
                     if (amount.signum() >= 0) {
@@ -96,7 +99,8 @@ public final class McbStatementAdapter implements RepaymentSource {
                     }
                 } catch (final IllegalArgumentException | DateTimeException
                                | LoanDomainException badRow) {
-                    // + 1 because the header is line 1 and records are numbered from 1.
+                    // + 1 for the header; blank lines are records too, so this is the
+                    // row's physical line.
                     throw new InvalidStatementException(sourceName, row.getRecordNumber() + 1,
                         badRow.getMessage(), badRow);
                 }
