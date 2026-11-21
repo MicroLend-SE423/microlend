@@ -102,6 +102,8 @@ public final class SchemaMigrator {
      * rebuilt with {@code PENALTY_INCOME} added (D-04, T-02) and its rows copied in id
      * order, which keeps every reversal link valid. The unique index allows each entry
      * to be reversed at most once (BR-24); SQLite unique indexes admit many NULLs.
+     * {@code payment_reference} holds the claimed (bank, reference) pairs (BR-25), so a
+     * duplicate is refused across restarts; its primary key makes a claim atomic.
      */
     private static final List<String> VERSION_2 = List.of(
         "CREATE TABLE ledger_entry_v2 ("
@@ -125,7 +127,11 @@ public final class SchemaMigrator {
             + " posted_at, reverses_entry_id, reason FROM ledger_entry ORDER BY id",
         "DROP TABLE ledger_entry",
         "ALTER TABLE ledger_entry_v2 RENAME TO ledger_entry",
-        "CREATE UNIQUE INDEX ledger_entry_reversed_once ON ledger_entry (reverses_entry_id)"
+        "CREATE UNIQUE INDEX ledger_entry_reversed_once ON ledger_entry (reverses_entry_id)",
+        "CREATE TABLE payment_reference ("
+            + " source_bank TEXT NOT NULL,"
+            + " bank_reference TEXT NOT NULL,"
+            + " PRIMARY KEY (source_bank, bank_reference))"
     );
 
     /**

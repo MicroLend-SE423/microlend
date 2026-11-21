@@ -16,8 +16,9 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Tests for schema version 2: the {@code PENALTY_INCOME} entry type that balances
- * penalty accrual (team decision D-04, open item T-02), and one reversal at most per
- * ledger entry (BR-24). Version 1 is never edited; existing databases are upgraded.
+ * penalty accrual (team decision D-04, open item T-02), one reversal at most per
+ * ledger entry (BR-24), and the {@code payment_reference} table of claimed bank
+ * references (BR-25). Version 1 is never edited; existing databases are upgraded.
  */
 class SchemaVersion2Test {
 
@@ -108,6 +109,7 @@ class SchemaVersion2Test {
             assertEquals(1, queryLong(connection,
                 "SELECT reverses_entry_id FROM ledger_entry WHERE id = 2"));
             exec(connection, insertEntry("PENALTY_INCOME", 0, 5));
+            assertEquals(0, queryLong(connection, "SELECT COUNT(*) FROM payment_reference"));
             try (Statement statement = connection.createStatement();
                  ResultSet violations = statement.executeQuery("PRAGMA foreign_key_check")) {
                 assertFalse(violations.next());
