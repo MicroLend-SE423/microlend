@@ -26,12 +26,12 @@ below are filled in when the inspection is scheduled.
 | 4 | `ledger/LedgerEntry.java` | ~137 | FR-17; BR-23, BR-24 | Exists |
 | 5 | `ledger/CompensatingEntryService.java` | ~16 | FR-17; BR-24 | Exists |
 | 6 | `persistence/SqliteLedgerRepository.java` | ~153 (was ~140) | FR-16, FR-17; QR-05 | Exists |
-| 7 | `persistence/SchemaMigrator.java` (`ledger_entry`, `payment`, `loan` DDL) | ~146 (was ~113; schema version 2 added) | BR-23 to BR-26; C-04 | Exists |
+| 7 | `persistence/SchemaMigrator.java` (`ledger_entry`, `payment`, `loan` DDL) | ~150 (was ~113; schema version 2 added) | BR-23 to BR-26; C-04 | Exists |
 | 8 | `ledger/CoreRepaymentPoster.java` | ~99 | FR-16; BR-23 | Exists (L-08 landed) |
 
 Paths are under `src/main/java/pk/edu/giki/microlend/`. NCLOC means non-blank, non-comment
 lines. It was first counted on 2026-11-14 from the PR #8 branch. The figures above were
-recounted on 2026-11-21 at `7784a6a`, the branch that contains the merged PR #8 code.
+recounted on 2026-11-21 at code head `4067d2f`, the branch that contains the merged PR #8 code.
 
 Supporting context, read but not inspected line by line: `common/Money.java` (~81),
 `ledger/EntryType.java` (~15), `ledger/LedgerWriter.java`, `ledger/LedgerReader.java`,
@@ -44,7 +44,7 @@ lock shared with the end-of-day engine.
 
 - **Meeting A (primary, the M2 evidence):** items 1, 2 and 3, about 228 NCLOC
   (55 + 20 + 69 + 84). These cover the allocation waterfall and the account state change.
-- **Meeting B (M3):** items 4 to 8, about 551 NCLOC (137 + 16 + 153 + 146 + 99), which is
+- **Meeting B (M3):** items 4 to 8, about 555 NCLOC (137 + 16 + 153 + 150 + 99), which is
   more than two meetings' worth. They will be split when scheduled. These cover the ledger
   immutability, persistence and posting path.
 
@@ -66,9 +66,10 @@ accrued penalty is an input amount. `PenaltyAccruer` (Muhammad Ibrahim, `delinqu
 now exists, but it is outside this inspection.
 
 The code review of PR #8 on 21 Nov found defects in items 6 and 8 (DEF-009 to DEF-013 in
-`qa/defect-log.md`). They are review defects, not inspection results. Inspectors should
-check the state of the code at the frozen version, including the fixes for DEF-009 and
-DEF-010.
+`qa/defect-log.md`). The independent code review of the M2 code, the same day, found
+DEF-022 in item 8 and DEF-023 in item 7. These are review defects, not inspection results.
+Inspectors should check the state of the code at the frozen version, including the fixes
+for DEF-009, DEF-010 and DEF-012.
 
 ## Roles
 
