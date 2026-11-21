@@ -7,6 +7,35 @@
 <style>
   @page { @top-left { content: "MicroLend  ·  $code$  ·  $milestone$"; } }
 </style>
+<script>
+  // Runs before Paged.js lays out the pages (pagedjs-cli awaits PagedConfig.before): a table that
+  // cannot fit the page width is shrunk until it does (below 86% of the normal size, 6.8 pt, long
+  // code names may break anywhere instead). Then its column widths are fixed from the whole
+  // table, so a table split across pages keeps the same columns on every page.
+  window.PagedConfig = { before: () => document.fonts.ready.then(() => {
+    const width = 178 / 25.4 * 96;   // A4 minus the 16 mm side margins of @page in style.css, in px
+    for (const t of document.querySelectorAll('main table')) {
+      t.style.width = 'min-content';
+      const base = parseFloat(getComputedStyle(t).fontSize);
+      let size = base;
+      for (let i = 0; i < 6 && t.offsetWidth > width; i++) {
+        size *= width / t.offsetWidth * 0.98;
+        if (size < base * 0.86 && !t.classList.contains('tight')) {
+          t.classList.add('tight');
+          size = base * 0.86;
+        }
+        t.style.fontSize = size + 'px';
+      }
+      // Every cell carries its width: Paged.js does not copy the colgroup to a continuation page.
+      t.style.width = width + 'px';
+      const cols = [...t.rows[0].cells].map(c => c.offsetWidth / width * 100 + '%');
+      for (const row of t.rows) [...row.cells].forEach((c, i) => { c.style.width = cols[i]; });
+      t.querySelector('colgroup')?.remove();
+      t.style.tableLayout = 'fixed';
+      t.style.width = '';
+    }
+  }) };
+</script>
 </head>
 <body>
 $for(include-before)$
