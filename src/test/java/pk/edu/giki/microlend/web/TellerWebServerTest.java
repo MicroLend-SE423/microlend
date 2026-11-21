@@ -17,6 +17,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,9 +30,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import pk.edu.giki.microlend.common.LoanId;
 import pk.edu.giki.microlend.common.Money;
+import pk.edu.giki.microlend.delinquency.Classification;
+import pk.edu.giki.microlend.delinquency.ClassificationChangeEvent;
+import pk.edu.giki.microlend.delinquency.EodReport;
 import pk.edu.giki.microlend.ledger.Allocation;
 import pk.edu.giki.microlend.ledger.AllocationResult;
 import pk.edu.giki.microlend.ledger.DuplicatePaymentException;
+import pk.edu.giki.microlend.ledger.InvalidRepaymentException;
 import pk.edu.giki.microlend.ledger.LoanAccount;
 import pk.edu.giki.microlend.ledger.LoanClosedException;
 import pk.edu.giki.microlend.ledger.LoanNotFoundException;
@@ -42,8 +52,9 @@ import pk.edu.giki.microlend.ledger.SettlementOutcome;
  */
 class TellerWebServerTest {
 
-    private final List<String> operatorsSeen = new ArrayList<>();
-    private final List<RepaymentCommand> posted = new ArrayList<>();
+    private final List<String> operatorsSeen = new CopyOnWriteArrayList<>();
+    private final List<RepaymentCommand> posted = new CopyOnWriteArrayList<>();
+    private final List<LocalDate> endOfDayDates = new ArrayList<>();
     private final OperatorContext operator = new OperatorContext();
     private RepaymentPoster poster = this::accept;
     private TellerWebServer server;
@@ -62,9 +73,19 @@ class TellerWebServerTest {
             List.of());
     }
 
+    private EodReport runEndOfDay(final LocalDate businessDate) {
+        endOfDayDates.add(businessDate);
+        return new EodReport(businessDate, 3, 0, Money.of(new BigDecimal("15.00")),
+            List.of(new ClassificationChangeEvent(LoanId.of("LN-7"), Classification.WATCH,
+                Classification.SUBSTANDARD)),
+            List.of(LoanId.of("LN-9")),
+            Map.of(LoanId.of("LN-4"), "schedule <unreadable>"));
+    }
+
     @BeforeEach
     void start() throws IOException {
-        server = new TellerWebServer(command -> poster.post(command), operator, 0);
+        server = new TellerWebServer(command -> poster.post(command), this::runEndOfDay,
+            operator, 0);
         server.start();
     }
 
@@ -180,13 +201,63 @@ class TellerWebServerTest {
     }
 
     @Test
-    @DisplayName("the end-of-day page says the engine is not available yet; triggering it is a 503")
-    void endOfDayNotYetAvailable() throws Exception {
+    @DisplayName("the end-of-day page offers a business date and a run button")
+    void endOfDayForm() throws Exception {
         final HttpResponse<String> page = get("/end-of-day");
         assertEquals(200, page.statusCode());
-        assertTrue(page.body().contains("not available yet"), page.body());
-        assertTrue(page.body().contains("Muhammad Ibrahim"), page.body());
-        assertEquals(503, post("/end-of-day", Map.of()).statusCode());
+        assertTrue(page.body().contains("name=\"businessDate\""), page.body());
+        assertFalse(page.body().contains("disabled"), page.body());
+    }
+
+    @Test
+    @DisplayName("running end of day shows the engine's report for that business date")
+    void endOfDayRuns() throws Exception {
+        final HttpResponse<String> response = post("/end-of-day",
+            Map.of("businessDate", "2027-03-11"));
+        assertEquals(200, response.statusCode());
+        assertEquals(List.of(LocalDate.of(2027, 3, 11)), endOfDayDates);
+        final String body = response.body();
+        assertTrue(body.contains("2027-03-11"), body);
+        assertTrue(body.contains("Loans recorded: 3"), body);
+        assertTrue(body.contains("15.00"), body);
+        assertTrue(body.contains("LN-7: WATCH to SUBSTANDARD"), body);
+        assertTrue(body.contains("LN-9"), body);
+        assertTrue(body.contains("schedule &lt;unreadable&gt;"), body);
+    }
+
+    @Test
+    @DisplayName("an invalid business date is a 400 and the engine is not run")
+    void endOfDayRejectsBadDate() throws Exception {
+        assertEquals(400, post("/end-of-day", Map.of("businessDate", "11/03/2027")).statusCode());
+        assertEquals(List.of(), endOfDayDates);
+    }
+
+    @Test
+    @DisplayName("two tellers are served at the same time, not one after the other")
+    void servesRequestsConcurrently() throws Exception {
+        final CountDownLatch bothInside = new CountDownLatch(2);
+        poster = command -> {
+            bothInside.countDown();
+            try {
+                if (!bothInside.await(5, TimeUnit.SECONDS)) {
+                    throw new InvalidRepaymentException("served one at a time", "10.00", "cash");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return accept(command);
+        };
+        final ExecutorService tellers = Executors.newFixedThreadPool(2);
+        try {
+            final Future<HttpResponse<String>> first = tellers.submit(() ->
+                post("/repayments", payment("LN-1", "10.00", "2027-03-11", "teller.amina")));
+            final Future<HttpResponse<String>> second = tellers.submit(() ->
+                post("/repayments", payment("LN-2", "10.00", "2027-03-11", "teller.bilal")));
+            assertEquals(200, first.get(10, TimeUnit.SECONDS).statusCode());
+            assertEquals(200, second.get(10, TimeUnit.SECONDS).statusCode());
+        } finally {
+            tellers.shutdownNow();
+        }
     }
 
     @Test
