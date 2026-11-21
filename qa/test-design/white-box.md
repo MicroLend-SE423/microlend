@@ -72,30 +72,31 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/RepaymentAllocator.java`. Ti
 ### 2.2 CFG
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
 flowchart TD
-    N1{"N1 payment == null"} -->|T| N3["N3 throw: required"]
-    N1 -->|F| N2{"N2 owing == null"}
+    N1{"N1"} -->|T| N3["N3"]
+    N1 -->|F| N2{"N2"}
     N2 -->|T| N3
-    N2 -->|F| N4{"N4 next instalment?"}
-    N4 -->|yes| N5{"N5 instalment == null"}
-    N5 -->|T| N6["N6 throw: gap"]
-    N5 -->|F| N7{"N7 duplicate sequence"}
-    N7 -->|T| N8["N8 throw: appears twice"]
+    N2 -->|F| N4{"N4"}
+    N4 -->|yes| N5{"N5"}
+    N5 -->|T| N6["N6"]
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
     N7 -->|F| N4
-    N4 -->|no| N9{"N9 tier < 4"}
-    N9 -->|T| N10{"N10 i < size"}
-    N10 -->|T| N11{"N11 remaining < owed"}
-    N11 -->|T| N12["N12 paid = remaining"]
-    N11 -->|F| N13["N13 paid = owed"]
-    N12 --> N14["N14 record, subtract, i++"]
+    N4 -->|no| N9{"N9"}
+    N9 -->|T| N10{"N10"}
+    N10 -->|T| N11{"N11"}
+    N11 -->|T| N12["N12"]
+    N11 -->|F| N13["N13"]
+    N12 --> N14["N14"]
     N13 --> N14
     N14 --> N10
     N10 -->|F, tier++| N9
-    N9 -->|F| N15{"N15 i < size"}
-    N15 -->|T| N16["N16 add Allocation, total"]
+    N9 -->|F| N15{"N15"}
+    N15 -->|T| N16["N16"]
     N16 --> N15
-    N15 -->|F| N17["N17 return result"]
-    N3 --> N18(("N18 exit"))
+    N15 -->|F| N17["N17"]
+    N3 --> N18(("N18"))
     N6 --> N18
     N8 --> N18
     N17 --> N18
@@ -249,18 +250,19 @@ Source: `src/main/java/pk/edu/giki/microlend/delinquency/DelinquencyClassifier.j
 ### 6.2 CFG
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
 flowchart TD
-    N1{"N1 daysPastDue < 0"} -->|T| N2["N2 throw InvalidDaysPastDue"]
-    N1 -->|F| N3{"N3 daysPastDue == 0"}
-    N3 -->|T| N4["N4 return STANDARD"]
-    N3 -->|F| N5{"N5 daysPastDue <= 30"}
-    N5 -->|T| N6["N6 return WATCH"]
-    N5 -->|F| N7{"N7 daysPastDue <= 60"}
-    N7 -->|T| N8["N8 return SUBSTANDARD"]
-    N7 -->|F| N9{"N9 daysPastDue <= 90"}
-    N9 -->|T| N10["N10 return DOUBTFUL"]
-    N9 -->|F| N11["N11 return LOSS"]
-    N2 --> N12(("N12 exit"))
+    N1{"N1"} -->|T| N2["N2"]
+    N1 -->|F| N3{"N3"}
+    N3 -->|T| N4["N4"]
+    N3 -->|F| N5{"N5"}
+    N5 -->|T| N6["N6"]
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
+    N7 -->|F| N9{"N9"}
+    N9 -->|T| N10["N10"]
+    N9 -->|F| N11["N11"]
+    N2 --> N12(("N12"))
     N4 --> N12
     N6 --> N12
     N8 --> N12
@@ -316,25 +318,28 @@ Source: `src/main/java/pk/edu/giki/microlend/delinquency/EndOfDayEngine.java`. `
 ### 7.2 CFG
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
 flowchart TD
-    N1{"N1 next task?"} -->|yes| N2{"N2 Future.get()"}
-    N1 -->|no| N11["N11 return EodReport"]
-    N2 -->|result| N5{"N5 not recorded?"}
-    N2 -->|ExecutionException| N3["N3 record failure"]
-    N2 -->|InterruptedException| N4["N4 re-interrupt, throw"]
+    N1{"N1"} -->|yes| N2{"N2"}
+    N1 -->|no| N11["N11"]
+    N2 -->|value| N5{"N5"}
+    N2 -->|P2| N3["N3"]
+    N2 -->|P3| N4["N4"]
     N3 --> N1
-    N5 -->|T| N6["N6 alreadyRecorded++"]
+    N5 -->|T| N6["N6"]
     N6 --> N1
-    N5 -->|F| N7{"N7 classification changed?"}
-    N7 -->|T| N8["N8 add change event"]
-    N7 -->|F| N9{"N9 write-off due?"}
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
+    N7 -->|F| N9{"N9"}
     N8 --> N9
-    N9 -->|T| N10["N10 add to write-offs"]
+    N9 -->|T| N10["N10"]
     N9 -->|F| N1
     N10 --> N1
-    N4 --> N12(("N12 exit"))
+    N4 --> N12(("N12"))
     N11 --> N12
 ```
+
+Edge labels at N2: "value" when `get()` returns, P2 for `ExecutionException`, P3 for `InterruptedException`.
 
 ### 7.3 Cyclomatic complexity, computed two ways
 

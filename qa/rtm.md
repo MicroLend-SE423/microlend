@@ -28,7 +28,7 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 ## 1. Functional requirements
 
 | Req ID | Requirement | Business rule | Module | Design element | Code artifact | Test case ID | Technique | Status |
-|---|---|---|---|---|---|---|---|---|
+|---|------|---|---|-----|------|-----|---|-----|
 | FR-01 | Applicant at least 18 at disbursement, at most 65 at maturity | BR-01, BR-02 | origination | `AgeRule` | `origination/AgeRule.java`, `Applicant.java` (`ageOn`, completed years), `LoanApplication.java` (`maturityDate`) | TC-ORG-01 → `AgeRuleTest` (01.1 to 01.7); `EligibilityEvaluatorTest` (05.1, 05.2) | BVA | implemented (tests pass at `4067d2f`; CI pending) |
 | FR-02 | At most 2 active loans, counting the one applied for | BR-03 | origination | `ActiveLoanLimitRule` | `origination/ActiveLoanLimitRule.java` | TC-ORG-02 → `ActiveLoanLimitRuleTest` (02.1 to 02.6); `EligibilityEvaluatorTest.writtenOffLoanRejectedByWriteOffRule` | EP + BVA | implemented (tests pass at `4067d2f`; CI pending) |
 | FR-03 | Instalment burden at most 40% of declared income | BR-04 | origination | `BurdenRatioRule` | `origination/BurdenRatioRule.java`, `LoanApplication.burdenPercent`; the new loan's instalment is an injected function until `products` supplies it | TC-ORG-03 → `BurdenRatioRuleTest` (03.1 to 03.3), `EligibilityEvaluatorTest.gradeCAtTheBurdenLimit` (03.4), `LoanApplicationTest` (burden rounding, zero income refused) | BVA | implemented (tests pass at `4067d2f`; CI pending) |
