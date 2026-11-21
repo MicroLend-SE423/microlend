@@ -11,7 +11,7 @@ rather than left out.
 
 ## 1. Documented strategy
 
-Source: `README.md` (Branching strategy, Baselines) and `CLAUDE.md` (Repository rules).
+Source: `README.md` (Branching strategy, Baselines).
 
 | Item | Rule |
 |---|---|

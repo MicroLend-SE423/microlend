@@ -20,11 +20,10 @@ next run. L-03 is the next implementation item once those checks pass.
 
 2026-11-08: L-01 and L-02 ticked; PR #8 CI passed for them on 2026-11-06. L-03 is
 implemented and passes locally; tick it once PR CI passes. Next item: L-04.
-The scheduled runs on 11-07 and 11-08 produced no work (Codex model rejected;
-machine off at noon). The Codex-based runner cannot work until it is replaced.
+No work was done on 11-07 or 11-08.
 
 2026-11-09 (catch-up run): L-03 ticked; PR #8 CI run 42471721763 passed for
-ff8d352. L-04 is implemented and passes the full local build; tick it once PR CI
+61febe9. L-04 is implemented and passes the full local build; tick it once PR CI
 passes. **L-05 is blocked** and was not started:
 - `Instalment` (Hassan, `products`) is not on `develop` or any branch; PR #6 only
   adds `DueDateCalculator`. The M1 design gives it principal and interest only,
@@ -38,7 +37,7 @@ Unblock by agreeing the `Instalment` shape with Hassan and the BR-18/BR-19 readi
 with the team. Items are taken in order, so L-06 onwards wait for L-05.
 
 2026-11-11 (catch-up run, out-of-order override authorised by Tughral on
-2026-11-11): L-04 ticked; PR #8 CI run 42599213093 passed for 525d7cc.
+2026-11-11): L-04 ticked; PR #8 CI run 42599213093 passed for 512cd86.
 L-05 re-checked and **still blocked**: no `Instalment` type exists on `develop`,
 PR #6 or any other branch, and the BR-18/BR-19 reading is undecided. Skipped as
 blocked, because each needs `RepaymentAllocator` or a working `RepaymentPoster`
@@ -63,48 +62,48 @@ classification). Only the M1-stated constraints were added to these tables.
 
 2026-11-14 (expedited run, decisions approved by Tughral on 2026-11-14): L-07,
 L-12 and L-13 ticked; PR #8 CI passed for their green commits (runs
-42981906284 for 3f26e6a, 42982228533 for fb783d8, 42982638575 for 1091877).
-L-14 continues from the kept red commit 7d826f3; it passes the full local build
+42981906284 for 40586be, 42982228533 for 48f9378, 42982638575 for c04b41c).
+L-14 continues from the kept red commit 8be61ef; it passes the full local build
 and is ticked once PR CI passes. L-05 is unblocked by three owner decisions:
 the allocator takes a ledger-owned `InstalmentDue` input (to be mapped from
 Hassan's `products.Instalment` once it exists), the accrued penalty is an input
 amount (no dependency on Ibrahim's `PenaltyAccruer`), and BR-18/BR-19 are read
 tier by tier (see the dated note under BR-19 in `docs/business-rules.md`,
 pending team confirmation).
-L-05 implemented (red dd914b9) and passes the full local build; tick once PR CI
+L-05 implemented (red e386629) and passes the full local build; tick once PR CI
 passes.
-L-06 **partial** (red 7e8f4b8): advance credit (BR-21), payoff detection and
+L-06 **partial** (red 4a353b4): advance credit (BR-21), payoff detection and
 closure are implemented; the per-product rebate (BR-22) is taken from a
 caller-supplied `EarlySettlementRebate` because it is Hassan's product
 knowledge. Open team decisions: who implements the rebate in `products`, and
 what happens to money left over after a payoff (reported as `excess`, not posted).
-L-08 implemented (red bc379d0) and passes the full local build. It adds
+L-08 implemented (red 83934ce) and passes the full local build. It adds
 `LoanRepository` (needed now; L-15 implements it in SQLite), an
 `InstalmentsDueSource` role for the schedule/penalty inputs, a
 `PAYMENT_RECEIVED` debit leg, and an all-or-nothing `LedgerWriter.appendAll`.
 Open team question: which instalments the source lists (due to date only, or
 all remaining so a payoff can be detected).
-L-09 implemented (red 709dfb6) and passes the full local build.
-L-10 implemented (red 48515d3) and passes the full local build; the operator
+L-09 implemented (red 81b1a2f) and passes the full local build.
+L-10 implemented (red 4f79a3c) and passes the full local build; the operator
 is supplied by the teller session, not carried on `RepaymentCommand`.
-L-11 implemented (red 7b0faf4) and passes the full local build; references are
+L-11 implemented (red 3a85d3e) and passes the full local build; references are
 held in memory, so a durable store on the `payment` table is a follow-up.
-L-15 implemented (red f20f08e) and passes the full local build; `LoanRepository`
+L-15 implemented (red 65266d9) and passes the full local build; `LoanRepository`
 was already defined in ledger at L-08.
-L-16 implemented (red 01d739b) and passes the full local build: 14 failure
+L-16 implemented (red 535fa82) and passes the full local build: 14 failure
 points on SQLite; a failed loan save now reverses the posting's lines.
-Mid-run reconciliation: PR #8 CI passed for every push up to 82ba753, so L-05
-(46c5ea1), L-08 (2211bb7), L-09 (29f9c1c), L-10 (04102ea), L-11 (022dcea),
-L-14 (737a47a) and L-15 (b75b9bd, with refactor 82ba753) are ticked. L-06's
-green commit 923755b also passed CI but stays unticked because it is partial.
-L-16 (8e0ac30) was still awaiting CI at this point.
-L-17 implemented (red 5d7dd40) and passes the full local build. Wired with
+Mid-run reconciliation: PR #8 CI passed for every push up to 6a93ca4, so L-05
+(c17052f), L-08 (34a7bb7), L-09 (9f7b423), L-10 (a43c681), L-11 (71d8b3f),
+L-14 (92210a7) and L-15 (c2e3879, with refactor 6a93ca4) are ticked. L-06's
+green commit c80b9c9 also passed CI but stays unticked because it is partial.
+L-16 (5502ccf) was still awaiting CI at this point.
+L-17 implemented (red 33efd9a) and passes the full local build. Wired with
 named placeholders (`ModuleNotAvailableException`) for the instalments source
 and the BR-22 rebate until `products`/`delinquency` provide them.
-L-18 implemented (red bdd34c8) and passes the full local build: teller form on
+L-18 implemented (red 69f3d76) and passes the full local build: teller form on
 127.0.0.1:8080 via `gradlew run`; the end-of-day page reports that Ibrahim's
 engine is not available yet.
-L-19 implemented (red 196cd5c) and passes the full local build: ArchUnit cycle
+L-19 implemented (red 5835019) and passes the full local build: ArchUnit cycle
 rule for C-03 plus two §4.5 layering rules. No item was skipped. Tick L-16 to
 L-19 once PR CI passes for their green commits; L-06 stays partial.
 

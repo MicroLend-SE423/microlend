@@ -12,8 +12,14 @@ public enum EntryType {
     /** Principal paid out to the borrower at disbursement. */
     PRINCIPAL_DISBURSEMENT,
 
-    /** Penalty charged by the end-of-day engine (BR-27). */
+    /** Penalty charged by the end-of-day engine (BR-27): the debit leg of an accrual. */
     PENALTY_ACCRUAL,
+
+    /**
+     * Penalty income earned: the credit leg that balances {@link #PENALTY_ACCRUAL}
+     * (BR-23, team decision D-04, schema version 2).
+     */
+    PENALTY_INCOME,
 
     /**
      * Money received from the borrower: the debit leg of a repayment posting,

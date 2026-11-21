@@ -8,9 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Thread-safe, process-local {@link PaymentReferences}.
  *
  * <p>Claims are atomic through {@link ConcurrentHashMap}. The set is lost when
- * the process stops, so a durable store backed by the {@code payment} table's
- * {@code UNIQUE (source_bank, bank_reference)} constraint is still to be
- * built; until then this class is the guard used by the composition root.</p>
+ * the process stops, so it serves unit tests; the composition root uses the
+ * durable {@code persistence.SqlitePaymentReferences}.</p>
  */
 public final class InMemoryPaymentReferences implements PaymentReferences {
 

@@ -1,7 +1,7 @@
 # MicroLend - White-Box Test Design (M2)
 
 **Deliverable:** SE431 M2, "White-box test design" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Code baseline:** `feature/ledger-entry` at `87c5caf` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Re-check against the M2 build before submission.
+**Code baseline:** sections 2 to 5 were drawn on `feature/ledger-entry` at `701c161` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Sections 6 and 7 were drawn on `feature/delinquency-origination-import` at `7784a6a` (21 Nov 2026) and re-checked at the code head `4067d2f` the same day. On 21 Nov all six methods were re-checked against `4067d2f`: their source, JaCoCo complexity and branch coverage are unchanged. The review fixes changed `EndOfDayEngine.process`, not `collect`.
 **Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
 ## 1. Method
@@ -16,7 +16,7 @@
 
 ### Selection of methods
 
-These methods were chosen because they are on the money path and have the highest complexity on it. They are also the Fagan inspection target (`qa/inspections/INS-01-repayment-path/`).
+These methods were chosen because they are on the money path and have the highest complexity on it. The four ledger methods are also the Fagan inspection target (`qa/inspections/INS-01-repayment-path/`). `DelinquencyClassifier.classify` is the basis-path target that M1 named for `delinquency` (RTM FR-23). `EndOfDayEngine.collect` decides what the end-of-day report says about each loan's task.
 
 | Method | Requirement | Why it is "key" |
 |---|---|---|
@@ -24,6 +24,8 @@ These methods were chosen because they are on the money path and have the highes
 | `LoanAccount.restore(LoanId, LoanStatus, Money, LocalDate)` | FR-19 (BR-26) | Guards the status/closure-date invariant every repository load relies on |
 | `LedgerEntry.requireValid(LoanId, EntryType, Money, Instant)` | FR-17 (BR-23, BR-24) | Gate for every ledger line; a zero or incomplete entry breaks the balanced-ledger invariant |
 | `CoreRepaymentPoster.post(RepaymentCommand)` | FR-16, FR-19, QR-03 (BR-21, BR-23, BR-24, BR-26) | The one place a repayment changes both the ledger and the loan; its failure paths decide whether the ledger stays balanced (section 5) |
+| `DelinquencyClassifier.classify(int)` | FR-23 (BR-30); feeds FR-24 (BR-31) and FR-27 (BR-34) | Puts every loan in a bucket each night. A wrong boundary misstates the provision and raises or misses classification alerts (section 6) |
+| `EndOfDayEngine.collect(LocalDate, Map)` | FR-26, FR-27, FR-25 (BR-32, BR-33, BR-34); QR-06 | Turns the results of the concurrent tasks into the run's report: recorded, already recorded, failed, changed classification, due for write-off (section 7) |
 
 ### Complexity summary
 
@@ -33,8 +35,10 @@ These methods were chosen because they are on the money path and have the highes
 | `LoanAccount.restore` | 7 | 22 | 16 | **8** | 8 | 13 | 14 / 14 |
 | `LedgerEntry.requireValid` | 5 | 16 | 12 | **6** | 6 | 11 | 10 / 10 |
 | `CoreRepaymentPoster.post` | 5 (4 are exception exits) | 16 | 12 | **6** | 2 | below threshold | 2 / 2 |
+| `DelinquencyClassifier.classify` | 5 | 16 | 12 | **6** | 6 | below threshold | 10 / 10 |
+| `EndOfDayEngine.collect` | 6 (2 are exception exits) | 17 | 12 | **7** | 5 | below threshold | 8 / 8 |
 
-PMD's figure is higher by exactly the number of `throw` statements in each method (3, 5 and 5). That is consistent with PMD counting each `throw` as an extra decision. The McCabe value from the graph, which JaCoCo confirms, is the one used for basis paths. The M1 RTM estimated "CC about 11" for the allocator, and the built method came in at 10.
+PMD's figure is higher by exactly the number of `throw` statements in each method (3, 5 and 5). That is consistent with PMD counting each `throw` as an extra decision. The McCabe value from the graph, which JaCoCo confirms, is the one used for basis paths. The M1 RTM estimated "CC about 11" for the allocator, and the built method came in at 10. The M1 RTM estimate for `classify` was "about 6", and the built method is exactly 6. As with `post`, JaCoCo's figure for `collect` leaves out the two exception exits, because they are not bytecode branches.
 
 ---
 
@@ -68,30 +72,31 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/RepaymentAllocator.java`. Ti
 ### 2.2 CFG
 
 ```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
 flowchart TD
-    N1{"N1 payment == null"} -->|T| N3["N3 throw: required"]
-    N1 -->|F| N2{"N2 owing == null"}
+    N1{"N1"} -->|T| N3["N3"]
+    N1 -->|F| N2{"N2"}
     N2 -->|T| N3
-    N2 -->|F| N4{"N4 next instalment?"}
-    N4 -->|yes| N5{"N5 instalment == null"}
-    N5 -->|T| N6["N6 throw: gap"]
-    N5 -->|F| N7{"N7 duplicate sequence"}
-    N7 -->|T| N8["N8 throw: appears twice"]
+    N2 -->|F| N4{"N4"}
+    N4 -->|yes| N5{"N5"}
+    N5 -->|T| N6["N6"]
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
     N7 -->|F| N4
-    N4 -->|no| N9{"N9 tier < 4"}
-    N9 -->|T| N10{"N10 i < size"}
-    N10 -->|T| N11{"N11 remaining < owed"}
-    N11 -->|T| N12["N12 paid = remaining"]
-    N11 -->|F| N13["N13 paid = owed"]
-    N12 --> N14["N14 record, subtract, i++"]
+    N4 -->|no| N9{"N9"}
+    N9 -->|T| N10{"N10"}
+    N10 -->|T| N11{"N11"}
+    N11 -->|T| N12["N12"]
+    N11 -->|F| N13["N13"]
+    N12 --> N14["N14"]
     N13 --> N14
     N14 --> N10
     N10 -->|F, tier++| N9
-    N9 -->|F| N15{"N15 i < size"}
-    N15 -->|T| N16["N16 add Allocation, total"]
+    N9 -->|F| N15{"N15"}
+    N15 -->|T| N16["N16"]
     N16 --> N15
-    N15 -->|F| N17["N17 return result"]
-    N3 --> N18(("N18 exit"))
+    N15 -->|F| N17["N17"]
+    N3 --> N18(("N18"))
     N6 --> N18
     N8 --> N18
     N17 --> N18
@@ -221,18 +226,176 @@ This method has one loop and one `if`, so V(G) = 3. JaCoCo agrees: complexity 3,
 
 ---
 
-## 6. Coverage baseline and gaps (M2)
+## 6. `DelinquencyClassifier.classify`
 
-Measured with `.\gradlew.bat build jacocoTestReport` on `87c5caf`: 182 tests, 0 failures.
+Source: `src/main/java/pk/edu/giki/microlend/delinquency/DelinquencyClassifier.java`. BR-30 buckets: 0 Standard, 1-30 Watch, 31-60 Substandard, 61-90 Doubtful, 91 or more Loss. The three upper limits are the constants `WATCH_MAX = 30`, `SUBSTANDARD_MAX = 60` and `DOUBTFUL_MAX = 90`.
+
+### 6.1 Nodes
+
+| Node | Statement | Decision |
+|---|---|---|
+| N1 | `if (daysPastDue < 0)` | P1 |
+| N2 | `throw new InvalidDaysPastDueException(daysPastDue)` | |
+| N3 | `if (daysPastDue == 0)` | P2 |
+| N4 | `return Classification.STANDARD` | |
+| N5 | `if (daysPastDue <= WATCH_MAX)` | P3 |
+| N6 | `return Classification.WATCH` | |
+| N7 | `if (daysPastDue <= SUBSTANDARD_MAX)` | P4 |
+| N8 | `return Classification.SUBSTANDARD` | |
+| N9 | `if (daysPastDue <= DOUBTFUL_MAX)` | P5 |
+| N10 | `return Classification.DOUBTFUL` | |
+| N11 | `return Classification.LOSS` | |
+| N12 | exit | |
+
+### 6.2 CFG
+
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
+flowchart TD
+    N1{"N1"} -->|T| N2["N2"]
+    N1 -->|F| N3{"N3"}
+    N3 -->|T| N4["N4"]
+    N3 -->|F| N5{"N5"}
+    N5 -->|T| N6["N6"]
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
+    N7 -->|F| N9{"N9"}
+    N9 -->|T| N10["N10"]
+    N9 -->|F| N11["N11"]
+    N2 --> N12(("N12"))
+    N4 --> N12
+    N6 --> N12
+    N8 --> N12
+    N10 --> N12
+    N11 --> N12
+```
+
+### 6.3 Cyclomatic complexity, computed two ways
+
+- **From the graph:** the 5 decision nodes have 2 out-edges each (10 edges), and N2, N4, N6, N8, N10 and N11 have 1 edge each to the exit (6 edges). E = 16, N = 12, so **V(G) = 16 - 12 + 2 = 6**.
+- **From the decisions:** P = 5 simple decisions (P1 to P5, none compound), so **V(G) = P + 1 = 6**.
+
+JaCoCo's `COMPLEXITY` counter for `classify` is also 6, with 10 of 10 branches covered. PMD 7.7.0 does not report it (below its threshold of 10).
+
+### 6.4 Basis paths and test cases
+
+The baseline is the path on which every decision is false (a Loss loan). Each later path flips one decision of the baseline, so the six paths are linearly independent, and together they cover all 10 branches.
+
+| Path | Route | Decision flipped | Test input (days past due) | Expected result | Automated in `DelinquencyClassifierTest` |
+|---|---|---|---|---|---|
+| BP-1 | N1F N3F N5F N7F N9F N11 | baseline | 91 (also 400) | `LOSS` | `bucketBoundaries` rows `91, LOSS` and `400, LOSS` |
+| BP-2 | N1T N2 | P1 | -1 | `InvalidDaysPastDueException` | `negativeRejected` (TC-DEL-03.1) |
+| BP-3 | N1F N3T N4 | P2 | 0 | `STANDARD` | `bucketBoundaries` row `0, STANDARD` |
+| BP-4 | N1F N3F N5T N6 | P3 | 1 (also 30) | `WATCH` | `bucketBoundaries` rows `1, WATCH` and `30, WATCH` |
+| BP-5 | N1F N3F N5F N7T N8 | P4 | 31 (also 60) | `SUBSTANDARD` | `bucketBoundaries` rows `31, SUBSTANDARD` and `60, SUBSTANDARD` |
+| BP-6 | N1F N3F N5F N7F N9T N10 | P5 | 61 (also 90) | `DOUBTFUL` | `bucketBoundaries` rows `61, DOUBTFUL` and `90, DOUBTFUL` |
+
+No path is infeasible. The second input on BP-1 and BP-4 to BP-6 is the other edge of the same bucket. Those inputs are the BVA cases of TC-DEL-03 in `qa/test-design/black-box.md` (section 6.3): they follow the same path with different data, so they add boundary coverage, not basis paths. The class has 10 test invocations: `negativeRejected` and the 9 rows of `bucketBoundaries`.
+
+---
+
+## 7. `EndOfDayEngine.collect`
+
+Source: `src/main/java/pk/edu/giki/microlend/delinquency/EndOfDayEngine.java`. `run` submits one task per active loan to the four-thread pool, then calls `collect`, which waits for each task's `Future` in loan order and builds the `EodReport`. As in section 5, the two ways `Future.get()` can fail are drawn as decisions. They are the behaviour BR-33 and M1 section 3.6 ask for: a failing loan is reported without stopping the others, and an interrupted run stops cleanly.
+
+### 7.1 Nodes
+
+| Node | Statement | Decision |
+|---|---|---|
+| N1 | counters and lists created; `for (task : tasks.entrySet())`, has next? | P1 |
+| N2 | `result = task.getValue().get()`: returns / `ExecutionException` / `InterruptedException` | P2, P3 (three-way) |
+| N3 | `failures.put(loan, cause)`; `continue` | |
+| N4 | re-interrupt the thread; `throw IllegalStateException` | |
+| N5 | `if (!result.recorded())` | P4 |
+| N6 | `alreadyRecorded++`; `continue` | |
+| N7 | `recorded++`; add the penalty; `if (result.change() != null)` | P5 |
+| N8 | `changes.add(result.change())` | |
+| N9 | `if (result.writeOffDue())` | P6 |
+| N10 | `writeOffs.add(loan)` | |
+| N11 | `return new EodReport(...)` | |
+| N12 | exit | |
+
+### 7.2 CFG
+
+```mermaid
+%%{init: {"themeVariables": {"fontSize": "28px"}, "flowchart": {"rankSpacing": 26, "nodeSpacing": 20}} }%%
+flowchart TD
+    N1{"N1"} -->|yes| N2{"N2"}
+    N1 -->|no| N11["N11"]
+    N2 -->|value| N5{"N5"}
+    N2 -->|P2| N3["N3"]
+    N2 -->|P3| N4["N4"]
+    N3 --> N1
+    N5 -->|T| N6["N6"]
+    N6 --> N1
+    N5 -->|F| N7{"N7"}
+    N7 -->|T| N8["N8"]
+    N7 -->|F| N9{"N9"}
+    N8 --> N9
+    N9 -->|T| N10["N10"]
+    N9 -->|F| N1
+    N10 --> N1
+    N4 --> N12(("N12"))
+    N11 --> N12
+```
+
+Edge labels at N2: "value" when `get()` returns, P2 for `ExecutionException`, P3 for `InterruptedException`.
+
+### 7.3 Cyclomatic complexity, computed two ways
+
+- **From the graph:** N1, N5, N7 and N9 have 2 out-edges each (8), N2 has 3, and N3, N4, N6, N8, N10 and N11 have 1 each (6). E = 17, N = 12, so **V(G) = 17 - 12 + 2 = 7**.
+- **From the decisions:** the loop test, the three `if`s and the three-way node, which counts as 2 simple decisions, give P = 6, so **V(G) = P + 1 = 7**.
+
+JaCoCo reports 5, with 8 of 8 branches covered. Its count leaves out P2 and P3, because a caught exception is not a bytecode branch: 7 - 2 = 5.
+
+### 7.4 Basis paths and test cases
+
+The baseline is one loan, recorded, with no classification change and no write-off.
+
+| Path | Decisions | Input | Expected | Automated in `EndOfDayEngineTest` |
+|---|---|---|---|---|
+| BP-1 | P1 yes, P2/P3 result, P4 F, P5 F, P6 F, then P1 no | first run for a date; no earlier snapshot; 10 days overdue | counted as recorded; no event; no write-off | `processesEveryLoan` (20 loans), `nothingOverdue` |
+| BP-2 | P1 no on the first test | no active loans | empty report: 0 recorded, no failures | **Not automated** (gap below) |
+| BP-3 | P2: `ExecutionException` | the instalment source throws for LN-3 | LN-3 listed in `failures`; the other 9 loans recorded | `failingTaskDoesNotBlockThePool` |
+| BP-4 | P3: `InterruptedException` | the thread calling `run` is interrupted while it waits | interrupt flag restored; `IllegalStateException` naming the business date | **Not automated** (gap below) |
+| BP-5 | P4 T | second run for the same date, or a run for an earlier date after a later one | counted as already recorded; nothing written (BR-33) | `idempotentPerBusinessDate`, `earlierDateAfterALaterRunIsSkipped` |
+| BP-6 | P5 T | yesterday Watch, today 31 days (Substandard); and Substandard to Watch | one `ClassificationChangeEvent` each; none for Watch to Watch (BR-34) | `classificationChangeEvents` |
+| BP-7 | P6 T | 181 days past due | loan listed in `writeOffsDue` (BR-32) | `writeOffDueIsReported` |
+
+`ConcurrentTellerAndEndOfDayTest.tellersAndEndOfDayTogether` runs BP-1 for 5 loans on SQLite while four teller threads post to the same loans.
+
+---
+
+## 8. Coverage baseline and gaps (M2)
+
+Measured with `./gradlew clean build jacocoTestReport` on `4067d2f` (21 Nov 2026): 384 tests in 46 test classes, 0 failures, 0 skipped. Totals from the report-level counters of `jacocoTestReport.xml`:
 
 | Counter | Covered / total | % |
 |---|---|---|
-| Lines | 773 / 818 | 94.5 |
-| Branches | 244 / 282 | 86.5 |
-| Methods | 184 / 188 | 97.9 |
+| Lines | 1,309 / 1,375 | 95.2 |
+| Branches | 437 / 492 | 88.8 |
+| Methods | 294 / 298 | 98.7 |
 
-This covers only the code that exists: `common`, `ledger`, `persistence` and `web`. The 60% target applies to core business logic at M3, once `origination`, `products` and `delinquency` are built.
+By package (lines; branches):
+
+| Package | Lines | Branches |
+|---|---|---|
+| `origination` | 159 / 159 | 84 / 90 |
+| `delinquency` | 148 / 152 | 52 / 54 |
+| `ledger` | 440 / 451 | 155 / 178 |
+| `ledger.importing` | 99 / 102 | 30 / 32 |
+| `common` | 66 / 69 | 24 / 26 |
+| `persistence` | 239 / 264 | 62 / 72 |
+| `web` | 129 / 132 | 27 / 32 |
+| root (`CompositionRoot`, `MicroLendApplication`) | 29 / 46 | 3 / 8 |
+
+At `7784a6a`, earlier on 21 Nov, the figures were 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%) and 286 / 290 methods (98.6%).
+
+The earlier baseline, on `701c161` with 182 tests, was 773 / 818 lines (94.5%), 244 / 282 branches (86.5%) and 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. `products` and `reporting` have no code yet. The 60% target applies to core business logic at M3.
 
 Open gaps feed `qa/defect-log.md` only if a test reveals a fault:
 - `LedgerEntry`: 7 branches in `equals` and in the null and blank checks of `reversalOf` are not executed.
-- Ibrahim's `DelinquencyClassifier.classify` (RTM estimate CC about 6) and Hassan's schedule assembler get their white-box design when their code exists.
+- `EndOfDayEngine.collect`: basis paths BP-2 (no active loans) and BP-4 (interrupted while waiting) have no test. BP-4's 3 lines are 3 of the 4 uncovered lines in `delinquency`. The fourth is in `EndOfDayEngine.process`: the branch where `record` reports that another writer stored the same loan and date between the engine's check and its write.
+- `MicroLendApplication.main` (15 lines, 4 branches) is not run by any test. It is exercised by hand with `./gradlew run`.
+- `persistence`: most of the 25 uncovered lines are the `catch (SQLException)` blocks that translate a storage failure into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
+- Hassan's schedule assembler gets its white-box design when its code exists.

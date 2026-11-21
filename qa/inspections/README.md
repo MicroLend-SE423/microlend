@@ -11,7 +11,7 @@ which is the single defect and CAPA register for the project.
 
 | Inspection | Work product | Status |
 |---|---|---|
-| [INS-01](INS-01-repayment-path/plan.md) | Repayment and ledger money path (`ledger`, `persistence`) | Planned |
+| [INS-01](INS-01-repayment-path/plan.md) | Repayment and ledger money path (`ledger`, `persistence`) | Planned, not held: on 21 Nov 2026 no inspector from another team has been assigned (risk R3). Package complete; scope recounted on the merged code (meeting A about 228 NCLOC) |
 
 ## Roles
 
@@ -79,7 +79,7 @@ inspector is a full inspector, not an observer.
 | Logic | Wrong allocation order, wrong comparison, off-by-one at a BVA boundary, missing branch |
 | Data | Wrong scale or rounding, `double`/`float` use, paisa conversion errors, wrong column or constraint |
 | Interface | Wrong contract between modules, null passed across a boundary, misuse of `LedgerWriter`/`LedgerReader`, transaction handled by the wrong caller |
-| Standards | Breach of CLAUDE.md constraints or Checkstyle rules not caught by the tool, generic exceptions, missing validation |
+| Standards | Breach of the C-01 to C-04 constraints or Checkstyle rules not caught by the tool, generic exceptions, missing validation |
 | Documentation | Javadoc or comments that contradict the code or the business rules |
 
 ## From defect to CAPA

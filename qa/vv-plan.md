@@ -1,8 +1,8 @@
 # MicroLend - Software Verification and Validation Plan (IEEE 1012)
 
-**Milestone:** M2 (Week 10, due 18-19 Nov 2026) - revised at M3 (Week 13)
+**Milestone:** M2 (Week 10; originally due 18-19 Nov 2026, extended by the instructor to 22 Nov 2026) - revised at M3 (Week 13)
 **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Status:** M2 version, 2026-11-16 (refreshed against the final ledger build `87c5caf`)
+**Status:** M2 version, 2026-11-21 (refreshed against the M2 integrated build `4067d2f`; the 2026-11-16 version was checked against the ledger build `701c161`)
 **Related records:** `qa/rtm.md` (requirement status), `qa/risk-register.md`, `qa/defect-log.md`
 (anomalies and CAPA), `qa/inspections/` (Fagan records), `docs/business-rules.md` (BR-01 to BR-43),
 `docs/M1-SE431-Quality-Requirements-RTM-SQAP.md` (QR-01 to QR-06, SQAP outline)
@@ -15,21 +15,28 @@ the five modules (`origination`, `products`, `ledger`, `delinquency`, `reporting
 `common` and `persistence` packages, and the local web interface, from M2 to the M3 acceptance
 gate. The SQAP (IEEE 730) remains the umbrella document; this plan details its V&V part.
 
-**Status at the time of writing (honest baseline, 2026-11-16).** On PR #8 (`87c5caf`, 182
-tests passing, coverage 94.5% of lines and 86.5% of branches):
-- `common`: `Money`, `LoanId`.
+**Status at the time of writing (honest baseline, 2026-11-21).** PR #8 (the ledger) was
+merged into `develop` on 21 Nov. On `feature/delinquency-origination-import` at `4067d2f`
+(384 tests passing locally; coverage 95.2% of lines, 88.8% of branches, 98.7% of methods):
+- `common`: `Money`, `LoanId`, `LockRegistry`.
 - `ledger`: the whole repayment path, which is `RepaymentAllocator` with `InstalmentDue`,
   `SettlementPolicy`, `CoreRepaymentPoster`, the Decorator chain (`TimingPoster`,
-  `AuditLoggingPoster`, `IdempotencyGuardPoster`) and `CompensatingEntryService`.
-- `persistence`: `SchemaMigrator`, `SqliteDatabase`, `SqliteLedgerRepository`,
-  `SqliteLoanRepository`.
-- The composition root and the local `web` teller page.
+  `AuditLoggingPoster`, `IdempotencyGuardPoster`, and `LockingPoster` innermost) and
+  `CompensatingEntryService`.
+- `ledger.importing`: the HBL and MCB statement Adapters and `StatementImportJob`.
+- `origination`: eligibility rules BR-01 to BR-08 and risk grade and cap BR-09/BR-10. Loan
+  creation is not built.
+- `delinquency`: the calculators for BR-27 to BR-32 and the concurrent `EndOfDayEngine`.
+- `persistence`: `SchemaMigrator` (schema version 2), `SqliteDatabase`,
+  `SqliteLedgerRepository`, `SqliteLoanRepository`, `SqliteDailyResultStore`.
+- The composition root and the local `web` pages for teller posting and end of day.
 
-`products` has only `DueDateCalculator` in PR #6. `origination`, `delinquency` and `reporting`
-are not built yet. Because of that, the running application cannot post a repayment end to end:
-the instalment source and the BR-22 rebate are named placeholders until `products` and
-`delinquency` exist. Rows below for code not yet built describe the V&V that will be applied as
-the code lands.
+`products` has only `DueDateCalculator` in PR #6, and `reporting` has no code. Because of
+that, the running application cannot yet post a repayment or run end of day on real data:
+the instalment source and the BR-22 rebate are named placeholders until `products` exists.
+The posting path and the engine are verified end to end in tests with stub sources
+(`ConcurrentTellerAndEndOfDayTest`, `StatementImportWiringTest`). Rows below for code not yet
+built describe the V&V that will be applied as the code lands.
 
 ## 2. Verification versus validation in this project
 
@@ -59,7 +66,7 @@ IEEE 1012 scales V&V rigour to the consequence of failure. We use four levels (4
 
 ## 4. V&V activities by life-cycle phase
 
-Timing: Week 10 = M2 submission (18-19 Nov 2026); Week 13 = M3. "Owner" is the module owner
+Timing: Week 10 = M2 submission (22 Nov 2026 after the instructor's extension); Week 13 = M3. "Owner" is the module owner
 for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team Lead.
 
 | Phase | Input | V&V task | Method / tool | Output and evidence location | Owner | Timing |
@@ -69,14 +76,16 @@ for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team
 | Design | M1 design (patterns, schema section 3.7, concurrency section 3.6) | Design conformance: code matches module boundaries and pattern structure | Review in each PR; `ArchitectureTest` (ArchUnit): no cycles between module packages (C-03), domain does not depend on `persistence` or `web`, `common` depends on no module | PR reviews on GitHub; `ArchitectureTest` runs in every `./gradlew build` | Each module owner; reviewer is a non-author | Every PR (ArchUnit in place since L-19) |
 | Design | Schema DDL | Schema re-states invariants (CHECK, UNIQUE, FK, INTEGER paisa, C-04) | Unit tests against a real SQLite file | `SchemaMigratorTest` | Tughral | Done (CI run 42982638575) |
 | Implementation | Source code | Coding standard and C-01 gate | Checkstyle 10.18.2 (`config/checkstyle.xml`), build fails on violation | CI job `build` (`.github/workflows/build.yml`), `build/reports/checkstyle/` | All | Every push |
-| Implementation | Source code | Static analysis with triage fixed / accepted / deferred / false positive (QR-04 metrics) | Checkstyle 10.18.2 plus PMD 7.7.0 applied by `config/pmd-init.gradle` (`.\gradlew.bat --init-script config/pmd-init.gradle pmdMain`); JaCoCo complexity per method | `qa/static-analysis-report.md` (66 PMD findings on the final ledger code, all triaged, 4 fixed); defects DEF-001 to DEF-005 in `qa/defect-log.md` | Muhammad Ibrahim (M2 Team Lead); fixes by the module owner | M2 done for `common`, `ledger`, `persistence`, `web`; re-run as other modules land |
-| Implementation | Repayment path (`RepaymentAllocator`, `CoreRepaymentPoster`, ledger and schema), `DelinquencyClassifier` | Fagan inspection with an inspector from another team (R3) | Six-stage Fagan process, checklist incl. QR-05 and C-02 items | `qa/inspections/` (INS-01 plan, 34-item checklist, forms), `qa/defect-log.md` | Moderators per SQAP 3.1: Ibrahim for the repayment path, Hassan for `DelinquencyClassifier`; inspecting team chosen by the instructor | Week 10 (INS-01); `DelinquencyClassifier` when built |
+| Implementation | Source code | Static analysis with triage fixed / accepted / deferred / false positive (QR-04 metrics) | Checkstyle 10.18.2 plus PMD 7.7.0 applied by `config/pmd-init.gradle` (`.\gradlew.bat --init-script config/pmd-init.gradle pmdMain`); JaCoCo complexity per method | `qa/static-analysis-report.md` (66 PMD findings on the ledger code, 4 fixed; re-run on `4067d2f`: 100 findings, all triaged, 39 of them new); defects DEF-001 to DEF-005 and DEF-017 in `qa/defect-log.md` | Muhammad Ibrahim (M2 Team Lead); fixes by the module owner | M2 done for every module with code; re-run as `products` and `reporting` land |
+| Implementation | Repayment path (`RepaymentAllocator`, `CoreRepaymentPoster`, ledger and schema), `DelinquencyClassifier` | Fagan inspection with an inspector from another team (R3) | Six-stage Fagan process, checklist incl. QR-05 and C-02 items | `qa/inspections/` (INS-01 plan, 34-item checklist, forms), `qa/defect-log.md` | Moderators per SQAP 3.1: Ibrahim for the repayment path, Hassan for `DelinquencyClassifier`; inspecting team chosen by the instructor | INS-01: not held as of 21 Nov, because no external inspector has been assigned; held when one is. `DelinquencyClassifier`: built 21 Nov, inspection not yet scheduled |
+| Implementation | Pull requests | Code review by a non-author before merge | Review against the business rules and the M1 design | PR #8 review by Muhammad Ibrahim, 21 Nov: 8 findings logged as DEF-009 to DEF-016 | Any non-author member | Every PR |
+| Implementation | M2 code on `feature/delinquency-origination-import` | Independent code review | Review against the business rules, the M1 design and the concurrency strategy | 21 Nov: 6 findings logged as DEF-018 to DEF-023; 4 fixed in `6d30af9` (red `5541f0b`), 2 open | Reviewer independent of the code's author | Once at M2; again before M3 |
 | Implementation | Commits | TDD evidence: failing test committed before code | Commit convention `test(red)` / `feat(green)` / `refactor`; no squash (ruleset) | Git history of PR #8 and later PRs | Each author | Every item |
-| Test | BR boundary values | Black-box design: EP and BVA traced to RTM IDs | EP/BVA tables | `qa/test-design/black-box.md` (186 cases, 71 automated; ledger 54 of 62); JUnit tests | Module owners | M2 design, M3 executed |
-| Test | Integrity-level 4 methods | White-box design: CFG, cyclomatic complexity, basis paths | Hand CFG; JaCoCo complexity counter | `qa/test-design/white-box.md` (`RepaymentAllocator.allocate` V(G) 10, `CoreRepaymentPoster.post`, `LoanAccount.restore`, `LedgerEntry.requireValid`) | Module owners | M2 design (ledger done), M3 executed |
-| Test | Whole suite | Coverage measurement | JaCoCo (`jacocoTestReport`); `coverageGate` task, branch coverage >= 60% | `build/reports/jacoco/test/html/` uploaded by CI; at `87c5caf`: 94.5% lines, 86.5% branches (existing modules only) | Integrator | Measured M2; 60% gate enforced M3 |
+| Test | BR boundary values | Black-box design: EP and BVA traced to RTM IDs | EP/BVA tables | `qa/test-design/black-box.md` (186 cases, 152 automated at `4067d2f`: ledger 58 of 62, origination 47 of 47, delinquency 30 of 30); JUnit tests | Module owners | M2 design and automation; `products` and `reporting` at M3 |
+| Test | Integrity-level 4 methods | White-box design: CFG, cyclomatic complexity, basis paths | Hand CFG; JaCoCo complexity counter | `qa/test-design/white-box.md` (`RepaymentAllocator.allocate` V(G) 10, `CoreRepaymentPoster.post`, `LoanAccount.restore`, `LedgerEntry.requireValid`, `DelinquencyClassifier.classify` V(G) 6, `EndOfDayEngine.collect` V(G) 7) | Module owners | M2 design (ledger and delinquency done), M3 executed |
+| Test | Whole suite | Coverage measurement | JaCoCo (`jacocoTestReport`); `coverageGate` task, branch coverage >= 60% | `build/reports/jacoco/test/html/` uploaded by CI; at `4067d2f`: 95.2% lines, 88.8% branches, 98.7% methods (modules with code) | Integrator | Measured M2; 60% gate enforced M3 |
 | Test | Posting path | Fault injection: ledger stays balanced at every write point (QR-03) | `PostingFaultInjectionTest` (L-16): 14 failure points on a real SQLite file | CI test report (PR #8 run 43596151001) | Tughral | Done at M2; live demonstration at M3 |
-| Test | End-of-day engine | Concurrency: no lost update, no double accrual (QR-06) | Latch-driven `EndOfDayConcurrencyTest`, 50 repetitions | Scheduled CI job (to be added with the engine) | Ibrahim | M2 code, M3 evidence |
+| Test | End-of-day engine | Concurrency: no lost update, no double accrual (QR-06) | Latch-driven `ConcurrentTellerAndEndOfDayTest` (4 tellers and end of day on the same loans, production wiring, SQLite) and `EndOfDayEngineTest`; 50 repetitions planned | Runs once in every build at `4067d2f`; it failed in 3 of 3 runs with `LockingPoster` removed. The scheduled 50-run job is not yet added | Ibrahim | Test at M2; 50-run evidence at M3 |
 | Test | End-of-day engine | Performance (QR-01) | `EndOfDayPerformanceTest` on 10,000 generated loans | Timings attached to milestone report | Ibrahim | M3 |
 | M3 acceptance | Integrated build at `m3-baseline` | Acceptance gate (SQAP 5.1.3): all FRs traced to passing tests; >= 60% core coverage, 100% decision coverage on money path; zero open critical defects | RTM final status; JaCoCo; defect log | `qa/rtm.md`, CI artifacts, `qa/defect-log.md` | All three | Week 13 |
 | M3 acceptance | Running system | Validation demo: teller posting, end-of-day, statement, PAR30 report; two injected failure scenarios | Live demonstration from the submitted build | Demo script and recording notes | All three | Week 13 |
@@ -85,50 +94,51 @@ for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team
 
 Technique codes: EP, BVA, BP (basis path), INV (invariant), INSP (inspection), GOLD (golden file),
 SA (static analysis), CONC (concurrency test), FI (fault injection), DEMO (validation demo).
-Status is taken from `qa/rtm.md` on 2026-11-16.
+Status is taken from `qa/rtm.md` v2.1 on 2026-11-21. "Implemented" means the tests pass in the
+local build of `4067d2f` and PR CI is pending.
 
 | Req | Rule | Verification | Validation | Owner | Status |
 |---|---|---|---|---|---|
-| FR-01 | BR-01, BR-02 | TC-ORG-01: BVA on ages 17/18, 65/66 at maturity | DEMO (loan application) | Ibrahim | planned |
-| FR-02 | BR-03 | TC-ORG-02: EP + BVA on 1/2/3 active loans | DEMO | Ibrahim | planned |
-| FR-03 | BR-04 | TC-ORG-03: BVA on burden 40% / 40.01% | DEMO | Ibrahim | planned |
-| FR-04 | BR-05 | TC-ORG-04: EP prior write-off yes/no | - | Ibrahim | planned |
-| FR-05 | BR-08 | TC-ORG-05: EP, rule-order cases | Review of rejection reasons | Ibrahim | planned |
-| FR-06 | BR-09, BR-10 | TC-ORG-06: EP + BVA per grade | - | Ibrahim | planned |
-| FR-07 | BR-06, BR-07 | TC-ORG-07: BVA on product bands | - | Ibrahim | planned |
+| FR-01 | BR-01, BR-02 | TC-ORG-01: BVA on ages 17/18, 65/66 at maturity (`AgeRuleTest`) | DEMO (loan application) | Ibrahim | implemented |
+| FR-02 | BR-03 | TC-ORG-02: EP + BVA on 1/2/3 active loans (`ActiveLoanLimitRuleTest`) | DEMO | Ibrahim | implemented |
+| FR-03 | BR-04 | TC-ORG-03: BVA on burden 40% / 40.01% (`BurdenRatioRuleTest`) | DEMO | Ibrahim | implemented |
+| FR-04 | BR-05 | TC-ORG-04: EP prior write-off yes/no (`WriteOffHistoryRuleTest`) | - | Ibrahim | implemented |
+| FR-05 | BR-08 | TC-ORG-05: EP, rule-order cases (`EligibilityEvaluatorTest`) | Review of rejection reasons | Ibrahim | implemented |
+| FR-06 | BR-09, BR-10 | TC-ORG-06: EP + BVA per grade (`RiskGradeTest`, `EligibilityEvaluatorTest`) | - | Ibrahim | implemented for grade, spread and cap; rate applied at loan creation not built |
+| FR-07 | BR-06, BR-07 | TC-ORG-07: BVA on product bands (`ProductBandRuleTest`) | - | Ibrahim | implemented |
 | FR-08 | BR-11, BR-17 | TC-PRD-01: GOLD, 10 schedules per product | Schedules hand-computed independently | Hassan | planned |
 | FR-09 | BR-12 | TC-PRD-02: BVA on 28/29/30/31 day months | - | Hassan | in PR #6 (CI failing) |
 | FR-10 | BR-13 | TC-PRD-03: EP + BVA grace 0 / 1 / max | - | Hassan | planned |
 | FR-11 | BR-14, BR-15 | TC-PRD-04: INV sum of instalments | - | Hassan | planned |
 | FR-12 | BR-16 | TC-PRD-05: EP tenure 1 / 6 / 36 | - | Hassan | planned |
-| FR-13 | BR-18, BR-19 | TC-LED-01: BP on `RepaymentAllocator.allocate()` (V(G) 10, 18/18 branches); INSP (Fagan INS-01) | BR-19 reading decided by the team (D-01, 2026-11-16) | Tughral | verified (PR #8 CI for 46c5ea1); inspection pending |
-| FR-14 | BR-20 | TC-LED-02: BVA 0 / 0.01 / due - 0.01 / due / due + 0.01 | - | Tughral | verified (PR #8 CI for 46c5ea1) |
-| FR-15 | BR-21, BR-22 | TC-LED-03: BVA due + 0.01, exact payoff, payoff + 0.01 | Rebate per product confirmed with Hassan | Tughral | partial: advance credit and payoff detection tested; per-product rebate outstanding (`products`) |
-| FR-16 | BR-23 | TC-LED-04: INV debits = credits after every posting; `LedgerImbalanceException`; atomic `appendAll` | DEMO | Tughral | implemented for repayment postings (PR #8 CI for 2211bb7); rebate and end-of-day postings not yet covered |
-| FR-17 | BR-24 | TC-LED-05: unit + INSP | - | Tughral | implemented; unit tests pass in PR #8 CI; INS-01 checklist item pending |
-| FR-18 | BR-25 | TC-LED-06: EP same pair / other bank / cash / failed-then-retried; 8 concurrent duplicates | - | Tughral | partial: guard verified in PR #8 CI (022dcea); pairs held in memory only, durable store pending |
+| FR-13 | BR-18, BR-19 | TC-LED-01: BP on `RepaymentAllocator.allocate()` (V(G) 10, 18/18 branches); INSP (Fagan INS-01) | BR-19 reading decided by the team (D-01, 2026-11-16) | Tughral | verified (PR #8 CI for c17052f); inspection pending |
+| FR-14 | BR-20 | TC-LED-02: BVA 0 / 0.01 / due - 0.01 / due / due + 0.01 | - | Tughral | verified (PR #8 CI for c17052f) |
+| FR-15 | BR-21, BR-22 | TC-LED-03: BVA due + 0.01, exact payoff, payoff + 0.01 | Rebate per product confirmed with Hassan | Tughral | partial: advance credit and payoff detection tested; per-product rebate outstanding (`products`); rebate line not written (DEF-013) |
+| FR-16 | BR-23 | TC-LED-04: INV debits = credits after every posting; `LedgerImbalanceException`; atomic `appendAll` | DEMO | Tughral (repayment), Ibrahim (end of day) | implemented for repayment postings (PR #8 CI for 34a7bb7) and end-of-day penalty pairs (`4067d2f`); rebate line not written (DEF-013) |
+| FR-17 | BR-24 | TC-LED-05: unit + INSP; reversed at most once (`SchemaVersion2Test`) | - | Tughral | implemented; unit tests pass in PR #8 CI; INS-01 checklist item pending |
+| FR-18 | BR-25 | TC-LED-06: EP same pair / other bank / cash / failed-then-retried; 8 concurrent duplicates; repeated statement import | - | Tughral (guard), Ibrahim (durable store) | implemented: guard verified in PR #8 CI (71d8b3f); pairs kept in SQLite since `8401031` (DEF-012 fixed; `SqlitePaymentReferencesTest`, `StatementImportWiringTest.secondImportAfterRestartIsRefused`). A crash between claim and posting leaves the pair claimed (M3) |
 | FR-19 | BR-26 | TC-LED-07: EP active / closed / written-off, at the account, the poster and the settlement policy | - | Tughral | verified (CI 42471721763) |
-| FR-20 | - | TC-LED-08: EP per bank format | Sample statements | Ibrahim | planned |
-| FR-21 | BR-27, BR-28 | TC-DEL-01: BVA on 10% cap | - | Ibrahim | planned |
-| FR-22 | BR-29 | TC-DEL-02: BVA day 0 / 1 | - | Ibrahim | planned |
-| FR-23 | BR-30 | TC-DEL-03: BP (CC about 6) + BVA 0/1/30/31/60/61/90/91; INSP | - | Ibrahim | planned |
-| FR-24 | BR-31 | TC-DEL-04: EP per class | - | Ibrahim | planned |
-| FR-25 | BR-32 | TC-DEL-05: BVA 180 / 181 days | - | Ibrahim | planned |
-| FR-26 | BR-33 | TC-DEL-06: INV rerun same date; schema UNIQUE | DEMO (rerun end-of-day) | Ibrahim | planned (schema tested) |
-| FR-27 | BR-34 | TC-DEL-07: EP class changed / unchanged | - | Ibrahim | planned |
+| FR-20 | - | TC-LED-08: EP per bank format (`HblStatementAdapterTest`, `McbStatementAdapterTest`, `StatementImportJobTest`, `StatementImportWiringTest`) | Sample statements (`src/test/resources/statements/`) | Ibrahim | implemented |
+| FR-21 | BR-27, BR-28 | TC-DEL-01: BVA on 10% cap (`PenaltyAccruerTest`); skipped dates caught up (`EndOfDayEngineTest.catchesUpSkippedDates`) | - | Ibrahim | implemented (DEF-018 fixed) |
+| FR-22 | BR-29 | TC-DEL-02: BVA day 0 / 1 (`DaysPastDueCalculatorTest`) | - | Ibrahim | implemented |
+| FR-23 | BR-30 | TC-DEL-03: BP (V(G) 6, 6 paths) + BVA 0/1/30/31/60/61/90/91 (`DelinquencyClassifierTest`); INSP | - | Ibrahim | implemented; inspection not yet scheduled |
+| FR-24 | BR-31 | TC-DEL-04: EP per class (`ProvisioningAndWriteOffTest`) | - | Ibrahim | implemented (not yet called by end of day or reports) |
+| FR-25 | BR-32 | TC-DEL-05: BVA 179 / 180 / 181 days (`ProvisioningAndWriteOffTest`, `EndOfDayEngineTest`) | - | Ibrahim | partial: listed for write-off, not yet posted |
+| FR-26 | BR-33 | TC-DEL-06: INV rerun same date; schema UNIQUE (`EndOfDayEngineTest`, `SqliteDailyResultStoreTest`) | DEMO (rerun end-of-day) | Ibrahim | implemented |
+| FR-27 | BR-34 | TC-DEL-07: EP class changed / unchanged (`EndOfDayEngineTest`) | - | Ibrahim | implemented |
 | FR-28 | BR-35 | TC-REP-01: EP date ranges | DEMO (statement) | Hassan | planned |
 | FR-29 | BR-36 to BR-38 | TC-REP-02: GOLD report figures | DEMO (PAR30) | Hassan | planned |
 | FR-30 | BR-39 | TC-REP-03: EP current / past / before first loan | - | Hassan | planned |
-| FR-31 | - | TC-LED-09: EP named / blank operator, refused posting, web form operator; per-file import audit | - | Tughral (teller), Ibrahim (import) | partial: teller half verified in PR #8 CI (04102ea); per-file import line not built |
+| FR-31 | - | TC-LED-09: EP named / blank operator, refused posting, web form operator; per-file import audit | - | Tughral (teller), Ibrahim (import) | partial: teller half verified in PR #8 CI (a43c681); the import job writes no per-file audit line yet |
 | FR-32 | - | TC-REP-04: EP empty / one / full portfolio | - | Hassan | planned |
 | QR-01 | - | Test: `EndOfDayPerformanceTest` | Timings on demo machine | Ibrahim | planned |
 | QR-02 | - | GOLD: `GoldenScheduleTest`, 30 schedules | Independent hand computation | Hassan | planned |
-| QR-03 | - | FI: `PostingFaultInjectionTest`, 14 points (target >= 10) | Live failure scenario at M3 | Tughral | test passes in PR #8 CI (8e0ac30, run 43596151001); demonstration not yet given |
-| QR-04 | - | SA: complexity and size metrics from JaCoCo and PMD | - | Muhammad Ibrahim (M2 Team Lead) | measured at M2: highest McCabe 10 (`RepaymentAllocator.allocate`); CI gate not yet wired |
+| QR-03 | - | FI: `PostingFaultInjectionTest`, 14 points (target >= 10) | Live failure scenario at M3 | Tughral | test passes in PR #8 CI (5502ccf, run 43596151001); demonstration not yet given |
+| QR-04 | - | SA: complexity and size metrics from JaCoCo and PMD | - | Muhammad Ibrahim (M2 Team Lead) | measured on `4067d2f`: mean 1.8, highest 12 (`Applicant` constructor), none above 15; CI gate not yet wired |
 | QR-05 | - | INSP checklist item + `LedgerImmutabilityTest` + source scan in `SqliteLedgerRepositoryTest` | - | Tughral | planned: automated checks pass; INS-01 checklist item still owed |
-| QR-06 | - | CONC: `EndOfDayConcurrencyTest`, 50 runs | Rerun with concurrent tellers in demo | Ibrahim | planned |
+| QR-06 | - | CONC: `ConcurrentTellerAndEndOfDayTest`, 50 runs | Rerun with concurrent tellers in demo | Ibrahim | implemented: passes once per build; 50-run job not yet added; an import run as a separate process is outside the lock (DEF-022, M3; run imports with the server stopped) |
 | C-01 | - | SA: Checkstyle IllegalType / IllegalToken, build fails | - | All | active |
-| C-03 | - | `ArchitectureTest#noCyclesBetweenModules` (ArchUnit 1.3.0) in every build | - | Tughral | verified (PR #8 CI run 43596655380 for dd4dd7e) |
+| C-03 | - | `ArchitectureTest#noCyclesBetweenModules` (ArchUnit 1.3.0) in every build | - | Tughral | verified (PR #8 CI run 43596655380 for e0f9ecb) |
 | C-04 | - | `SchemaMigratorTest`, `SqliteLedgerRepositoryTest` | - | Tughral | verified (CI 42982638575) |
 
 ## 6. Anomaly reporting and CAPA
@@ -165,18 +175,32 @@ Fagan inspection held with an external inspector and its defects logged; static-
 findings triaged; EP/BVA and basis-path designs traced to RTM IDs; coverage measured and
 reported (no threshold); RTM, risk register and defect log updated; `m2-baseline` tag on `main`.
 
+Status of each M2 exit criterion on 21 Nov 2026, the day before submission:
+
+| Criterion | Status | Evidence |
+|---|---|---|
+| CI green on `develop` with all module PRs merged | **Not met.** PR #8 (ledger) is merged. Ibrahim's branch (`origination`, `delinquency`, `ledger.importing`) builds and passes 384 tests locally at `4067d2f`; its PR and CI run are pending. `products` and `reporting` have no PR except PR #6, which targets `main` with a failing check (DEF-007) | PR number and CI run: *to be filled by the lead* |
+| Fagan inspection held with an external inspector, defects logged | **Not met.** No inspector from another team has been assigned, so INS-01 has not been held (risk R3). The package is complete | `qa/inspections/` |
+| Static-analysis findings triaged | Met | `qa/static-analysis-report.md`: 100 PMD findings at `4067d2f`, each with a disposition; Checkstyle 0 |
+| EP/BVA and basis-path designs traced to RTM IDs | Met for every module with code | `qa/test-design/black-box.md` (186 cases, 152 automated); `qa/test-design/white-box.md` (6 methods) |
+| Coverage measured and reported | Met | 95.2% lines, 88.8% branches, 98.7% methods at `4067d2f` |
+| RTM, risk register and defect log updated | Met | `qa/rtm.md` v2.1; `qa/risk-register.md` (21 Nov update); `qa/defect-log.md` (DEF-009 to DEF-023, CAPA-004 to CAPA-008) |
+| `m2-baseline` tag on `main` | **Pending** | Tag commit and date: *to be filled by the lead* |
+
 **M3 exit criteria (acceptance):** the SQAP 5.1.3 gate in section 4 above; designed tests
 executed with results recorded against RTM IDs; QR-01, QR-03 and QR-06 evidenced; all M2 CAPA
 items closed or justified; `m3-baseline` tag on `main`.
 
-**Known gaps in the plan as of 2026-11-16:**
+**Known gaps in the plan as of 2026-11-21:**
 - CI does not yet run `coverageGate`, only `jacocoTestReport` (DEF-008, deferred to M3).
-- The scheduled 50-run concurrency job for QR-06 does not exist, because the end-of-day
-  engine is not built (owner: Ibrahim).
+- The scheduled 50-run concurrency job for QR-06 does not exist yet. The engine and its test
+  are built, and the test runs once in every build (owner: Ibrahim).
 - PMD runs from `config/pmd-init.gradle` on demand and is not yet a CI step. The M2 findings
   are triaged in `qa/static-analysis-report.md`, and wiring PMD into CI is recommended for M3.
-- `origination`, `products`, `delinquency` and `reporting` have no code to verify yet. Their
-  rows above stay *planned*.
+- `products` and `reporting` have no code to verify yet. Their rows above stay *planned*.
+- INS-01 is not held (no external inspector assigned).
+- The account lock covers one process only. Until DEF-022 is fixed, bank-statement imports
+  are run with the web server stopped.
 
 ## 8. Responsibilities
 
