@@ -80,9 +80,9 @@ class ScheduleAssemblerTest {
     }
 
     @Test
-    @DisplayName("a residue larger than the final instalment's principal is refused")
+    @DisplayName("principal already due before the final instalment cannot exceed the principal lent")
     void impossibleResidue() {
-        assertThrows(InvalidScheduleException.class, () -> assembler.assemble(money("1.00"), DATES,
+        assertThrows(InvalidScheduleException.class, () -> assembler.assemble(money("0.80"), DATES,
             List.of(money("0.50"), money("0.50"), money("0.50")),
             List.of(money("0.00"), money("0.00"), money("0.00"))));
     }
