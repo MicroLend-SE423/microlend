@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -45,12 +44,13 @@ class LockingPosterTest {
         return RepaymentCommand.cash(loan, Money.of(new BigDecimal("10.00")), TODAY);
     }
 
+    /** Fake core poster; the decorator passes its result through untouched, so none is built. */
     private PostingResult record(final RepaymentCommand command) {
         calls.incrementAndGet();
         if (locks.lockFor(command.loanId()).isHeldByCurrentThread()) {
             postedUnderLock.incrementAndGet();
         }
-        return new PostingResult(command, null, null, List.of());
+        return null;
     }
 
     @Test
