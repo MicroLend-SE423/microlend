@@ -2,7 +2,7 @@
 
 **Team Lead / Integrator (M2):** Muhammad Ibrahim
 **Companion documents:** `docs/M1-SE423-Proposal-OOD-Pattern-Plan.md` (the design this build is measured against), `docs/M2-SE431-Verification-Baseline.md` (the quality evidence for the same build).
-**Build described:** commit `5328937` (21 Nov 2026), the head of `feature/delinquency-origination-import`, merged into `develop` by pull request #9 on top of the ledger work of pull request #8. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
+**Build described:** commit `4067d2f` (21 Nov 2026), the last code commit of `feature/delinquency-origination-import`, merged into `develop` by pull request #9 on top of the ledger work of pull request #8. Every number below comes from that commit's build output, its CI runs or its Git history. None is estimated.
 
 ## 0. Module status at writing
 
@@ -13,7 +13,7 @@
 | `ledger.importing` (Adapter) | Muhammad Ibrahim | Done: `HblStatementAdapter` and `McbStatementAdapter` over Apache Commons CSV, `StatementImportJob`, reachable from the application | PR #9 |
 | `delinquency` (concurrent end-of-day engine) | Muhammad Ibrahim | Done: days past due, classification, penalty, provisioning, write-off threshold, `EndOfDayEngine` on four threads, classification-change events. Posting a write-off is M3 (needs the `LoanAccount` write-off transition, open item T-03) | PR #9 |
 | `origination` | Muhammad Ibrahim | Done: eligibility rules BR-01 to BR-08, risk grade and amount cap BR-09 and BR-10. Creating the loan row and schedule (I-03) waits for `products` | PR #9 |
-| `persistence` | Tughral Hussain; `SqliteDailyResultStore` and schema v2 by Muhammad Ibrahim | Done: schema v1 (7 tables) and v2 (`PENALTY_INCOME`, one reversal per entry), `SqliteLedgerRepository`, `SqliteLoanRepository`, `SqliteDailyResultStore` | PR #8, PR #9 |
+| `persistence` | Tughral Hussain; `SqliteDailyResultStore`, `SqlitePaymentReferences` and schema v2 by Muhammad Ibrahim | Done: schema v1 (7 tables) and v2 (`PENALTY_INCOME`, one reversal per entry, an eighth table `payment_reference`), `SqliteLedgerRepository`, `SqliteLoanRepository`, `SqliteDailyResultStore`, `SqlitePaymentReferences` | PR #8, PR #9 |
 | `web` and composition root | Tughral Hussain; end-of-day page, `LockingPoster` wiring and statement import by Muhammad Ibrahim | Done: teller page and end-of-day page on `127.0.0.1:8080`, four request threads, `CompositionRoot` wiring both chains, the engine and the import | PR #8, PR #9 |
 | `products` (Factory Method) | Hassan Khalid | Only `DueDateCalculator` and its test, in PR #6 | PR #6 |
 | `reporting` | Hassan Khalid | Not started | - |
@@ -100,10 +100,12 @@ When Hassan Khalid's `InstalmentsDueSource` (H-08) and rebate (H-07) replace the
 | Multi-line writes | `LedgerWriter.append(entry)` | Adds `LedgerWriter.appendAll(List<LedgerEntry>)`, all or nothing | A posting is 2 to 6 lines. Writing them one by one would leave a half-posted repayment if a write failed mid-way |
 | Ledger write vs loan save | One transaction for read, allocate and write | Two transactions, both inside the account lock taken by `LockingPoster`; if the loan save fails, `CoreRepaymentPoster` appends a reversal of every line it wrote (BR-24) | The two repositories open their own connections. The lock (section 4.3) stops a concurrent posting from interleaving, and the compensating reversal keeps the ledger balanced, which `PostingFaultInjectionTest` proves at 14 failure points. Merging them into one transaction remains an open item for M3 |
 | Settlement | `SettlementPolicy` covers BR-21 and BR-22 | BR-21 advance credit and payoff detection built; the BR-22 rebate is requested through `EarlySettlementRebate`; money above the payoff is refused | The rebate amount differs per product type, which is `products` knowledge. No rule says how an excess over the payoff is returned, so it is refused rather than invented |
-| Duplicate-reference store | `UNIQUE (source_bank, bank_reference)` on `payment` | `PaymentReferences` role with `InMemoryPaymentReferences` | The guard is in place and the import now uses it, but references are forgotten when the process restarts. A durable store on the `payment` table is an open defect for M3 (`qa/defect-log.md`) |
+| Duplicate-reference store | `UNIQUE (source_bank, bank_reference)` on `payment` | `PaymentReferences` role; production uses `SqlitePaymentReferences` over a `payment_reference` table (schema v2), unit tests use `InMemoryPaymentReferences` | `PaymentReferences.claim` knows only the bank and reference, while a `payment` row also needs the loan, amount and date. A table of claimed pairs makes BR-25 survive a restart now (`StatementImportWiringTest.secondImportAfterRestartIsRefused`). The claim commits before the posting, so a crash between the two leaves the pair claimed; writing full `payment` rows inside the posting transaction is M3 work |
+| Separate import process | One process | `import <HBL|MCB> <file>` runs as its own process on the same database file | The per-account lock lives in one process, and `CoreRepaymentPoster` reads the loan before its write transaction. An import run while the web server is posting to the same loan could therefore lose one of the two balance updates (the ledger keeps both lines). Until posting reads and saves in one transaction (M3, the "Ledger write vs loan save" row), imports are run with the server stopped. Recorded in `qa/defect-log.md` |
 | Package `persistence` | Implementations named, package implied | Explicit `pk.edu.giki.microlend.persistence` | It holds the SQLite code apart from the domain, so the ArchUnit rule in 1.1 can be stated |
 | What the engine reads | `EndOfDayEngine --> ScheduleProvider`, `DaysPastDueCalculator.daysPastDue(Schedule, LocalDate)`, `PenaltyAccruer.accrue(LoanAccount, LocalDate)` | The engine reads `ledger.InstalmentsDueSource` (instalments due by the business date, with what is still owed per tier); both calculators take that list | Decision D-02 made `InstalmentsDueSource` the one place where a schedule meets payments. Reading the same source as the posting allocator means the engine and a teller can never disagree about what is overdue. `delinquency -> ledger` is an allowed direction (M1 section 3.3) |
 | Penalty balancing leg | `PENALTY_ACCRUAL` only | New `EntryType.PENALTY_INCOME` credit; schema version 2 rebuilds `ledger_entry` with it in the `CHECK` | Without a credit leg a penalty accrual cannot balance (BR-23, decision D-04, open item T-02). Version 1 is never edited; existing databases are upgraded in place (`SchemaVersion2Test`) |
+| Penalty per run | `accrue(LoanAccount, LocalDate)`, one day per run | `PenaltyAccruer.accrue(owing, previousRun, businessDate)`: the penalty owed from the loan's last recorded run up to this date | An independent review found that one-day-per-run accrual loses the penalty for any date the engine is not run (a holiday, or the server down): 10,000.00 overdue across a four-day gap accrued 10.00 instead of 25.00. Accruing the difference of two cumulative figures catches the gap up and still never charges a day twice |
 | Engine thread pool | `-ExecutorService pool` field | A pool created per `run` and shut down in `finally` | No pool thread outlives a run, so the application and the tests never leak threads |
 | Write-off | Engine moves principal to write-off (BR-32) | Engine lists loans more than 180 days past due in `EodReport.writeOffsDue`; nothing is posted | Posting needs a `LoanAccount` write-off transition and a balanced `WRITE_OFF` pair (open item T-03, M3) |
 | `ProvisioningPolicy` | `<<interface>>` | A final class mapping each `Classification` to its BR-31 percentage | Only one provisioning schedule exists. An interface with one implementation adds nothing until a second schedule is needed |
@@ -262,15 +264,16 @@ classDiagram
 
 **Defensive behaviour at the boundary.** A file is untrusted input:
 - a missing column (usually the wrong bank's file) is refused in the adapter's constructor, before any row is read;
-- a malformed row (bad amount or date, zero amount, blank reference or loan id, broken quoting) raises `InvalidStatementException`, which names the file and the line and keeps the cause;
+- a malformed row (bad amount or date, zero amount, blank reference or loan id, broken quoting) raises `InvalidStatementException`, which names the file and the row's physical line (blank lines included) and keeps the cause;
+- a UTF-8 byte-order mark before the header, which spreadsheet "CSV UTF-8" exports write, is dropped rather than making the first column unrecognisable;
 - each adapter translates the whole file before returning its batch, so a malformed file posts nothing.
 
-**Duplicates (BR-25).** The job posts through the import chain, whose `IdempotencyGuardPoster` is outermost. A row whose (bank, reference) was already posted is refused, listed in the `ImportReport`, and the rest of the file still posts, because banks send statements whose dates overlap. The same reference from two banks is two different payments and both post. Any other refusal (for example a closed loan, BR-26) stops the import with that exception.
+**Duplicates (BR-25).** The job posts through the import chain, whose `IdempotencyGuardPoster` is outermost. A row whose (bank, reference) was already posted is refused, listed in the `ImportReport`, and the rest of the file still posts, because banks send statements whose dates overlap. The claim is a row in `payment_reference` (`SqlitePaymentReferences`), so the refusal also holds after the application restarts. The same reference from two banks is two different payments and both post. Any other refusal (for example a closed loan, BR-26) stops the import with that exception.
 
 **Integrated in running code, shown by the tests:**
 - `HblStatementAdapterTest` and `McbStatementAdapterTest`: each bank's mapping, skipped debit rows, and every malformed-row case with its line number (TC-LED-08);
 - `StatementImportJobTest`: a duplicate in a second file is refused and the rest posts; the same reference from two banks is accepted (TC-LED-06), using the real `IdempotencyGuardPoster`;
-- `StatementImportWiringTest`: an HBL statement imported through `CompositionRoot.importStatement` reaches SQLite and reduces the loan's principal; importing it again posts nothing and lists both references.
+- `StatementImportWiringTest`: an HBL statement imported through `CompositionRoot.importStatement` reaches SQLite and reduces the loan's principal; importing it again, through the same root or through a new one on the same database file (a restart), posts nothing and lists both references.
 
 **Rejected alternatives:**
 - **Class Adapter.** `CSVParser` is declared `final`, and a Java class can extend only one class, so the adapter must hold the parser rather than inherit from it.
@@ -304,7 +307,7 @@ The `persistence` layer re-states these as schema constraints (`SchemaMigrator`)
 - foreign keys enforced with `PRAGMA foreign_keys = ON` on every connection (`SqliteDatabase`);
 - money stored as `INTEGER` paisa (C-04);
 - `UNIQUE (loan_id, business_date)` on `delinquency_snapshot` (BR-33);
-- since schema version 2, a unique index on `ledger_entry.reverses_entry_id`, so an entry can be reversed at most once (BR-24).
+- since schema version 2, a unique index on `ledger_entry.reverses_entry_id`, so an entry can be reversed at most once (BR-24), and `PRIMARY KEY (source_bank, bank_reference)` on `payment_reference`, so a bank payment is claimed once (BR-25).
 
 ### 3.2 One structured hierarchy at the module boundary
 
@@ -366,17 +369,20 @@ The end-of-day engine runs on `Executors.newFixedThreadPool(4)`, one task per lo
 | `BEGIN IMMEDIATE` for every loan save, with `PRAGMA busy_timeout = 5000` on every connection | `SqliteLoanRepository.save`, `SqliteDatabase` | Takes SQLite's write lock up front, so two writers queue for up to 5 s instead of one failing. On its own this does **not** prevent a lost update: `CoreRepaymentPoster` reads the loan before that transaction starts, so two postings can both read the same balance. The PR #8 review found this; the per-account lock in 4.3 closes it |
 | All-or-nothing ledger writes: `appendAll` in one transaction, rolled back on any failure | `SqliteLedgerRepository` | No half-posted repayment is visible to a concurrent reader |
 | Exactly-once schema migration: `volatile boolean migrated` with double-checked locking in `synchronized` | `SqliteDatabase.ensureMigrated` | Several workers connecting at start-up cannot migrate twice |
-| Atomic duplicate claims: `ConcurrentHashMap.newKeySet()`; `claim` is a single `add`, so of two concurrent claims of one (bank, reference) exactly one wins | `InMemoryPaymentReferences`, `IdempotencyGuardPoster` | A bank payment imported twice at the same moment is posted once (BR-25) |
+| Atomic duplicate claims: `claim` is one `INSERT OR IGNORE` into `payment_reference`, run under SQLite's write lock against the primary key, so of two concurrent claims of one (bank, reference) exactly one inserts a row (`SqlitePaymentReferencesTest`, eight latch-started threads). The in-memory test double does the same with a single `add` on `ConcurrentHashMap.newKeySet()` | `SqlitePaymentReferences`, `IdempotencyGuardPoster` | A bank payment imported twice at the same moment, or again after a restart, is posted once (BR-25) |
 | Thread-safe collectors: audit trail and timings are `CopyOnWriteArrayList`; accessors return copies | `CompositionRoot` | Teller threads append while the web page reads |
 
 ### 4.3 End-of-day engine and `LockRegistry` (owner Muhammad Ibrahim)
 
 **The operation.** `EndOfDayEngine.run(businessDate)` (`delinquency`, green commit `70428a8`) lists the active loans, then submits one task per loan to `Executors.newFixedThreadPool(4)`. For its loan, each task:
 1. takes the loan's lock from the shared `LockRegistry`;
-2. reads what is owed through `InstalmentsDueSource`;
-3. computes days past due (`DaysPastDueCalculator`, BR-29), the classification (`DelinquencyClassifier`, BR-30), the day's penalty (`PenaltyAccruer`, BR-27 and BR-28) and whether a write-off is due (`WriteOffPolicy`, BR-32);
-4. records the snapshot and a balanced `PENALTY_ACCRUAL`/`PENALTY_INCOME` pair through `DailyResultStore.record`, in one storage transaction;
-5. releases the lock.
+2. reads the loan's last snapshot; if it is for this business date or a later one, the loan is skipped as already recorded;
+3. reads what is owed through `InstalmentsDueSource`;
+4. computes days past due (`DaysPastDueCalculator`, BR-29), the classification (`DelinquencyClassifier`, BR-30), the penalty owed since the last run (`PenaltyAccruer`, BR-27 and BR-28) and whether a write-off is due (`WriteOffPolicy`, BR-32);
+5. records the snapshot and a balanced `PENALTY_ACCRUAL`/`PENALTY_INCOME` pair through `DailyResultStore.record`, in one storage transaction;
+6. releases the lock.
+
+Because the penalty runs from the last recorded run to this date, a date on which end of day was not run (a holiday, or the server down) is caught up by the next run instead of being lost. A loan never processed before accrues every overdue day.
 
 The engine then collects every task's `Future` into an `EodReport`: loans recorded, loans already recorded for that date, penalty accrued, classification changes (BR-34), loans due for write-off, and per-loan failures. The pool is shut down in `finally`.
 
@@ -385,7 +391,7 @@ The engine then collects every task's `Future` into an `EodReport`: loans record
 | Race | Prevented by | Where |
 |---|---|---|
 | Lost update: two postings, or a posting and the engine, read the same account and both write back | `LockRegistry` (`ConcurrentHashMap<LoanId, ReentrantLock>`, locks created atomically by `computeIfAbsent`). The engine's task and `LockingPoster`, innermost in both posting chains, take the same lock for the same loan, so the read-allocate-write sequence of one account never interleaves with another on that account. Different accounts run in parallel | `common.LockRegistry`, `ledger.LockingPoster` (`3b167bf`), `EndOfDayEngine.process` |
-| Double penalty accrual: the engine run twice for one date (a retry, or two runs at once) | `SqliteDailyResultStore.record` opens `BEGIN IMMEDIATE` first, then checks for an existing snapshot, then inserts the snapshot and the penalty lines and commits. The write lock is held across the check, so two racing records cannot both pass it; `UNIQUE (loan_id, business_date)` is the second line of defence. A repeated date writes nothing and is counted as "already recorded" (BR-33) | `persistence.SqliteDailyResultStore` |
+| Double penalty accrual: the engine run twice for one date (a retry, or two runs at once), or an earlier date run after a later one | Under the account lock the task skips a loan whose last snapshot is this date or later. Across processes, `SqliteDailyResultStore.record` opens `BEGIN IMMEDIATE` first, then checks for an existing snapshot, then inserts the snapshot and the penalty lines and commits. The write lock is held across the check, so two racing records cannot both pass it; `UNIQUE (loan_id, business_date)` is the second line of defence. A repeated date writes nothing and is counted as "already recorded" (BR-33) | `persistence.SqliteDailyResultStore` |
 | Torn read: a report sums balances mid-update | Every write that belongs together commits in one transaction (`appendAll`; snapshot plus penalty pair). The portfolio report is `reporting` (Hassan Khalid) and is not built, so the snapshot-read half of this measure is M3 work | `SqliteLedgerRepository`, `SqliteDailyResultStore` |
 
 **Why it cannot deadlock.** A deadlock needs two threads each holding a lock the other wants. A task and a posting each hold exactly one account lock, the lock of the loan they are working on, and nothing in scope moves money between accounts. Inside the lock the only other wait is SQLite's write lock, which is always released by commit or rollback before the account lock is released.
@@ -399,6 +405,7 @@ The engine then collects every task's `Future` into an `EodReport`: loans record
 | `EndOfDayEngineTest.runsFourTasksInParallel` | Four tasks are inside the engine at the same moment: each counts down a latch of 4 and waits for it, which only completes if the pool really runs four at once |
 | `EndOfDayEngineTest.workRunsUnderTheAccountLock` | Every read and write of a loan happens while the task holds that loan's lock (`isHeldByCurrentThread`) |
 | `EndOfDayEngineTest.idempotentPerBusinessDate` | A second run for the same date records nothing and accrues nothing; the next date accrues again (TC-DEL-06) |
+| `EndOfDayEngineTest.catchesUpSkippedDates`, `earlierDateAfterALaterRunIsSkipped` | After a four-day gap the next run accrues exactly the four missing days; a backdated run after a later one records and accrues nothing |
 | `EndOfDayEngineTest.failingTaskDoesNotBlockThePool` | One loan's task throws; the other nine are recorded and the failure is reported with its cause |
 | `EndOfDayEngineTest.classificationChangeEvents` | A downgrade and an upgrade raise one event each; no change raises none (TC-DEL-07) |
 | `LockingPosterTest.waitsForTheHolder` | A posting to a locked account queues on the lock and does not reach the core until the holder releases it; another account is not held up |
@@ -408,6 +415,8 @@ The engine then collects every task's `Future` into an `EodReport`: loans record
 | `ConcurrentTellerAndEndOfDayTest` (QR-06) | Four teller threads post 100 payments across five loans through `CompositionRoot.tellerPoster()` while `endOfDayEngine().run` processes the same loans, all on one SQLite file. Afterwards every loan's principal is exactly the sequential result, debits equal credits across the whole ledger, and each loan has one snapshot and one penalty pair |
 
 The last test was checked against the fault it targets. With `LockingPoster` removed from the chains, it failed in 3 of 3 runs, reporting `LN-1 lost a posting: expected 49800.00 but was 49900.00`: ten teller postings had overwritten one another. With the lock in place it passes. QR-06's M3 target is 50 consecutive clean runs, and the two injected failure scenarios of M1 section 3.6 are also M3 work.
+
+**Stated limit.** The lock registry protects threads inside one process. The statement import can also be run as a separate process (`gradlew run --args="import ..."`); against a running server it is not covered by the lock, as recorded in section 1.3. Imports are run with the server stopped until posting reads and saves in one transaction (M3).
 
 **The teller side.** `TellerWebServer` previously used the JDK server's default executor, so it served one request at a time and "teller threads" existed only in tests. It now serves requests on four threads (`TellerWebServerTest.servesRequestsConcurrently` proves two postings are inside the poster at once). The operator name stays per request because `OperatorContext` is a `ThreadLocal`.
 
@@ -451,7 +460,7 @@ Each queue item in `docs/planning/m2-code-todo.md` was built as a `test(red):` c
 
 Most red commits fail to compile, because the type under test does not exist yet. L-16 is a genuine behavioural red. `PostingFaultInjectionTest` failed at 3 of its 14 failure points, where a failed loan save left the posting's lines in the ledger. Green commit `5502ccf` added the compensating reversal. Squash and rebase merges are disabled on the repository, so this history reaches `develop` intact.
 
-Pull request #9 (Muhammad Ibrahim) adds **7 red/green pairs** for the I-items:
+Pull request #9 (Muhammad Ibrahim) adds **9 red/green pairs**:
 
 | Item | What | Red | Green |
 |---|---|---|---|
@@ -462,27 +471,29 @@ Pull request #9 (Muhammad Ibrahim) adds **7 red/green pairs** for the I-items:
 | I-04 | Import reachable from the application | `a206b83` | `ec445cc` |
 | I-01 | Origination eligibility rules BR-01 to BR-08 | `d962c75` | `da2c929` |
 | I-02 | Risk grade and capped amount BR-09, BR-10 | `a7681e3` | `1eb0f25` |
+| Review | Fixes from an independent review of this code: penalty catch-up after a skipped date (BR-27), no accrual for a backdated run, physical line numbers and byte-order mark in imports, a 503 for a failed end-of-day run | `5541f0b` | `6d30af9` (`fix:`) |
+| FR-18 | Duplicate references survive a restart (`SqlitePaymentReferences`, BR-25) | `5b758e9` | `8401031` |
 
-Every red commit failed to compile before its green commit. Between I-07's red and green, a `test:` commit (`11d2c7d`) corrected a test double that built an invalid `PostingResult`, without changing any assertion, so the green commit `3b167bf` contains production code only. A further `test:` commit (`5328937`) extends the architecture rules to the new modules. The adapter and origination work was done on its own branches and joined by merge commits, so each pair keeps its own position in the history.
+Every red commit failed before its green commit, most by failing to compile. Between I-07's red and green, a `test:` commit (`11d2c7d`) corrected a test double that built an invalid `PostingResult`, without changing any assertion, so the green commit `3b167bf` contains production code only. Two further `test:` commits extend the architecture rules to the new modules (`5328937`) and remove a start-up race from the concurrent claim test (`2a64b0a`). The adapter, origination and durable-reference work was done on its own branches and joined by merge commits, so each pair keeps its own position in the history.
 
 ### 6.2 Tests and coverage
 
-`.\gradlew.bat build jacocoTestReport` at `5328937`, compared with the ledger baseline at `701c161`:
+`.\gradlew.bat build jacocoTestReport` at `4067d2f`, compared with the ledger baseline at `701c161`:
 
-| Measure | `701c161` (PR #8) | `5328937` (PR #9) |
+| Measure | `701c161` (PR #8) | `4067d2f` (PR #9) |
 |---|---|---|
-| Tests | 182, 0 failures, 0 skipped | 366, 0 failures, 0 skipped |
-| Line coverage (JaCoCo) | 773 / 818 = 94.5% | 1266 / 1331 = 95.1% |
-| Branch coverage | 244 / 282 = 86.5% | 422 / 474 = 89.0% |
-| Method coverage | 184 / 188 = 97.9% | 286 / 290 = 98.6% |
+| Tests | 182, 0 failures, 0 skipped | 384, 0 failures, 0 skipped |
+| Line coverage (JaCoCo) | 773 / 818 = 94.5% | 1309 / 1375 = 95.2% |
+| Branch coverage | 244 / 282 = 86.5% | 437 / 492 = 88.8% |
+| Method coverage | 184 / 188 = 97.9% | 294 / 298 = 98.7% |
 
-Coverage of the new packages at `5328937`:
+Coverage of the new packages at `4067d2f`:
 
 | Package | Lines | Branches |
 |---|---|---|
-| `delinquency` | 136 / 139 | 49 / 50 |
+| `delinquency` | 148 / 152 | 52 / 54 |
 | `origination` | 159 / 159 | 84 / 90 |
-| `ledger.importing` | 89 / 92 | 20 / 20 |
+| `ledger.importing` | 99 / 102 | 30 / 32 |
 
 Tests run against real logic and, for persistence, a real SQLite file:
 - boundary tests on the allocator at 0.00, 0.01, due - 0.01 and exactly due (BR-20);
