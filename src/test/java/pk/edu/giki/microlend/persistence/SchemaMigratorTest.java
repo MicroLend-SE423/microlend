@@ -32,8 +32,8 @@ import pk.edu.giki.microlend.common.LoanDomainException;
  */
 class SchemaMigratorTest {
 
-    private static final Set<String> SEVEN_TABLES = Set.of("customer", "loan_product", "loan",
-        "instalment", "ledger_entry", "payment", "delinquency_snapshot");
+    private static final Set<String> EIGHT_TABLES = Set.of("customer", "loan_product", "loan",
+        "instalment", "ledger_entry", "payment", "payment_reference", "delinquency_snapshot");
 
     @TempDir
     private Path dir;
@@ -72,8 +72,8 @@ class SchemaMigratorTest {
     }
 
     @Test
-    @DisplayName("the first connection creates all seven tables")
-    void createsSevenTables() throws SQLException {
+    @DisplayName("the first connection creates all eight tables")
+    void createsEightTables() throws SQLException {
         try (Connection connection = database.connect();
              Statement statement = connection.createStatement();
              ResultSet rows = statement.executeQuery(
@@ -83,7 +83,7 @@ class SchemaMigratorTest {
             while (rows.next()) {
                 tables.add(rows.getString(1));
             }
-            assertEquals(new TreeSet<>(SEVEN_TABLES), tables);
+            assertEquals(new TreeSet<>(EIGHT_TABLES), tables);
         }
     }
 

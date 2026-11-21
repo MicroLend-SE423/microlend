@@ -40,6 +40,8 @@ class StatementImportWiringTest {
     private static final Clock CLOCK =
         Clock.fixed(Instant.parse("2026-10-06T10:00:00Z"), ZoneOffset.UTC);
     private static final Path HBL = Path.of("src/test/resources/statements/hbl-statement.csv");
+    private static final List<InstalmentDue> OWING = List.of(new InstalmentDue(1,
+        LocalDate.of(2026, 10, 1), Money.ZERO, Money.ZERO, Money.ZERO, money("40000.00")));
 
     @TempDir
     private Path dir;
@@ -51,9 +53,18 @@ class StatementImportWiringTest {
         return Money.of(new BigDecimal(amount));
     }
 
+    private static CompositionRoot rootOn(final SqliteDatabase database) {
+        return new CompositionRoot(database, CLOCK, (loan, date) -> OWING,
+            (loan, date) -> Money.ZERO, () -> "teller.amina");
+    }
+
+    private String url() {
+        return "jdbc:sqlite:" + dir.resolve("import.db");
+    }
+
     @BeforeEach
     void seed() throws SQLException {
-        database = new SqliteDatabase("jdbc:sqlite:" + dir.resolve("import.db"));
+        database = new SqliteDatabase(url());
         try (Connection connection = database.connect();
              Statement statement = connection.createStatement()) {
             statement.executeUpdate("INSERT INTO customer (id, full_name, date_of_birth,"
@@ -67,10 +78,7 @@ class StatementImportWiringTest {
                     + loan + "', 'C-1', 'FLAT', 5000000, 5000000, 'ACTIVE', 'A', '2026-09-01')");
             }
         }
-        final List<InstalmentDue> owing = List.of(new InstalmentDue(1, LocalDate.of(2026, 10, 1),
-            Money.ZERO, Money.ZERO, Money.ZERO, money("40000.00")));
-        root = new CompositionRoot(database, CLOCK, (loan, date) -> owing,
-            (loan, date) -> Money.ZERO, () -> "teller.amina");
+        root = rootOn(database);
     }
 
     private ImportReport importHbl() throws IOException {
@@ -92,6 +100,16 @@ class StatementImportWiringTest {
     void secondImportIsRefused() throws IOException {
         importHbl();
         assertEquals(new ImportReport(0, List.of("HBL-7781", "HBL-7782")), importHbl());
+    }
+
+    @Test
+    @DisplayName("BR-25: after a restart, importing the same statement again posts nothing")
+    void secondImportAfterRestartIsRefused() throws IOException {
+        importHbl();
+        root = rootOn(new SqliteDatabase(url()));
+        assertEquals(new ImportReport(0, List.of("HBL-7781", "HBL-7782")), importHbl());
+        assertEquals(money("47451.00"), new SqliteLoanRepository(database)
+            .findById(LoanId.of("LN-0001")).orElseThrow().outstandingPrincipal());
     }
 
     @Test
