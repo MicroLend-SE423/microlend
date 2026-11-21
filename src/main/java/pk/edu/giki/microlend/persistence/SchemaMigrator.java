@@ -23,9 +23,10 @@ import java.util.List;
 public final class SchemaMigrator {
 
     /** The schema version this class produces. */
-    public static final int CURRENT_VERSION = 1;
+    public static final int CURRENT_VERSION = 2;
 
-    private static final List<String> VERSION_1 = List.of(
+    /** Version 1 as first released; never edited, so old databases upgrade cleanly. */
+    static final List<String> VERSION_1 = List.of(
         "CREATE TABLE customer ("
             + " id TEXT PRIMARY KEY,"
             + " full_name TEXT NOT NULL,"
@@ -97,6 +98,37 @@ public final class SchemaMigrator {
     );
 
     /**
+     * Version 2. SQLite cannot alter a CHECK constraint, so {@code ledger_entry} is
+     * rebuilt with {@code PENALTY_INCOME} added (D-04, T-02) and its rows copied in id
+     * order, which keeps every reversal link valid. The unique index allows each entry
+     * to be reversed at most once (BR-24); SQLite unique indexes admit many NULLs.
+     */
+    private static final List<String> VERSION_2 = List.of(
+        "CREATE TABLE ledger_entry_v2 ("
+            + " id INTEGER PRIMARY KEY,"
+            + " loan_id TEXT NOT NULL REFERENCES loan (id),"
+            + " entry_type TEXT NOT NULL CHECK (entry_type IN ('PRINCIPAL_DISBURSEMENT',"
+            + "   'PENALTY_ACCRUAL', 'PENALTY_INCOME', 'PAYMENT_RECEIVED', 'PENALTY_REPAYMENT',"
+            + "   'FEE_REPAYMENT', 'INTEREST_REPAYMENT', 'PRINCIPAL_REPAYMENT', 'ADVANCE_CREDIT',"
+            + "   'INTEREST_REBATE', 'WRITE_OFF', 'REVERSAL')),"
+            + " debit INTEGER NOT NULL,"
+            + " credit INTEGER NOT NULL,"
+            + " posted_at TEXT NOT NULL,"
+            + " reverses_entry_id INTEGER REFERENCES ledger_entry_v2 (id),"
+            + " reason TEXT,"
+            + " CHECK (debit >= 0 AND credit >= 0),"
+            + " CHECK ((debit = 0) <> (credit = 0)),"
+            + " CHECK ((reverses_entry_id IS NULL) = (reason IS NULL)),"
+            + " CHECK (reverses_entry_id IS NULL OR entry_type = 'REVERSAL'))",
+        "INSERT INTO ledger_entry_v2 (id, loan_id, entry_type, debit, credit, posted_at,"
+            + " reverses_entry_id, reason) SELECT id, loan_id, entry_type, debit, credit,"
+            + " posted_at, reverses_entry_id, reason FROM ledger_entry ORDER BY id",
+        "DROP TABLE ledger_entry",
+        "ALTER TABLE ledger_entry_v2 RENAME TO ledger_entry",
+        "CREATE UNIQUE INDEX ledger_entry_reversed_once ON ledger_entry (reverses_entry_id)"
+    );
+
+    /**
      * Brings the database on this connection up to {@link #CURRENT_VERSION}.
      *
      * @param connection an open connection; its auto-commit setting is restored afterwards
@@ -105,10 +137,11 @@ public final class SchemaMigrator {
      */
     public void migrate(final Connection connection) {
         try {
-            if (currentVersion(connection) >= CURRENT_VERSION) {
+            final int version = currentVersion(connection);
+            if (version >= CURRENT_VERSION) {
                 return;
             }
-            applyVersion1(connection);
+            apply(connection, version);
         } catch (SQLException e) {
             throw new PersistenceException("could not migrate the schema to version "
                 + CURRENT_VERSION, e);
@@ -125,11 +158,17 @@ public final class SchemaMigrator {
         }
     }
 
-    private static void applyVersion1(final Connection connection) throws SQLException {
+    private static void apply(final Connection connection, final int fromVersion)
+        throws SQLException {
         final boolean autoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try (Statement statement = connection.createStatement()) {
-            for (final String ddl : VERSION_1) {
+            if (fromVersion < 1) {
+                for (final String ddl : VERSION_1) {
+                    statement.executeUpdate(ddl);
+                }
+            }
+            for (final String ddl : VERSION_2) {
                 statement.executeUpdate(ddl);
             }
             statement.executeUpdate("PRAGMA user_version = " + CURRENT_VERSION);
