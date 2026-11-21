@@ -1,10 +1,12 @@
 package pk.edu.giki.microlend.products;
 
+import java.time.LocalDate;
 import pk.edu.giki.microlend.common.Money;
 
 /**
  * ConcreteCreator: the reducing-balance product (BR-11). Its only decision is which
  * calculator it creates; the schedule workflow is inherited unchanged from {@link LoanProduct}.
+ * On early settlement it refunds unearned interest: every month not yet begun plus the unelapsed part of the current month (BR-22).
  */
 public final class ReducingBalanceProduct extends LoanProduct {
 
@@ -28,5 +30,11 @@ public final class ReducingBalanceProduct extends LoanProduct {
     @Override
     protected InterestCalculator createInterestCalculator() {
         return new ReducingBalanceCalculator();
+    }
+
+    @Override
+    public Money earlySettlementRebate(final Schedule schedule, final LocalDate settlementDate) {
+        return SettlementInterest.ofMonthsNotYetBegun(schedule, settlementDate)
+            .plus(SettlementInterest.unearnedPartOfCurrentMonth(schedule, settlementDate));
     }
 }

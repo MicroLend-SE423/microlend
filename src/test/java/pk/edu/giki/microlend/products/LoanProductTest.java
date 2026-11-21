@@ -143,6 +143,11 @@ class LoanProductTest {
             protected InterestCalculator createInterestCalculator() {
                 return tenPerInstalment;
             }
+
+            @Override
+            public Money earlySettlementRebate(final Schedule schedule, final LocalDate settlementDate) {
+                return Money.ZERO;
+            }
         };
         final Schedule schedule = custom.generateSchedule(money("3000.00"), 2, DISBURSED);
         assertEquals(money("10.00"), schedule.instalments().get(0).interest());

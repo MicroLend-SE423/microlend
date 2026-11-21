@@ -1,10 +1,12 @@
 package pk.edu.giki.microlend.products;
 
+import java.time.LocalDate;
 import pk.edu.giki.microlend.common.Money;
 
 /**
  * ConcreteCreator: the flat-rate product (BR-11). Its only decision is which
  * calculator it creates; the schedule workflow is inherited unchanged from {@link LoanProduct}.
+ * Flat-rate loans refund no interest on early settlement (BR-22).
  */
 public final class FlatRateProduct extends LoanProduct {
 
@@ -28,5 +30,10 @@ public final class FlatRateProduct extends LoanProduct {
     @Override
     protected InterestCalculator createInterestCalculator() {
         return new FlatRateCalculator();
+    }
+
+    @Override
+    public Money earlySettlementRebate(final Schedule schedule, final LocalDate settlementDate) {
+        return Money.ZERO;
     }
 }

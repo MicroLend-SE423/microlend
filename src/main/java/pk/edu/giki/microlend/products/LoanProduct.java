@@ -117,6 +117,17 @@ public abstract class LoanProduct {
     protected abstract InterestCalculator createInterestCalculator();
 
     /**
+     * Returns the interest to refund when the loan is paid off before maturity (BR-22,
+     * decision D-03). Each product subclass states its own rule, so no caller needs to know
+     * which product it is dealing with.
+     *
+     * @param schedule the loan's schedule
+     * @param settlementDate the date the loan is paid off
+     * @return the rebate; zero when the product gives none; never null
+     */
+    public abstract Money earlySettlementRebate(Schedule schedule, LocalDate settlementDate);
+
+    /**
      * Returns the catalogue code.
      *
      * @return the product code
