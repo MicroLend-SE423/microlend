@@ -154,6 +154,8 @@ function cover(doc) {
 
 // Pandoc only starts a list after a blank line, so "text:\n- item" would print the
 // items inline. Insert that blank line, outside code fences, before the first item.
+// Likewise a "**Label:** value" line directly under a text line (a metadata block)
+// would join the line above, so end that line with a hard break.
 function separateLists(md) {
   let inFence = false;
   const out = [];
@@ -163,6 +165,7 @@ function separateLists(md) {
     const isItem = /^(?:- |\* |\d+\. )/.test(line);
     const prevIsText = prev.trim() !== '' && !/^(?:- |\* |\d+\. |\s|\||>|#|```)/.test(prev);
     if (!inFence && isItem && prevIsText) out.push('');
+    if (!inFence && /^\*\*[^*]+:\*\*/.test(line) && prevIsText && !prev.endsWith('\\')) out[out.length - 1] += '\\';
     out.push(line);
   }
   return out.join('\n');
@@ -184,7 +187,7 @@ function build(key) {
 
   execFileSync('pandoc', [
     `${key}.tmp.md`, '-f', 'markdown+pipe_tables+bracketed_spans+header_attributes',
-    '-t', 'html5', '--standalone', '--template', 'pdf/template.html',
+    '-t', 'html5', '--standalone', '--template', 'pdf/template.html', '--lua-filter', 'pdf/print.lua',
     '--toc', '--toc-depth=2', '--include-before-body', `${key}.cover.tmp.html`,
     '-M', `pagetitle=MicroLend — ${doc.code} ${doc.short}`, '-V', `code=${doc.code}`,
     '-V', `milestone=${doc.short}`,
