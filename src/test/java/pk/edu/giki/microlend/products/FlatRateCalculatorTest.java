@@ -53,9 +53,9 @@ class FlatRateCalculatorTest extends InterestCalculatorContract {
     }
 
     @Test
-    @DisplayName("principal is split evenly by the original principal over the tenure")
+    @DisplayName("principal is split evenly over the tenure; the last month takes the residue (BR-14)")
     void evenPrincipal() {
-        assertEquals(List.of(money("3333.33"), money("3333.33"), money("3333.33")),
+        assertEquals(List.of(money("3333.33"), money("3333.33"), money("3333.34")),
             calculator.principalSchedule(money("10000.00"), new BigDecimal("12.00"), 3));
     }
 }
