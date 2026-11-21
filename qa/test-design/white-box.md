@@ -1,7 +1,7 @@
 # MicroLend - White-Box Test Design (M2)
 
 **Deliverable:** SE431 M2, "White-box test design" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Code baseline:** sections 2 to 5 were drawn on `feature/ledger-entry` at `701c161` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Sections 6 and 7 were drawn on `feature/delinquency-origination-import` at `7784a6a` (21 Nov 2026). On 21 Nov the four ledger methods were re-checked against `7784a6a`: their source, JaCoCo complexity and branch coverage are unchanged.
+**Code baseline:** sections 2 to 5 were drawn on `feature/ledger-entry` at `701c161` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Sections 6 and 7 were drawn on `feature/delinquency-origination-import` at `7784a6a` (21 Nov 2026) and re-checked at the code head `4067d2f` the same day. On 21 Nov all six methods were re-checked against `4067d2f`: their source, JaCoCo complexity and branch coverage are unchanged. The review fixes changed `EndOfDayEngine.process`, not `collect`.
 **Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
 ## 1. Method
@@ -353,7 +353,7 @@ The baseline is one loan, recorded, with no classification change and no write-o
 | BP-2 | P1 no on the first test | no active loans | empty report: 0 recorded, no failures | **Not automated** (gap below) |
 | BP-3 | P2: `ExecutionException` | the instalment source throws for LN-3 | LN-3 listed in `failures`; the other 9 loans recorded | `failingTaskDoesNotBlockThePool` |
 | BP-4 | P3: `InterruptedException` | the thread calling `run` is interrupted while it waits | interrupt flag restored; `IllegalStateException` naming the business date | **Not automated** (gap below) |
-| BP-5 | P4 T | second run for the same date | counted as already recorded; nothing written (BR-33) | `idempotentPerBusinessDate` |
+| BP-5 | P4 T | second run for the same date, or a run for an earlier date after a later one | counted as already recorded; nothing written (BR-33) | `idempotentPerBusinessDate`, `earlierDateAfterALaterRunIsSkipped` |
 | BP-6 | P5 T | yesterday Watch, today 31 days (Substandard); and Substandard to Watch | one `ClassificationChangeEvent` each; none for Watch to Watch (BR-34) | `classificationChangeEvents` |
 | BP-7 | P6 T | 181 days past due | loan listed in `writeOffsDue` (BR-32) | `writeOffDueIsReported` |
 
@@ -363,32 +363,34 @@ The baseline is one loan, recorded, with no classification change and no write-o
 
 ## 8. Coverage baseline and gaps (M2)
 
-Measured with `./gradlew build jacocoTestReport` on `7784a6a` (21 Nov 2026): 366 tests in 45 test classes, 0 failures, 0 skipped. Totals from the report-level counters of `jacocoTestReport.xml`:
+Measured with `./gradlew clean build jacocoTestReport` on `4067d2f` (21 Nov 2026): 384 tests in 46 test classes, 0 failures, 0 skipped. Totals from the report-level counters of `jacocoTestReport.xml`:
 
 | Counter | Covered / total | % |
 |---|---|---|
-| Lines | 1,266 / 1,331 | 95.1 |
-| Branches | 422 / 474 | 89.0 |
-| Methods | 286 / 290 | 98.6 |
+| Lines | 1,309 / 1,375 | 95.2 |
+| Branches | 437 / 492 | 88.8 |
+| Methods | 294 / 298 | 98.7 |
 
 By package (lines; branches):
 
 | Package | Lines | Branches |
 |---|---|---|
 | `origination` | 159 / 159 | 84 / 90 |
-| `delinquency` | 136 / 139 | 49 / 50 |
+| `delinquency` | 148 / 152 | 52 / 54 |
 | `ledger` | 440 / 451 | 155 / 178 |
-| `ledger.importing` | 89 / 92 | 20 / 20 |
+| `ledger.importing` | 99 / 102 | 30 / 32 |
 | `common` | 66 / 69 | 24 / 26 |
-| `persistence` | 224 / 249 | 60 / 70 |
-| `web` | 123 / 126 | 27 / 32 |
+| `persistence` | 239 / 264 | 62 / 72 |
+| `web` | 129 / 132 | 27 / 32 |
 | root (`CompositionRoot`, `MicroLendApplication`) | 29 / 46 | 3 / 8 |
+
+At `7784a6a`, earlier on 21 Nov, the figures were 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%) and 286 / 290 methods (98.6%).
 
 The earlier baseline, on `701c161` with 182 tests, was 773 / 818 lines (94.5%), 244 / 282 branches (86.5%) and 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. `products` and `reporting` have no code yet. The 60% target applies to core business logic at M3.
 
 Open gaps feed `qa/defect-log.md` only if a test reveals a fault:
 - `LedgerEntry`: 7 branches in `equals` and in the null and blank checks of `reversalOf` are not executed.
-- `EndOfDayEngine.collect`: basis paths BP-2 (no active loans) and BP-4 (interrupted while waiting) have no test. BP-4's 3 lines are the 3 uncovered lines in `delinquency`.
+- `EndOfDayEngine.collect`: basis paths BP-2 (no active loans) and BP-4 (interrupted while waiting) have no test. BP-4's 3 lines are 3 of the 4 uncovered lines in `delinquency`. The fourth is in `EndOfDayEngine.process`: the branch where `record` reports that another writer stored the same loan and date between the engine's check and its write.
 - `MicroLendApplication.main` (15 lines, 4 branches) is not run by any test. It is exercised by hand with `./gradlew run`.
 - `persistence`: most of the 25 uncovered lines are the `catch (SQLException)` blocks that translate a storage failure into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
 - Hassan's schedule assembler gets its white-box design when its code exists.

@@ -2,7 +2,7 @@
 
 **Milestone:** M2 (SE431) - Black-box test design
 **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Version:** 0.3, 2026-11-21 (refreshed against the M2 integrated build `7784a6a` on `feature/delinquency-origination-import`, 366 tests; version 0.2 of 2026-11-16 was checked against `701c161`, 182 tests)
+**Version:** 0.3, 2026-11-21 (refreshed against the M2 integrated build on `feature/delinquency-origination-import`, code head `4067d2f`, 384 tests; version 0.2 of 2026-11-16 was checked against `701c161`, 182 tests)
 **Sources:** `docs/business-rules.md` v1.1 (BR-01 to BR-43), `qa/rtm.md` (FR, QR and TC IDs),
 `docs/M1-SE431-Quality-Requirements-RTM-SQAP.md`, and the test code under `src/test/java`.
 
@@ -428,11 +428,15 @@ posting paths instead.
 |---|---|---|---|---|
 | TC-LED-06.1 | cash, no reference | accepted; never treated as a duplicate | EC-67 | automated `RepaymentCommandTest#cashPaymentHasNoReference`, `IdempotencyGuardPosterTest#cashIsNeverADuplicate` |
 | TC-LED-06.2 | HBL / REF-1 first time | accepted and forwarded | EC-68 | automated `RepaymentCommandTest#bankPaymentCarriesPair`, `IdempotencyGuardPosterTest#samePairTwice` (first posting) |
-| TC-LED-06.3 | HBL / REF-1 again | `DuplicatePaymentException`; not forwarded | EC-69 | automated `IdempotencyGuardPosterTest#samePairTwice`, `CompositionRootTest#importChainGuardsOutermost`; from a statement file in `StatementImportJobTest#duplicateInSecondFileRefused` (the rest of the file is posted) and `StatementImportWiringTest#secondImportIsRefused` (production chain, SQLite); schema key `SchemaMigratorTest#paymentIdempotencyKey`. Pairs are held in memory only (FR-18 partial, DEF-012) |
-| TC-LED-06.4 | HBL / REF-1 then MCB / REF-1 | both accepted | EC-70 | automated `RepaymentCommandTest#sameReferenceFromTwoBanksDiffers`, `IdempotencyGuardPosterTest#sameReferenceTwoBanks`, `StatementImportJobTest#sameReferenceFromTwoBanksAccepted` |
+| TC-LED-06.3 | HBL / REF-1 again | `DuplicatePaymentException`; not forwarded | EC-69 | automated `IdempotencyGuardPosterTest#samePairTwice`, `CompositionRootTest#importChainGuardsOutermost`; from a statement file in `StatementImportJobTest#duplicateInSecondFileRefused` (the rest of the file is posted) and `StatementImportWiringTest#secondImportIsRefused` (production chain, SQLite); across a restart in `SqlitePaymentReferencesTest#claimSurvivesRestart` and `StatementImportWiringTest#secondImportAfterRestartIsRefused`; schema key `SchemaMigratorTest#paymentIdempotencyKey`. Since `8401031` the claimed pairs are kept in SQLite (`payment_reference`, DEF-012 fixed) |
+| TC-LED-06.4 | HBL / REF-1 then MCB / REF-1 | both accepted | EC-70 | automated `RepaymentCommandTest#sameReferenceFromTwoBanksDiffers`, `IdempotencyGuardPosterTest#sameReferenceTwoBanks`, `StatementImportJobTest#sameReferenceFromTwoBanksAccepted`, `SqlitePaymentReferencesTest#sameReferenceTwoBanks` |
 | TC-LED-06.5 | bank "" or reference "  " | `InvalidRepaymentException` | EC-71 | automated `RepaymentCommandTest#rejectsBlankBankOrReference` |
-| TC-LED-06.6 | HBL / REF-1 posting fails, then is retried | retry accepted | EC-86 | automated `IdempotencyGuardPosterTest#failedPostingReleasesReference` |
-| TC-LED-06.7 | 8 threads post HBL / REF-1 at the same moment | forwarded exactly once; 7 duplicates refused | EC-69 under concurrency | automated `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce` |
+| TC-LED-06.6 | HBL / REF-1 posting fails, then is retried | retry accepted | EC-86 | automated `IdempotencyGuardPosterTest#failedPostingReleasesReference`; on SQLite `SqlitePaymentReferencesTest#failedPostingReleasesTheStoredPair`, `#releaseFreesThePair` |
+| TC-LED-06.7 | 8 threads post HBL / REF-1 at the same moment | forwarded exactly once; 7 duplicates refused | EC-69 under concurrency | automated `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce`; on SQLite `SqlitePaymentReferencesTest#concurrentClaimsHaveOneWinner` (8 threads, one winner) |
+
+Known limitation (M3): if the process stops between the claim and the posting, the pair stays
+claimed, so a later import of that row is refused as a duplicate. Writing the `payment` row
+inside the posting transaction removes it.
 
 ### 4.7 FR-19 - payment against closed or written-off loan (BR-26) - TC-LED-07
 
@@ -466,7 +470,10 @@ No business rule fixes the statement formats, so the boundaries are rule silent.
 |---|---|---|---|---|
 | TC-LED-08.1, .2 | one valid file per bank | one `RepaymentCommand` per row | EC-75, EC-76 | automated `HblStatementAdapterTest#mapsCreditRows` (TC-LED-08.1: CR rows only, paisa to rupees, `ddMMyyyy`), `McbStatementAdapterTest#mapsCreditRows` (TC-LED-08.2: positive rows only, `dd/MM/yyyy`); posted by `StatementImportJobTest#postsEveryCommand` and, on SQLite through the production chain, `StatementImportWiringTest#importsThroughTheProductionChain` |
 | TC-LED-08.3 | unknown format | typed rejection, nothing posted | EC-77 | automated `HblStatementAdapterTest#otherBanksFormat`, `McbStatementAdapterTest#otherBanksFormat` (each refuses the other bank's file), `StatementImportWiringTest#unknownBank` (no adapter for the bank), `HblStatementAdapterTest#missingColumn` |
-| TC-LED-08.4 | malformed row | row rejected with its line number | EC-78 | automated `HblStatementAdapterTest#malformedRow` (9 rows: bad or zero or negative amount, bad date, wrong date format, unknown direction, blank reference, blank loan, missing values), `McbStatementAdapterTest#malformedRow` (6 rows), `HblStatementAdapterTest#brokenQuoting`; nothing from the file is posted in `StatementImportJobTest#malformedFilePostsNothing` |
+| TC-LED-08.4 | malformed row | row rejected with its line number | EC-78 | automated `HblStatementAdapterTest#malformedRow` (9 rows: bad or zero or negative amount, bad date, wrong date format, unknown direction, blank reference, blank loan, missing values), `McbStatementAdapterTest#malformedRow` (6 rows), `HblStatementAdapterTest#brokenQuoting`; the physical line is named even after blank lines (`#physicalLineNumbers` in both adapter tests, DEF-019); nothing from the file is posted in `StatementImportJobTest#malformedFilePostsNothing` |
+
+A valid statement that starts with a UTF-8 byte-order mark is accepted (`#byteOrderMark` in both
+adapter tests, DEF-020). That is a further EC-75/EC-76 case.
 
 ### 4.9 FR-31 - audit line (no BR) - TC-LED-09
 
@@ -584,7 +591,11 @@ Further automated cases in `PenaltyAccruerTest`: 0 days gives 0.00 (row 0 of `#a
 negative days are rejected (`#negativeDaysRejected`), an instalment due today is not yet
 overdue (`#dueTodayIsNotOverdue`), each overdue instalment adds its own day
 (`#oneDayPerOverdueInstalment`), and 210 daily amounts on 333.33 add up exactly to the
-cumulative penalty, rounding included (`#dailyAmountsSumToCumulative`). On end of day the
+cumulative penalty, rounding included (`#dailyAmountsSumToCumulative`). Days skipped between
+runs are caught up: a loan never processed accrues every overdue day
+(`#firstRunAccruesEveryOverdueDay`), and a run after a gap accrues the days since the previous
+run (`#catchesUpSkippedDates`; at engine level `EndOfDayEngineTest#catchesUpSkippedDates`:
+10,000.00 overdue, one run then a run four days later, 25.00 in all per loan; DEF-018). On end of day the
 daily penalty is posted as a balanced `PENALTY_ACCRUAL` / `PENALTY_INCOME` pair
 (`EndOfDayEngineTest#processesEveryLoan`, `SqliteDailyResultStoreTest#recordsSnapshotAndPenalty`).
 
@@ -641,7 +652,7 @@ the provision-coverage ratio of FR-29 (`reporting`).
 | TC | Input | Expected | Status |
 |---|---|---|---|
 | TC-DEL-06.1 | run end of day for 2027-03-11 once | penalties and snapshot written | automated `EndOfDayEngineTest#processesEveryLoan` (20 loans), `SqliteDailyResultStoreTest#recordsSnapshotAndPenalty` (snapshot and penalty pair in one transaction) |
-| TC-DEL-06.2 | run it again for 2027-03-11 | no additional effect | automated `EndOfDayEngineTest#idempotentPerBusinessDate`, `SqliteDailyResultStoreTest#secondRecordIsANoOp`, `#concurrentRecordsForTheSameDate` (two connections at once, exactly one wins); the unique key in `SchemaMigratorTest#snapshotPerLoanPerDate` |
+| TC-DEL-06.2 | run it again for 2027-03-11 | no additional effect | automated `EndOfDayEngineTest#idempotentPerBusinessDate`; an earlier date run after a later one also records nothing (`#earlierDateAfterALaterRunIsSkipped`); `SqliteDailyResultStoreTest#secondRecordIsANoOp`, `#concurrentRecordsForTheSameDate` (two connections at once, exactly one wins); the unique key in `SchemaMigratorTest#snapshotPerLoanPerDate` |
 | TC-DEL-06.3 | run for 2027-03-12 | new accrual for the new date | automated `EndOfDayEngineTest#idempotentPerBusinessDate` (the next date records all 5 loans again) |
 
 `SqliteDailyResultStoreTest#oneTransaction` shows that a failing ledger line rolls the snapshot
@@ -655,9 +666,11 @@ back with it.
 | TC-DEL-07.2 | Substandard to Watch | one alert | automated `EndOfDayEngineTest#classificationChangeEvents` (30 days after Substandard) |
 | TC-DEL-07.3 | Watch to Watch | no alert | automated `EndOfDayEngineTest#classificationChangeEvents` (30 days after Watch) |
 
-The earlier classification is read from the latest earlier snapshot
-(`SqliteDailyResultStoreTest#classificationBefore`). The alert is a `ClassificationChangeEvent`
-in the end-of-day report, shown on the end-of-day page (`TellerWebServerTest#endOfDayRuns`).
+The earlier classification is read from the loan's last snapshot
+(`SqliteDailyResultStoreTest#lastSnapshot`). The alert is a `ClassificationChangeEvent`
+in the end-of-day report, shown on the end-of-day page (`TellerWebServerTest#endOfDayRuns`). A run
+that fails as a whole is shown as a 503 page naming the cause
+(`TellerWebServerTest#endOfDayFailureIsReported`, DEF-021).
 
 ## 7. Reporting (owner: Hassan Khalid)
 
@@ -708,7 +721,7 @@ input domain either; it is enforced on every build by `ArchitectureTest#noCycles
 ## 9. Coverage summary
 
 Counts are equivalence classes and BVA cases defined in this document. "Automated" counts
-test cases already implemented in JUnit at commit `7784a6a` (366 tests, all passing),
+test cases already implemented in JUnit at commit `4067d2f` (384 tests, all passing),
 including partial automation at the command or schema level. The "designed only" column
 includes TC-REP-02.4, which is blocked on a rule decision. At `701c161` (182 tests) the
 totals were 71 automated and 115 designed only.
@@ -729,7 +742,7 @@ totals were 71 automated and 115 designed only.
 | FR-15 | BR-21, BR-22 | 6 | 4 | 6 | 3 | 3 (rebates and instalment source from `products`) |
 | FR-16 | BR-23 | 5 | 1 | 6 | 6 | 0 (TC-LED-04.2 partly automated) |
 | FR-17 | BR-24, BR-43 | 6 | 2 | 8 | 8 | 0 |
-| FR-18 | BR-25 | 6 | 0 | 7 | 7 | 0 (pairs held in memory only) |
+| FR-18 | BR-25 | 6 | 0 | 7 | 7 | 0 (pairs kept in SQLite since `8401031`) |
 | FR-19 | BR-26 | 3 | 0 | 6 | 6 | 0 |
 | FR-20 | - | 4 | 0 | 4 | 4 | 0 |
 | FR-31 | - | 4 | 0 | 5 | 4 | 1 (per-file import audit) |
