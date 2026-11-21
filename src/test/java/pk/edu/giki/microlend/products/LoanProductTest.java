@@ -166,6 +166,50 @@ class LoanProductTest {
     }
 
     @Test
+    @DisplayName("grace 3: flat-rate first instalment moves to month 4 and carries 3 months of interest (TC-PRD-03)")
+    void graceDefersAndAccrues() {
+        final Schedule schedule = flat().generateSchedule(money("12000.00"), 3, DISBURSED, 3);
+        assertEquals(3, schedule.instalments().size());
+        assertEquals(LocalDate.of(2027, 5, 15), schedule.instalments().get(0).dueDate());
+        assertEquals(LocalDate.of(2027, 7, 15), schedule.instalments().get(2).dueDate());
+        assertEquals(money("480.00"), schedule.instalments().get(0).interest());
+        assertEquals(money("120.00"), schedule.instalments().get(1).interest());
+    }
+
+    @Test
+    @DisplayName("grace 1: reducing-balance adds one month of interest on the principal to the first instalment")
+    void graceReducing() {
+        final Schedule schedule = reducing().generateSchedule(money("1200.00"), 2, DISBURSED, 1);
+        assertEquals(LocalDate.of(2027, 3, 15), schedule.instalments().get(0).dueDate());
+        assertEquals(money("24.00"), schedule.instalments().get(0).interest());
+        assertEquals(money("597.01"), schedule.instalments().get(0).principal());
+    }
+
+    @Test
+    @DisplayName("tenure 6 with grace 3 is still exactly 6 instalments; sums still agree (BR-16, TC-PRD-05.2)")
+    void graceKeepsInstalmentCount() {
+        for (LoanProduct product : List.of(flat(), reducing(), bullet())) {
+            final Schedule schedule = product.generateSchedule(money("50000.00"), 6, DISBURSED, 3);
+            assertEquals(6, schedule.instalments().size());
+            assertEquals(money("50000.00"), schedule.totalPrincipal());
+        }
+    }
+
+    @Test
+    @DisplayName("the three-argument form is grace 0")
+    void noGraceByDefault() {
+        assertEquals(flat().generateSchedule(money("12000.00"), 3, DISBURSED).instalments(),
+            flat().generateSchedule(money("12000.00"), 3, DISBURSED, 0).instalments());
+    }
+
+    @Test
+    @DisplayName("grace 4 is refused when generating a schedule (BR-13)")
+    void graceFourRefused() {
+        assertThrows(InvalidGracePeriodException.class,
+            () -> flat().generateSchedule(money("12000.00"), 3, DISBURSED, 4));
+    }
+
+    @Test
     @DisplayName("a product exposes its catalogue data")
     void exposesCatalogueData() {
         final LoanProduct product = reducing();
