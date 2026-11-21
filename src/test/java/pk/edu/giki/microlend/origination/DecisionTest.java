@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static pk.edu.giki.microlend.origination.ApplicationBuilder.money;
 
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,18 @@ class DecisionTest {
         final Decision decision = Decision.rejected(AGE_FAILURE);
         assertFalse(decision.isApproved());
         assertEquals(Optional.of(RejectionReason.AGE), decision.reason());
+        assertEquals(Optional.empty(), decision.grade());
+        assertEquals(Optional.empty(), decision.approvedAmount());
+    }
+
+    @Test
+    @DisplayName("an approval carries the risk grade and the capped amount, and no reason (BR-10)")
+    void approvedDecision() {
+        final Decision decision = Decision.approved(RiskGrade.B, money("40000.00"));
+        assertTrue(decision.isApproved());
+        assertEquals(Optional.empty(), decision.reason());
+        assertEquals(Optional.of(RiskGrade.B), decision.grade());
+        assertEquals(Optional.of(money("40000.00")), decision.approvedAmount());
     }
 
     @Test
@@ -44,7 +57,7 @@ class DecisionTest {
     @Test
     @DisplayName("requireApproved returns an approved decision unchanged")
     void requireApprovedReturnsApproval() {
-        final Decision approved = Decision.approved();
+        final Decision approved = Decision.approved(RiskGrade.A, money("50000.00"));
         assertSame(approved, approved.requireApproved());
     }
 

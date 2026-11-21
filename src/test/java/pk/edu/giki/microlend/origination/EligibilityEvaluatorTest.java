@@ -16,7 +16,9 @@ import pk.edu.giki.microlend.common.Money;
 /**
  * Tests for {@link EligibilityEvaluator}: FR-05, BR-08, black-box cases
  * TC-ORG-05.1 to TC-ORG-05.9. The evaluator stops at the first failing rule,
- * so a rejection names exactly one reason, in the order BR-01 to BR-07.
+ * so a rejection names exactly one reason, in the order BR-01 to BR-07. An
+ * application that passes is graded and capped: FR-06, BR-09, BR-10,
+ * TC-ORG-06.8 to TC-ORG-06.11 and TC-ORG-03.4.
  *
  * <p>The new loan's instalment is 10,000.00 on income 100,000.00, a 10% burden,
  * unless a test adds existing instalments.</p>
@@ -116,10 +118,60 @@ class EligibilityEvaluatorTest {
             application -> RuleOutcome.fail(RejectionReason.ACTIVE_LOAN_LIMIT, "first");
         final EligibilityRule mustNotRun =
             application -> fail("a rule after the first failure was evaluated");
-        final EligibilityEvaluator stubbed =
-            new EligibilityEvaluator(List.of(passes, failsFirst, mustNotRun));
+        final EligibilityEvaluator stubbed = new EligibilityEvaluator(
+            List.of(passes, failsFirst, mustNotRun), application -> NEW_INSTALMENT);
         final Decision decision = stubbed.evaluate(new ApplicationBuilder().build());
         assertEquals(Optional.of(RejectionReason.ACTIVE_LOAN_LIMIT), decision.reason());
+    }
+
+    @Test
+    @DisplayName("TC-ORG-06.8: grade B, requested 50,000.00, is approved for 40,000.00 (80%)")
+    void gradeBIsCappedAtEightyPercent() {
+        assertApproved(new ApplicationBuilder(), RiskGrade.B, "40000.00");
+    }
+
+    @Test
+    @DisplayName("TC-ORG-06.9: grade A, requested 50,000.00, is approved for 50,000.00")
+    void gradeAIsNotCapped() {
+        assertApproved(new ApplicationBuilder().history(0, 1, 0, false), RiskGrade.A, "50000.00");
+    }
+
+    @Test
+    @DisplayName("TC-ORG-06.10: grade C caps 16,666.00 at 9,999.60, below the minimum: BELOW_PRODUCT_MINIMUM")
+    void capBelowProductMinimum() {
+        assertRejected(new ApplicationBuilder().existingInstalments("28000.00").requested("16666.00"),
+            RejectionReason.BELOW_PRODUCT_MINIMUM, "BR-10");
+    }
+
+    @Test
+    @DisplayName("TC-ORG-06.11: grade C caps 16,666.67 at 10,000.00, the minimum itself: approved")
+    void capAtProductMinimum() {
+        assertApproved(new ApplicationBuilder().existingInstalments("28000.00").requested("16666.67"),
+            RiskGrade.C, "10000.00");
+    }
+
+    @Test
+    @DisplayName("TC-ORG-03.4: burden 40.00% at the base rate passes BR-04 as grade C; the spread does not count")
+    void gradeCAtTheBurdenLimit() {
+        assertApproved(new ApplicationBuilder().existingInstalments("30000.00"),
+            RiskGrade.C, "30000.00");
+    }
+
+    @Test
+    @DisplayName("BR-09: the grade uses the BR-04 burden; 25.00% with an earlier loan is A, 25.01% is B")
+    void gradeUsesTheBurdenRatio() {
+        assertApproved(new ApplicationBuilder().history(0, 1, 0, false)
+            .existingInstalments("15000.00"), RiskGrade.A, "50000.00");
+        assertApproved(new ApplicationBuilder().history(0, 1, 0, false)
+            .existingInstalments("15010.00"), RiskGrade.B, "40000.00");
+    }
+
+    private void assertApproved(final ApplicationBuilder builder, final RiskGrade grade,
+                                final String amount) {
+        final Decision decision = evaluator.evaluate(builder.build());
+        assertTrue(decision.isApproved(), () -> "rejected: " + decision.reason());
+        assertEquals(Optional.of(grade), decision.grade());
+        assertEquals(Optional.of(money(amount)), decision.approvedAmount());
     }
 
     private void assertRejected(final ApplicationBuilder builder, final RejectionReason reason,
