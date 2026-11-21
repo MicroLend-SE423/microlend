@@ -1,13 +1,11 @@
 # MicroLend - SCM Quality-Gate Evidence (M2)
 
 **Deliverable:** SE431 M2, "SCM quality-gate evidence" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Evidence collected:** 21 Nov 2026, after pull request #9 was merged, from the GitHub API (`gh api`, `gh pr`, `gh run`) and `git` on the
-repository `github.com/MicroLend-SE423/microlend`. The first collection, on 14 Nov, is superseded by this one.
+**Evidence collected:** 21 Nov 2026, after PR #9 was merged, from the GitHub API (`gh api`, `gh pr`, `gh run`) and `git` on
+`github.com/MicroLend-SE423/microlend` (supersedes the 14 Nov collection).
 
-This document shows the configuration-management strategy the team documented, the controls that
-enforce it on GitHub, and what the repository history shows about whether it was followed. Where
-history shows the strategy was **not** followed, that is recorded as a nonconformance with a CAPA
-rather than left out.
+Where the history departs from the documented strategy, it is recorded as a nonconformance with a CAPA
+(section 4), not left out.
 
 ## 1. Documented strategy
 
@@ -33,7 +31,7 @@ Source: `README.md` (Branching strategy, Baselines).
 | Rule `non_fast_forward` | On | No force push, so published history cannot be rewritten |
 | Rule `deletion` | On | `main` and `develop` cannot be deleted |
 | Repository merge buttons | merge commit on; squash off; rebase off | Same as above, at repository level |
-| Auto-delete head branches | Off | Feature branches, and the commits on them, stay visible for assessment |
+| Auto-delete head branches | Off | Feature branches, and the commits on them, stay visible for assessment (three were deleted by hand after the rewrite in 3.6) |
 | Access | `mIBRAHIM707` admin, `tughral1` admin, `Hassan242-kk` write | Every member can push feature branches; nobody can bypass the ruleset |
 | CI | `.github/workflows/build.yml` on push to `main`, `develop`, `feature/**` and on pull requests into `main`/`develop`; uploads test, JaCoCo and Checkstyle reports as artifacts (90 days) | Build, tests, static analysis and coverage on every change |
 
@@ -53,13 +51,13 @@ Source: `README.md` (Branching strategy, Baselines).
 | #8 | `feature/ledger-entry` -> `develop` | tughral1 | mIBRAHIM707: approved (21 Nov), with seven follow-ups | mIBRAHIM707, the reviewer | **Yes** |
 | #9 | `feature/delinquency-origination-import` -> `develop` | mIBRAHIM707 | tughral1: approved (21 Nov) | tughral1, the reviewer | **Yes** |
 
-All six nonconforming merges happened between 9 Oct and 4 Nov 2026, before the ruleset was
-re-applied on **4 Nov 2026 15:43 PKT** with an empty bypass list. Since then every merge has had one
-non-author approval and was merged by the reviewer: PR #8 and PR #9.
+All six nonconforming merges (9 Oct to 4 Nov 2026) predate the ruleset's re-application with an empty
+bypass list on **4 Nov 2026 15:43 PKT**. Both later merges (PR #8, PR #9) had a non-author approval and
+were merged by the reviewer.
 
 ### 3.2 CI runs
 
-All workflow runs from 4 Oct 2026 (first run) to 21 Nov 2026: **81**. **78** succeeded and **3** failed.
+Workflow runs from 4 Oct 2026 (the first) to 21 Nov 2026: **81**; **78** succeeded, **3** failed.
 
 | Failed run | Branch | Cause | Resolution |
 |---|---|---|---|
@@ -67,9 +65,9 @@ All workflow runs from 4 Oct 2026 (first run) to 21 Nov 2026: **81**. **78** suc
 | 38076363948 | `feat/hassan-product-schedule-tests` | PR #6 check fails (Checkstyle `NewlineAtEndOfFile`) | Open; review on PR #6 asks for the fix and for retargeting to `develop` |
 
 Runs per branch: `feature/ledger-entry` 46, all passed (per-push evidence for PR #8);
-`feature/delinquency-origination-import` 2, both passed (push run 44930284914 and pull-request run
-44930290499 at `9af3f31`); `develop` 22, of which the last 20 passed, including run 44931805244 at
-`ac14ba9`, the merge of PR #9.
+`feature/delinquency-origination-import` 2, both passed (push run 44930284914, pull-request run
+44930290499, at `9af3f31`); `develop` 22, the last 20 passed, including run 44931805244 at `ac14ba9`,
+the PR #9 merge.
 
 ### 3.3 TDD commit trail
 
@@ -88,7 +86,7 @@ git log --format=%s 47c713e..ac14ba9^2
 
 ### 3.4 Attribution
 
-Commits on the branches published on GitHub, by author (`git shortlog -sn --remotes`, 21 Nov 2026):
+Commits on published branches, by author (`git shortlog -sn --remotes`, 21 Nov 2026):
 
 | Author | Commits |
 |---|---|
@@ -96,7 +94,7 @@ Commits on the branches published on GitHub, by author (`git shortlog -sn --remo
 | mIBRAHIM707 / Muhammad Ibrahim | 64 |
 | Hassan242-kk | 1 |
 
-Hassan Khalid's only commit is on the open PR #6. This is an individual-evidence risk (risk register R6).
+Hassan Khalid's only commit is on the open PR #6: an individual-evidence risk (risk register R6).
 
 ### 3.5 Baselines
 
@@ -107,19 +105,19 @@ Hassan Khalid's only commit is on the open PR #6. This is an individual-evidence
 
 ### 3.6 A controlled exception: one force push to `develop`
 
-On 21 Nov 2026 the team lead approved one rewrite of `develop`'s published history, to remove
-tool-generated trailer lines from the commit messages made since the M1 baseline. The steps:
+On 21 Nov 2026 the team lead approved one rewrite of `develop`'s published history to remove
+tool-generated trailer lines from commit messages since the M1 baseline:
 
-1. The 54 commits after `m1-baseline` were rewritten locally, changing messages only. Every rewritten commit was checked to have the same tree as the commit it replaced, so no file content changed, and the commit order is unchanged.
-2. Muhammad Ibrahim switched the ruleset off, force-pushed `develop` once with `--force-with-lease` against the expected old head (`5916371` -> `47c713e`), and switched the ruleset back on (22:27 PKT). `main` was not touched.
-3. The merged branches that still held the old commits (`feature/ledger-entry`, `docs/claude-handoff`, `docs/repo-url`) were deleted.
-4. Commit `7784a6a` updated the 141 commit hashes quoted in the documents and QA records to the new values.
+1. The 54 commits after `m1-baseline` were rewritten locally, messages only; each was checked to keep its original tree, so file content and commit order are unchanged.
+2. Muhammad Ibrahim switched the ruleset off, force-pushed `develop` once (`--force-with-lease`, expected old head `5916371` -> `47c713e`) and switched it back on at 22:27 PKT. `main` was not touched.
+3. Merged branches holding the old commits (`feature/ledger-entry`, `docs/claude-handoff`, `docs/repo-url`) were deleted by hand, so no branch still carries the pre-rewrite history.
+4. Commit `7784a6a` updated the 141 hashes quoted in the documents and QA records.
 
-GitHub's pages for PR #7 and PR #8 still list those pull requests' original commit hashes.
+GitHub's PR #7 and PR #8 pages still list the original hashes.
 
 ## 4. Nonconformances and CAPA
 
-Recorded in `qa/defect-log.md`: SCM-01 = DEF-006 (CAPA-001), SCM-02 = DEF-007, SCM-03 = DEF-008. SCM-04 is a controlled, approved change and has no defect number.
+In `qa/defect-log.md`: SCM-01 = DEF-006 (CAPA-001), SCM-02 = DEF-007, SCM-03 = DEF-008. SCM-04 is a controlled, approved change with no defect number.
 
 | ID | Finding | Root cause | Corrective action | Preventive action | Status |
 |---|---|---|---|---|---|
@@ -139,5 +137,4 @@ git shortlog -sn --remotes
 git tag -l -n1
 ```
 
-Repository settings (merge buttons, collaborators) are only returned to an admin token, so run
-those calls as an admin account.
+Repository settings (merge buttons, collaborators) are returned only to an admin token.

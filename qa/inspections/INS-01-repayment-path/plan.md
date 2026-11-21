@@ -5,16 +5,13 @@ Forms: [`forms.md`](forms.md) | Defects: [`../../defect-log.md`](../../defect-lo
 
 ## Why this work product
 
-Repayment allocation and ledger posting are where an error turns directly into wrong
-money: every penalty, delinquency bucket, provision and report downstream reads the
-ledger. Risk R1 in the risk register (exposure 20, Critical) names this path. The M1
-design marks `RepaymentAllocator.allocate()` as the main inspection and basis-path
-target (RTM FR-13). M1 estimated its cyclomatic complexity at about 11; the built method
-measures 10 (`qa/test-design/white-box.md`, section 2).
+An error here is wrong money that every penalty, delinquency bucket, provision and report
+then reads from the ledger. Risk R1 (exposure 20, Critical) names this path, and the
+M1 design made `RepaymentAllocator.allocate()` the main inspection and basis-path target (RTM
+FR-13; complexity estimated at about 11, measured 10 in `qa/test-design/white-box.md` section 2).
 
-**Status on 21 Nov 2026:** planned, not held. No inspector from another team has been
-assigned yet (risk R3). The roles, schedule, entry-criteria check and frozen version
-below are filled in when the inspection is scheduled.
+**Status on 21 Nov 2026:** planned, not held; no inspector from another team has been assigned
+(risk R3). The blank fields below are filled in when it is scheduled.
 
 ## Scope
 
@@ -29,47 +26,40 @@ below are filled in when the inspection is scheduled.
 | 7 | `persistence/SchemaMigrator.java` (`ledger_entry`, `payment`, `loan` DDL) | ~150 (was ~113; schema version 2 added) | BR-23 to BR-26; C-04 | Exists |
 | 8 | `ledger/CoreRepaymentPoster.java` | ~99 | FR-16; BR-23 | Exists (L-08 landed) |
 
-Paths are under `src/main/java/pk/edu/giki/microlend/`. NCLOC means non-blank, non-comment
-lines. It was first counted on 2026-11-14 from the PR #8 branch. The figures above were
-recounted on 2026-11-21 at code head `4067d2f`, the branch that contains the merged PR #8 code.
+Paths are under `src/main/java/pk/edu/giki/microlend/`. NCLOC (non-blank, non-comment lines)
+was counted on 2026-11-14 on the PR #8 branch and recounted on 2026-11-21 at code head
+`4067d2f`, which contains the merged PR #8 code.
 
-Supporting context, read but not inspected line by line: `common/Money.java` (~81),
-`ledger/EntryType.java` (~15), `ledger/LedgerWriter.java`, `ledger/LedgerReader.java`,
-`persistence/SqliteDatabase.java` (~63), and the matching tests under `src/test/java`.
-Added to the posting path since this plan was written, and candidates for meeting B:
-`ledger/LockingPoster.java` (~22) and `common/LockRegistry.java` (~11), the per-account
-lock shared with the end-of-day engine.
+Read for context only: `common/Money.java` (~81), `ledger/EntryType.java` (~15),
+`ledger/LedgerWriter.java`, `ledger/LedgerReader.java`, `persistence/SqliteDatabase.java` (~63)
+and their tests under `src/test/java`. Meeting B candidates added to the posting path since:
+`ledger/LockingPoster.java` (~22) and `common/LockRegistry.java` (~11), the per-account lock
+shared with the end-of-day engine.
 
-**Size control.** The full scope is well above the 250 NCLOC limit per meeting. Planned split:
+**Size control.** The full scope exceeds the 250 NCLOC per-meeting limit:
 
-- **Meeting A (primary, the M2 evidence):** items 1, 2 and 3, about 228 NCLOC
-  (55 + 20 + 69 + 84). These cover the allocation waterfall and the account state change.
-- **Meeting B (M3):** items 4 to 8, about 555 NCLOC (137 + 16 + 153 + 150 + 99), which is
-  more than two meetings' worth. They will be split when scheduled. These cover the ledger
-  immutability, persistence and posting path.
+- **Meeting A (primary, the M2 evidence):** items 1 to 3, about 228 NCLOC
+  (55 + 20 + 69 + 84): the allocation waterfall and the account state change.
+- **Meeting B (M3):** items 4 to 8, about 555 NCLOC (137 + 16 + 153 + 150 + 99): ledger
+  immutability, persistence and posting; over two meetings' worth, so split again when scheduled.
 
 **Frozen version:** commit hash ______ on `develop` (PR #8 was merged on 21 Nov 2026), CI run ______ (green).
 
 ## Business-rule note for inspectors
 
-BR-18 and BR-19 can be read two ways. The allocator implements the literal reading,
-**tier by tier**: all penalties oldest instalment first, then all fees oldest first,
-then all interest oldest first, then all principal oldest first. This reading was
-adopted by Tughral Hussain on 2026-11-14 and confirmed as team decision **D-01** on 2026-11-16 (`docs/planning/team-decisions.md`).
-Inspectors should check the code against this reading and may log the ambiguity itself
-as a Documentation defect against `docs/business-rules.md` if they consider it
-unresolved.
+BR-18 and BR-19 can be read two ways. The allocator implements the literal tier-by-tier
+reading (all penalties, then fees, interest and principal, each oldest instalment first),
+adopted by Tughral Hussain on 2026-11-14 and confirmed as team decision D-01 on 2026-11-16
+(`docs/planning/team-decisions.md`). Inspect against it; an ambiguity
+still thought unresolved may be logged as a Documentation defect against `docs/business-rules.md`.
 
-`Instalment` (owned by Hassan Khalid, `products`) does not exist yet. The allocator
-takes a ledger-side input type that `products.Instalment` will be mapped to. The
-accrued penalty is an input amount. `PenaltyAccruer` (Muhammad Ibrahim, `delinquency`)
-now exists, but it is outside this inspection.
+`products.Instalment` (Hassan Khalid) does not exist yet and will map to the ledger-side input
+`InstalmentDue`. The accrued penalty is an input; `PenaltyAccruer` (Muhammad Ibrahim,
+`delinquency`) exists but is out of scope.
 
-The code review of PR #8 on 21 Nov found defects in items 6 and 8 (DEF-009 to DEF-013 in
-`qa/defect-log.md`). The independent code review of the M2 code, the same day, found
-DEF-022 in item 8 and DEF-023 in item 7. These are review defects, not inspection results.
-Inspectors should check the state of the code at the frozen version, including the fixes
-for DEF-009, DEF-010 and DEF-012.
+Code reviews on 21 Nov found DEF-009 to DEF-013 in items 6 and 8 (review of PR #8), DEF-022 in
+item 8 and DEF-023 in item 7 (independent code review); see `qa/defect-log.md`. These are not
+inspection results. Inspect the frozen version, including the fixes for DEF-009, DEF-010 and DEF-012.
 
 ## Roles
 
@@ -106,8 +96,6 @@ The author does not moderate, read or record.
 
 ## Materials sent to inspectors
 
-- This plan and [`checklist.md`](checklist.md)
-- Link to the frozen commit on GitHub (PR #8)
-- `docs/business-rules.md` sections BR-18 to BR-26
-- M1 design section 3.6 (concurrency) and 3.7 (persistence)
-- A blank preparation log from [`forms.md`](forms.md)
+This plan and [`checklist.md`](checklist.md); a link to the frozen commit on GitHub (PR #8);
+`docs/business-rules.md` BR-18 to BR-26; M1 design sections 3.6 (concurrency) and 3.7
+(persistence); a blank preparation log from [`forms.md`](forms.md).

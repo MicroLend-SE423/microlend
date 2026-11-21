@@ -1,27 +1,26 @@
 # MicroLend — Requirements Traceability Matrix
 
 **Version:** 2.2 (Milestone 2, integrated build `4067d2f`, merged into `develop` by PR #9 as `ac14ba9`; 2.0 was the ledger build `701c161`) · **Owner at M1:** Hassan Khalid · **Lead at M2:** Muhammad Ibrahim (Team Lead) · ownership rotates each milestone
-**Status at M1:** requirements defined and verification approach planned. Design, code and test-result columns are filled from M2 onward.
-**Status at M2 (21 Nov 2026):** the `ledger`, `persistence` and `web` rows carry code, tests and CI evidence from PR #8, which was merged into `develop` on 21 Nov. The `origination`, `delinquency` and `ledger.importing` rows carry code and tests that pass in a local build of `4067d2f` (384 tests). Following the rule used since 14 Nov, they were *implemented* until PR CI passed. PR #9 passed CI in run 44930290499 at `9af3f31` and was merged into `develop` on 21 Nov after Tughral Hussain's approval; `develop` passed CI after the merge (run 44931805244 at `ac14ba9`). Their rows are now *verified* where every part of the requirement is built. `products` and `reporting` rows stay *planned* until their owner's code reaches `develop`.
+**Status at M1:** requirements defined and verification planned; design, code and test-result columns are filled from M2.
+**Status at M2 (21 Nov 2026):** `ledger`, `persistence` and `web` rows carry code, tests and CI evidence from PR #8, merged into `develop` on 21 Nov. `origination`, `delinquency` and `ledger.importing` rows carry code and tests that pass in a local build of `4067d2f` (384 tests); under the rule used since 14 Nov they stayed *implemented* until PR CI passed. PR #9 passed CI (run 44930290499 at `9af3f31`) and was merged into `develop` on 21 Nov after Tughral Hussain's approval; `develop` passed CI after the merge (run 44931805244 at `ac14ba9`). Those rows are now *verified* where every part of the requirement is built. `products` and `reporting` rows stay *planned* until their owner's code reaches `develop`.
 
-This matrix is maintained in the repository and versioned with the code, so the state of traceability at any baseline tag can be reproduced.
+The matrix is versioned with the code, so traceability at any baseline tag can be reproduced.
 
 ## How it is used
 
-Traceability runs in **both directions**, and each direction finds a defect the other cannot:
+Traceability runs both ways; each direction finds a defect the other cannot:
 
 | Direction | Question answered | Defect it exposes |
 |---|---|---|
 | **Forward** — requirement → design → code → test | *Did we build and verify everything that was asked for?* | **Test gap**: a requirement implemented but never verified, so there is no objective evidence of conformity |
 | **Backward** — code → design → requirement | *Why does this code exist?* | **Rogue code / gold plating**: a module traceable to no approved requirement — unbudgeted maintenance and enlarged attack surface |
 
-**Audit rule, applied at every milestone:** every requirement must have at least one test, and every production class must trace to at least one requirement. Both checks are run and their results recorded in the milestone report.
+**Audit rule, every milestone:** every requirement has at least one test and every production class traces to at least one requirement; both results are recorded in the milestone report.
 
 ## Legend
 
-- **Status:** `planned` (M1) → `implemented` → `verified` (test passing) → `baselined` (tagged)
-- **BR-xx** references are rules in `docs/business-rules.md`
-- Test design techniques: **EP** equivalence partitioning · **BVA** boundary value analysis · **BP** basis path · **INV** invariant/property test · **INSP** inspection checklist item
+- **Status:** `planned` (M1) → `implemented` → `verified` (test passing) → `baselined` (tagged); `partial` means some of the requirement passes and the rest is named in the row. **BR-xx:** `docs/business-rules.md`.
+- **Techniques:** EP equivalence partitioning · BVA boundary value analysis · BP basis path · INV invariant/property test · INSP inspection checklist item
 
 ---
 
@@ -84,217 +83,34 @@ Traceability runs in **both directions**, and each direction finds a defect the 
 
 ## 4. Coverage summary
 
-M2 incremental evidence (2026-11-06): `LoanId`, `LedgerEntry`, `EntryType`,
-`LedgerWriter` and `LedgerReader` now implement the L-01/L-02 foundations.
-`LoanIdTest`, `LedgerEntryTest` and `InMemoryLedgerRepositoryTest` pass locally.
-The test-only repository verifies loan isolation, append order, immutable
-snapshots, repeated movements and null rejection. This is partial evidence for
-FR-16, FR-17 and QR-05: balanced transactional posting, persistence and compensating
-reversals remain unimplemented, so those requirements retain their planned status.
+M2 evidence by date and ledger queue item (L-xx), oldest first. Current statuses are in sections 1 to 3.
 
-M2 incremental evidence (2026-11-08): `LoanAccount`, `LoanStatus` and
-`LoanClosedException` implement FR-19. `LoanAccountTest` (TC-LED-07) covers the
-three equivalence classes of BR-26 (active, closed, written-off) and passes
-locally; FR-19 moves to *verified* once PR CI passes. The rejection is only
-reachable from a posting path once `CoreRepaymentPoster` (queue item L-08) calls it.
+- 2026-11-06 (L-01, L-02): `LoanId`, `LedgerEntry`, `EntryType`, `LedgerWriter` and `LedgerReader`. `LoanIdTest`, `LedgerEntryTest` and `InMemoryLedgerRepositoryTest` (loan isolation, append order, immutable snapshots, repeated movements, null rejection) pass locally: partial evidence for FR-16, FR-17 and QR-05.
+- 2026-11-08: `LoanAccount`, `LoanStatus` and `LoanClosedException` implement FR-19; `LoanAccountTest` (TC-LED-07) covers the three BR-26 classes (active, closed, written-off).
+- 2026-11-09: FR-19 *verified* (PR #8 CI run 42471721763 for 61febe9). `Allocation` (the four BR-18 tiers) and `LoanAccount.applyAllocation()` (over-allocation rejected, closed loans refuse it) pass `AllocationTest` and `LoanAccountTest`, supporting FR-13. `applyAllocation` returns a new account, not the `void` of M1 View 2, because `LoanAccount` is immutable.
+- 2026-11-11 (L-07): `RepaymentCommand` and `InvalidRepaymentException` give the posting pipeline one validated input. `RepaymentCommandTest` covers the BR-25 cash and bank classes, the 0.00 / 0.01 amount boundary and missing or blank fields.
+- 2026-11-11 (L-12): `CompensatingEntryService.reverse()` and `LedgerEntry.reversalOf()` correct an entry with a `REVERSAL` in the opposite column that references the original and records a reason (BR-24). `CompensatingEntryServiceTest` and `LedgerImmutabilityTest` show the write role offers only `append`.
+- 2026-11-11 (L-13): `SchemaMigrator` and `SqliteDatabase` create the seven tables of M1 section 3.7 with foreign keys on. `SchemaMigratorTest` shows the database itself refuses negative, zero-zero or two-sided ledger lines (BR-43), a reversal without an original or a reason (BR-24), a repeated (bank, reference) pair (BR-25), a second snapshot for the same loan and date (BR-33) and a loan whose status and closure date disagree (FR-19). Money columns are `INTEGER` paisa (C-04).
+- 2026-11-14 (L-14): C-04 *verified* (PR #8 CI run 42982638575 for c04b41c). `SqliteLedgerRepository` implements `LedgerWriter` and `LedgerReader`. `SqliteLedgerRepositoryTest` covers per-loan append order, paisa at the 0.01 and 12,345,678.99 boundaries, reversals stored against the original's row, refusal of a reversal whose original is not in the ledger, `PersistenceException` on storage failure, durability across instances and a source scan finding no `UPDATE`/`DELETE` against `ledger_entry` (the repository half of QR-05).
+- 2026-11-14 (L-05): `RepaymentAllocator.allocate()` applies the BR-18 waterfall, oldest instalment first in each tier (the BR-19 reading adopted that day, confirmed as team decision D-01 on 2026-11-16). Its input is the ledger-owned `InstalmentDue` record, to which `products.Instalment` will be mapped; the accrued penalty is an input amount. `RepaymentAllocatorTest` covers the BR-20 boundaries 0 / 0.01 / due − 0.01 / exactly due, and due + 0.01 returned as unapplied (the BR-21 hand-off).
+- 2026-11-14 (L-06, partial): `SettlementPolicy` turns a surplus into advance credit while principal is owed (BR-21) and, on payoff, closes the loan through `LoanAccount.closeAsRepaid()` with a caller-supplied `EarlySettlementRebate` (BR-22). `SettlementPolicyTest` covers exact payoff and payoff + 0.01 with a stub rebate.
+- 2026-11-14 (L-08): `CoreRepaymentPoster` reads the loan, allocates, settles and writes one `PAYMENT_RECEIVED` debit against tier and advance-credit credits in one `appendAll` transaction. `CoreRepaymentPosterTest` asserts Σ debits = Σ credits after every posting and that the loan is not saved when the ledger write fails. `EntryType.PAYMENT_RECEIVED` and its schema `CHECK` value were added by editing schema version 1 in place, because it had not been merged or deployed anywhere.
+- 2026-11-14 (L-09): `RepaymentPosterDecorator` and `TimingPoster` implement the Decorator of M1 section 5.3; `TimingPosterTest` checks the IS-A/HAS-A structure by reflection. Timing traces to the design (GQM measurement), not to a numbered FR.
+- 2026-11-14 (L-10): `AuditLoggingPoster` journals the trimmed operator of every teller posting, posted or refused, and refuses a posting with no operator (FR-31, teller half); `AuditLoggingPosterTest` covers named, blank, null and whitespace operators.
+- 2026-11-14 (L-11): `IdempotencyGuardPoster` claims the (bank, reference) pair atomically before forwarding and releases it if the posting fails; `IdempotencyGuardPosterTest` covers the BR-25 classes, a failed-then-retried posting and eight concurrent duplicates forwarded exactly once. The claims stayed in memory until the durable store of 2026-11-21.
+- 2026-11-14 (L-15): `SqliteLoanRepository` implements the ledger's `LoanRepository` role on the `loan` table, saves each loan in a `BEGIN IMMEDIATE` transaction and refuses to insert a loan origination never created. `SqliteDatabase` sets `PRAGMA busy_timeout = 5000`; `SqliteLoanRepositoryTest` shows a save waiting for another writer's lock (M1 section 3.6, QR-06). The ledger write and the loan save are still two transactions.
+- 2026-11-14 (L-16): `PostingFaultInjectionTest` fails each line of three postings (3, 4 and 4 lines) and the loan save after each: 14 points on a real SQLite file. On the red run the 11 line points passed and the 3 save points left orphan lines; the fix reverses a posting's lines (BR-24) when its loan cannot be saved. A failure of that reversal is only reported (suppressed exception), not recovered.
+- 2026-11-14 (L-17): `CompositionRoot` builds the teller and import chains of M1 section 5.3 over one `CoreRepaymentPoster` on SQLite. `CompositionRootTest` shows the import chain refusing a duplicate before it is timed (guard outermost), with no audit line. The instalment source and the BR-22 rebate are placeholders that throw `ModuleNotAvailableException`. FR-13 and FR-14 *verified* (PR #8 CI passed for c17052f).
+- 2026-11-14 (L-18): `TellerWebServer` and `OperatorContext` (`web`) serve the teller form and the end-of-day page on 127.0.0.1 only, using the JDK's `com.sun.net.httpserver`; `./gradlew run` starts them. `TellerWebServerTest` covers loopback binding, the operator not leaking to the next request, 400 for a malformed amount or date or a zero amount, 404/409 for domain refusals, HTML escaping and 404/405 routing.
+- 2026-11-14 (L-19): `ArchitectureTest` (ArchUnit 1.3.0) enforces C-03 and the M1 section 4.5 layering: `common` and `ledger` never depend on `persistence` or `web`, and `common` depends on no module. The rules passed on their first compiled run (the red commit failed only because ArchUnit was not on the classpath), so no cycle existed.
 
-M2 incremental evidence (2026-11-09): FR-19 is *verified*: PR #8 CI run
-42471721763 passed for 61febe9. `Allocation` (the four BR-18 tiers, value
-equality, every tier required) and `LoanAccount.applyAllocation()` (principal
-tier reduces outstanding principal, over-allocation rejected, closed loans refuse
-it) are implemented and tested in `AllocationTest` and `LoanAccountTest`. This is
-supporting work for FR-13 only: `RepaymentAllocator.allocate()`, which applies the
-waterfall and the oldest-first order (TC-LED-01, TC-LED-02), is not implemented, so
-FR-13 and FR-14 stay *planned*. `applyAllocation` returns a new account instead of
-the `void` shown in M1 View 2, because `LoanAccount` is immutable.
+2026-11-21, integrated build `4067d2f` (`feature/delinquency-origination-import`): all 384 tests pass locally (`./gradlew build jacocoTestReport`); PR #9 CI passed later that day (version 2.2).
 
-M2 incremental evidence (2026-11-11): `RepaymentCommand` and
-`InvalidRepaymentException` (queue item L-07) give the posting pipeline one
-validated input. `RepaymentCommandTest` covers the cash and bank equivalence
-classes of BR-25, the 0.00 / 0.01 amount boundary, missing fields and a blank
-bank or reference. The command only *carries* the (bank, reference) pair; the
-duplicate check itself is `IdempotencyGuardPoster` (L-11), so FR-18 stays
-*planned*.
-
-M2 incremental evidence (2026-11-11): `CompensatingEntryService.reverse()` and
-`LedgerEntry.reversalOf()` (queue item L-12) implement correction by reversal:
-a `REVERSAL` entry in the opposite column that references the original and
-records a non-blank reason (BR-24). `CompensatingEntryServiceTest` (TC-LED-05)
-and `LedgerImmutabilityTest` show the write role offers only `append` and a
-correction leaves the original in place with debits equal to credits. This is
-partial evidence for FR-17 and QR-05 only: the SQLite repository (L-14) and its
-"no `UPDATE`/`DELETE` against `ledger_entry`" check, the Fagan checklist item and
-the static-analysis rule do not exist yet, so both keep their planned status.
-
-M2 incremental evidence (2026-11-11): `SchemaMigrator` and `SqliteDatabase`
-(queue item L-13) create the seven tables of M1 section 3.7 on the first
-connection and turn on foreign keys for every connection. `SchemaMigratorTest`
-checks that the database itself refuses rows the code would never write:
-negative, zero-zero or two-sided ledger lines (BR-43), a reversal without an
-existing original or a reason (BR-24), a repeated (bank, reference) pair while
-cash rows and the same reference from another bank are accepted (BR-25), a
-second snapshot for the same loan and business date (BR-33), and a loan whose
-status and closure date disagree (FR-19). Money columns are `INTEGER` paisa
-(C-04). This is schema support only: FR-18 (the guard), FR-26/BR-33 (the
-engine) and QR-05 (the repository with no `UPDATE`/`DELETE`, L-14) keep their
-planned status.
-
-M2 incremental evidence (2026-11-14): C-04 is *verified*: PR #8 CI run
-42982638575 passed for c04b41c. `SqliteLedgerRepository` (queue item L-14,
-`persistence/SqliteLedgerRepository.java`) implements `LedgerWriter` and
-`LedgerReader` against SQLite. `SqliteLedgerRepositoryTest` checks round trips
-in append order per loan, paisa storage at the 0.01 and 12,345,678.99
-boundaries, reversals stored against the original's row (identical originals
-reversed separately), refusal of a reversal whose original is not in the
-ledger, translation of storage failures into `PersistenceException`, durability
-across instances, and a source scan finding no `UPDATE`/`DELETE` against
-`ledger_entry` in production code. This is partial evidence for QR-05 (the
-repository half); the Fagan checklist item is still owed, so QR-05 stays
-*planned*. FR-17 likewise stays *planned* until the posting path uses it.
-
-M2 incremental evidence (2026-11-14): `RepaymentAllocator.allocate()` (queue
-item L-05) applies the BR-18 waterfall tier by tier with the oldest instalment
-first in each tier, the BR-19 reading adopted on 2026-11-14 and confirmed as
-team decision D-01 on 2026-11-16. Its input is the ledger-owned `InstalmentDue`
-record; Hassan's `products.Instalment` is mapped to it once that class exists,
-and the accrued penalty is an input amount (Ibrahim's `PenaltyAccruer` not
-required). `RepaymentAllocatorTest` covers part of each tier, fees before
-interest, two and three overdue instalments (input out of order), and the
-BR-20 boundaries 0 / 0.01 / due − 0.01 / exactly due, plus due + 0.01 returned
-as unapplied (the BR-21 hand-off). FR-13 and FR-14 move to *implemented*; they
-become *verified* when PR CI passes. The allocator is not yet called from a
-posting path (L-08).
-
-M2 incremental evidence (2026-11-14): `SettlementPolicy` (queue item L-06,
-partial) turns a surplus into advance credit while principal is owed (BR-21,
-boundary due + 0.01), and on payoff closes the account through
-`LoanAccount.closeAsRepaid()` and takes the rebate from a caller-supplied
-`EarlySettlementRebate` (BR-22, boundaries exact payoff and payoff + 0.01).
-`SettlementPolicyTest` (TC-LED-03) covers those boundaries with a stub rebate.
-The per-product rebate arithmetic is `products` knowledge and is not
-implemented, so FR-15 is recorded as *partial*, not *implemented*.
-
-M2 incremental evidence (2026-11-14): `CoreRepaymentPoster` (queue item L-08)
-reads the loan, allocates, settles, and writes one `PAYMENT_RECEIVED` debit
-balanced by tier and advance-credit credits through `LedgerWriter.appendAll`,
-which the SQLite repository runs in one transaction. `CoreRepaymentPosterTest`
-(TC-LED-04) asserts Σ debits = Σ credits after every posting in a sequence,
-`LedgerImbalanceException` on unbalanced lines, refusal of closed and unknown
-loans, and that the loan is not saved when the ledger write fails;
-`SqliteLedgerRepositoryTest.appendAllIsAtomic` shows a failing last line leaves
-no line written. FR-16 is *implemented* for repayment postings only: the BR-22
-rebate line and end-of-day postings are not written by this class. QR-03 stays
-*planned* until the fault-injection test (L-16). `EntryType.PAYMENT_RECEIVED`
-and its schema `CHECK` value were added for the debit leg; schema version 1 was
-edited in place because it has not been merged or deployed anywhere.
-
-M2 incremental evidence (2026-11-14): `RepaymentPosterDecorator` and
-`TimingPoster` (queue item L-09) implement the Decorator of M1 section 5.3.
-`TimingPosterTest` checks the IS-A/HAS-A structure by reflection, unchanged
-delegation, and that both successful and refused postings are timed. Timing
-traces to the design (GQM measurement), not to a numbered FR; no requirement
-status changes.
-
-M2 incremental evidence (2026-11-14): `AuditLoggingPoster` (queue item L-10)
-journals one line per teller posting naming the trimmed operator, for posted
-and refused attempts, and refuses a posting with no operator before it is
-forwarded. `AuditLoggingPosterTest` (TC-LED-09) covers named, blank, null and
-whitespace operators. FR-31 is *partial*: the one-line-per-file audit of
-imports belongs to the import job, which does not exist yet.
-
-M2 incremental evidence (2026-11-14): `IdempotencyGuardPoster` (queue item
-L-11) claims the (bank, reference) pair atomically before forwarding and
-releases it if the posting fails. `IdempotencyGuardPosterTest` (TC-LED-06)
-covers the BR-25 classes (same pair twice, same reference from two banks, cash)
-plus a failed-then-retried posting and eight concurrent duplicates forwarded
-exactly once. FR-18 is *partial*: the claimed pairs live in
-`InMemoryPaymentReferences` and are lost on restart; a store on the `payment`
-table's `UNIQUE (source_bank, bank_reference)` is still to be built.
-
-M2 incremental evidence (2026-11-14): `SqliteLoanRepository` (queue item L-15)
-implements the ledger's `LoanRepository` role on the `loan` table: status,
-outstanding principal (paisa) and closure date, each save in a
-`BEGIN IMMEDIATE` transaction, refusing to insert a loan origination never
-created. `SqliteDatabase` now sets `PRAGMA busy_timeout = 5000` on every
-connection. `SqliteLoanRepositoryTest` shows a save waiting for another
-writer's lock and then succeeding. This supports the concurrency strategy of
-M1 section 3.6 and QR-06, which stays *planned* until the end-of-day engine
-(Ibrahim) and `EndOfDayConcurrencyTest` exist. The ledger write and the loan
-save are still two transactions.
-
-M2 incremental evidence (2026-11-14): `PostingFaultInjectionTest` (queue item
-L-16) injects a failure at each line of three postings (3, 4 and 4 lines) and
-at the loan save after each, 14 points on a real SQLite file. After every
-failure the ledger balances, the loan is unchanged and no line of the failed
-posting stands unreversed. On the red run the 11 line points already passed
-(atomic `appendAll`, L-08) and the 3 save points failed with orphan lines; the
-fix reverses a posting's lines (BR-24) when its loan cannot be saved. QR-03's
-test target is met locally; the "demonstration" half of its verification
-method is still owed, and a failure of the compensating reversal itself is
-only reported (suppressed exception), not recovered.
-
-M2 incremental evidence (2026-11-14): `CompositionRoot` (queue item L-17)
-builds the two chains of M1 section 5.3 over one `CoreRepaymentPoster` on
-SQLite. `CompositionRootTest` shows the teller chain posting, auditing the
-operator (FR-31) and timing, and the import chain refusing a duplicate before
-it is timed (guard outermost) with no audit line. The instalment source and
-the BR-22 rebate are named placeholders that throw
-`ModuleNotAvailableException` until `products`/`delinquency` exist, so the
-running application cannot post a repayment end to end yet. FR-13 and FR-14
-are *verified*: PR #8 CI passed for c17052f.
-
-M2 incremental evidence (2026-11-14): `TellerWebServer` and `OperatorContext`
-(queue item L-18, `web` package) serve a teller posting form and an end-of-day
-page on 127.0.0.1 only, using the JDK's `com.sun.net.httpserver`; `./gradlew
-run` starts it through `CompositionRoot.withPlaceholders`. `TellerWebServerTest`
-covers loopback binding, posting as the operator named on the form (FR-31 input)
-without leaking it to the next request, 400 for malformed amount, date or a
-zero amount, 404/409 for domain refusals, HTML escaping, and 404/405 routing.
-The end-of-day page states that the engine (Muhammad Ibrahim) is not available
-yet and a trigger returns 503, so FR-26 and the delinquency FRs are unaffected.
-
-M2 incremental evidence (2026-11-14): `ArchitectureTest` (queue item L-19,
-ArchUnit 1.3.0 as a test dependency) enforces C-03 on every build: the module
-packages (`common`, `ledger`, `persistence`, `web`) are free of cycles. Two
-further rules restate M1 section 4.5: `common` and `ledger` never depend on
-`persistence` or `web`, and `common` depends on no module. The rules passed on
-their first compiled run (the red commit failed only because ArchUnit was not
-on the classpath), so no cycle existed to remove. Teammates' packages are
-covered automatically once they exist under `pk.edu.giki.microlend`.
-
-M2 incremental evidence (2026-11-21): the M2 integrated build `4067d2f`
-(`feature/delinquency-origination-import`) adds Ibrahim's modules. All 384 tests pass
-locally (`./gradlew build jacocoTestReport`); PR CI is pending.
-- `origination`: eligibility rules BR-01 to BR-08 and risk grade and cap BR-09/BR-10.
-  FR-01 to FR-07 move to *implemented*. Loan creation (I-03) is not built because
-  `products` does not exist, so nothing applies the spread to a loan's rate yet, and the
-  evaluator is not yet called from the running application.
-- `delinquency`: the end-of-day engine (four threads, one task per loan under that
-  loan's lock, idempotent per business date) and its calculators. FR-21 to FR-24, FR-26
-  and FR-27 move to *implemented*. FR-25 is *partial*, because loans due for write-off
-  are listed but not moved to written off.
-- `ledger.importing` (Adapter): FR-20 moves to *implemented*.
-- QR-06: `ConcurrentTellerAndEndOfDayTest` runs four tellers and end of day on the same
-  loans through the production wiring. `LockingPoster` (shared `LockRegistry`) fixes the
-  lost update found in the PR #8 review (DEF-009). QR-06 moves to *implemented*; the
-  50-run target is not yet evidenced.
-- FR-18: `SqlitePaymentReferences` keeps claimed (bank, reference) pairs in the
-  `payment_reference` table, so a duplicate is refused across restarts (DEF-012 fixed;
-  red `5b758e9`, green `8401031`). FR-18 moves from *partial* to *implemented*.
-- The independent code review of the M2 code (21 Nov) found six defects, DEF-018 to
-  DEF-023. Four are fixed in `6d30af9` (red `5541f0b`): a skipped end-of-day date
-  under-accrued the penalty (FR-21), wrong import line numbers and a rejected byte-order
-  mark (FR-20), and a dropped connection when end of day failed (FR-26). Two are open: an
-  import run as a separate process is outside the account lock (QR-06, DEF-022), and an
-  old double reversal blocks the schema upgrade (FR-17, DEF-023).
-- In the running application (`CompositionRoot.withPlaceholders`), the instalment source
-  is still a placeholder until `products` exists. Each end-of-day task therefore reports
-  `ModuleNotAvailableException`, and the engine is exercised end to end only in tests.
-- Backward check: 92 production classes. 76 name an FR, BR, QR, C or M1 design section
-  in their Javadoc. The other 16 are the entry point (`MicroLendApplication`) and
-  supporting exceptions, identifiers, records, helpers and role interfaces of traced
-  classes (for example `LoanId`, `InstalmentsDueSource`, `DailySnapshot`,
-  `StatementText`). No rogue code was found.
+- The `origination` evaluator is not yet called from the running application.
+- The end-of-day engine runs four threads, one task per loan under that loan's lock. `LockingPoster` (shared `LockRegistry`) fixes the lost update found in the PR #8 review (DEF-009).
+- The independent code review of 21 Nov found six defects, DEF-018 to DEF-023. Four are fixed in `6d30af9` (red `5541f0b`); DEF-022 and DEF-023 are open.
+- In the running application (`CompositionRoot.withPlaceholders`) the instalment source is a placeholder until `products` exists, so each end-of-day task reports `ModuleNotAvailableException`; the engine runs end to end only in tests.
+- Backward check: 76 of the 92 production classes name an FR, BR, QR, C or M1 design section in their Javadoc. The other 16 are the entry point (`MicroLendApplication`) and supporting exceptions, identifiers, records, helpers and role interfaces of traced classes (for example `LoanId`, `InstalmentsDueSource`, `DailySnapshot`, `StatementText`).
 
 | Measure | M1 | M2 | M3 |
 |---|---|---|---|

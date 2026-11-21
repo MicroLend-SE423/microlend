@@ -2,41 +2,36 @@
 
 **Milestone:** M2 (Week 10; originally due 18-19 Nov 2026, extended by the instructor to 22 Nov 2026) - revised at M3 (Week 13)
 **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Status:** M2 version, 2026-11-21 (refreshed against the M2 integrated build `4067d2f`; the 2026-11-16 version was checked against the ledger build `701c161`)
+**Status:** M2 version, 2026-11-21, checked against the M2 integrated build `4067d2f` (the 2026-11-16 version used the ledger build `701c161`)
 **Related records:** `qa/rtm.md` (requirement status), `qa/risk-register.md`, `qa/defect-log.md`
 (anomalies and CAPA), `qa/inspections/` (Fagan records), `docs/business-rules.md` (BR-01 to BR-43),
 `docs/M1-SE431-Quality-Requirements-RTM-SQAP.md` (QR-01 to QR-06, SQAP outline)
 
 ## 1. Purpose and scope
 
-This plan states which verification and validation (V&V) tasks the team performs on MicroLend,
-when, by whom, with what tool, and where the evidence is kept in the repository. It covers
-the five modules (`origination`, `products`, `ledger`, `delinquency`, `reporting`), the shared
-`common` and `persistence` packages, and the local web interface, from M2 to the M3 acceptance
-gate. The SQAP (IEEE 730) remains the umbrella document; this plan details its V&V part.
+Each V&V task below has an owner, timing, tool and evidence location (sections 4 and 8), so
+every requirement traces to a check and a record. Scope: the five modules, `common`,
+`persistence` and the local web interface, from M2 to the M3 acceptance gate, as the V&V part
+of the SQAP (IEEE 730).
 
-**Status at the time of writing (honest baseline, 2026-11-21).** PR #8 (the ledger) was
-merged into `develop` on 21 Nov. On `feature/delinquency-origination-import` at `4067d2f`
-(384 tests passing locally; coverage 95.2% of lines, 88.8% of branches, 98.7% of methods):
+**Baseline (2026-11-21).** PR #8 (the ledger) was merged into `develop` on 21 Nov.
+`feature/delinquency-origination-import` at `4067d2f` passes 384 tests locally and contains:
 - `common`: `Money`, `LoanId`, `LockRegistry`.
-- `ledger`: the whole repayment path, which is `RepaymentAllocator` with `InstalmentDue`,
-  `SettlementPolicy`, `CoreRepaymentPoster`, the Decorator chain (`TimingPoster`,
-  `AuditLoggingPoster`, `IdempotencyGuardPoster`, and `LockingPoster` innermost) and
-  `CompensatingEntryService`.
-- `ledger.importing`: the HBL and MCB statement Adapters and `StatementImportJob`.
-- `origination`: eligibility rules BR-01 to BR-08 and risk grade and cap BR-09/BR-10. Loan
-  creation is not built.
-- `delinquency`: the calculators for BR-27 to BR-32 and the concurrent `EndOfDayEngine`.
+- `ledger` repayment path: `RepaymentAllocator` with `InstalmentDue`, `SettlementPolicy`,
+  `CoreRepaymentPoster`, the Decorator chain (`TimingPoster`, `AuditLoggingPoster`,
+  `IdempotencyGuardPoster`, `LockingPoster` innermost), `CompensatingEntryService`.
+- `ledger.importing`: HBL and MCB statement Adapters, `StatementImportJob`.
+- `origination`: eligibility BR-01 to BR-08, risk grade and cap BR-09/BR-10; no loan creation.
+- `delinquency`: BR-27 to BR-32 calculators, concurrent `EndOfDayEngine`.
 - `persistence`: `SchemaMigrator` (schema version 2), `SqliteDatabase`,
   `SqliteLedgerRepository`, `SqliteLoanRepository`, `SqliteDailyResultStore`.
-- The composition root and the local `web` pages for teller posting and end of day.
+- Composition root and local `web` pages for teller posting and end of day.
 
-`products` has only `DueDateCalculator` in PR #6, and `reporting` has no code. Because of
-that, the running application cannot yet post a repayment or run end of day on real data:
-the instalment source and the BR-22 rebate are named placeholders until `products` exists.
-The posting path and the engine are verified end to end in tests with stub sources
-(`ConcurrentTellerAndEndOfDayTest`, `StatementImportWiringTest`). Rows below for code not yet
-built describe the V&V that will be applied as the code lands.
+`products` has only `DueDateCalculator` (PR #6) and `reporting` has no code, so the instalment
+source and the BR-22 rebate are named placeholders and the running application cannot yet post
+a repayment or run end of day on real data. Tests verify both paths end to end with stub sources
+(`ConcurrentTellerAndEndOfDayTest`, `StatementImportWiringTest`). Rows for unbuilt code give the
+V&V to apply as it lands.
 
 ## 2. Verification versus validation in this project
 
@@ -47,15 +42,11 @@ built describe the V&V that will be applied as the code lands.
 | MicroLend examples | Unit test that `LedgerEntry` rejects a two-sided line (BR-43); Checkstyle fails the build on `double` (C-01); Fagan inspection of `RepaymentAllocator` against BR-18 to BR-20; schema `CHECK` constraints tested by `SchemaMigratorTest` | End-to-end demo: post a teller repayment through the web form, run end-of-day, read the statement and PAR30 report; golden schedules hand-computed independently of the code (QR-02); team decision on the BR-19 allocation reading |
 | Methods | Inspection, static analysis, unit and integration tests, traceability analysis | Scenario tests on the integrated build, demonstration, review of business-rule interpretations with the team |
 
-Validation questions and their state (they are decisions, not defects):
-- **Closed.** The BR-18/BR-19 reading. Tier by tier was adopted by the team on 2026-11-16 as decision D-01, recorded by Tughral Hussain under BR-19 in `docs/business-rules.md`.
-- **Open.** The per-product rebate for BR-22, which belongs to `products`.
-- **Open.** What happens to money paid beyond a full payoff. Until a rule exists, the poster refuses it.
-- **Closed (D-02, 16 Nov).** The instalment source lists only instalments due by the business date (`docs/planning/team-decisions.md`); `products` implements it.
+Validation questions are team decisions, not defects. Closed: BR-18/BR-19 are read tier by tier (D-01, recorded by Tughral Hussain under BR-19), and the instalment source lists only instalments due by the business date (D-02, 16 Nov, `docs/planning/team-decisions.md`; `products` implements it). Open: the BR-22 per-product rebate (`products`) and money paid beyond a full payoff, which the poster refuses until a rule exists.
 
 ## 3. Software integrity levels
 
-IEEE 1012 scales V&V rigour to the consequence of failure. We use four levels (4 = highest).
+Rigour scales with the consequence of failure (4 = highest).
 
 | Level | Modules / components | Why | Minimum V&V rigour |
 |---|---|---|---|
@@ -66,8 +57,7 @@ IEEE 1012 scales V&V rigour to the consequence of failure. We use four levels (4
 
 ## 4. V&V activities by life-cycle phase
 
-Timing: Week 10 = M2 submission (22 Nov 2026 after the instructor's extension); Week 13 = M3. "Owner" is the module owner
-for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team Lead.
+Week 10 = M2 submission (22 Nov 2026); Week 13 = M3.
 
 | Phase | Input | V&V task | Method / tool | Output and evidence location | Owner | Timing |
 |---|---|---|---|---|---|---|
@@ -77,7 +67,7 @@ for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team
 | Design | Schema DDL | Schema re-states invariants (CHECK, UNIQUE, FK, INTEGER paisa, C-04) | Unit tests against a real SQLite file | `SchemaMigratorTest` | Tughral | Done (CI run 42982638575) |
 | Implementation | Source code | Coding standard and C-01 gate | Checkstyle 10.18.2 (`config/checkstyle.xml`), build fails on violation | CI job `build` (`.github/workflows/build.yml`), `build/reports/checkstyle/` | All | Every push |
 | Implementation | Source code | Static analysis with triage fixed / accepted / deferred / false positive (QR-04 metrics) | Checkstyle 10.18.2 plus PMD 7.7.0 applied by `config/pmd-init.gradle` (`.\gradlew.bat --init-script config/pmd-init.gradle pmdMain`); JaCoCo complexity per method | `qa/static-analysis-report.md` (66 PMD findings on the ledger code, 4 fixed; re-run on `4067d2f`: 100 findings, all triaged, 39 of them new); defects DEF-001 to DEF-005 and DEF-017 in `qa/defect-log.md` | Muhammad Ibrahim (M2 Team Lead); fixes by the module owner | M2 done for every module with code; re-run as `products` and `reporting` land |
-| Implementation | Repayment path (`RepaymentAllocator`, `CoreRepaymentPoster`, ledger and schema), `DelinquencyClassifier` | Fagan inspection with an inspector from another team (R3) | Six-stage Fagan process, checklist incl. QR-05 and C-02 items | `qa/inspections/` (INS-01 plan, 34-item checklist, forms), `qa/defect-log.md` | Moderators per SQAP 3.1: Ibrahim for the repayment path, Hassan for `DelinquencyClassifier`; inspecting team chosen by the instructor | INS-01: not held as of 21 Nov, because no external inspector has been assigned; held when one is. `DelinquencyClassifier`: built 21 Nov, inspection not yet scheduled |
+| Implementation | Repayment path (`RepaymentAllocator`, `CoreRepaymentPoster`, ledger and schema), `DelinquencyClassifier` | Fagan inspection with an inspector from another team (R3) | Six-stage Fagan process, checklist incl. QR-05 and C-02 items | `qa/inspections/` (INS-01 plan, 39-item checklist, forms), `qa/defect-log.md` | Moderators per SQAP 3.1: Ibrahim for the repayment path, Hassan for `DelinquencyClassifier`; inspecting team chosen by the instructor | INS-01: not held as of 21 Nov, because no external inspector has been assigned; held when one is. `DelinquencyClassifier`: built 21 Nov, inspection not yet scheduled |
 | Implementation | Pull requests | Code review by a non-author before merge | Review against the business rules and the M1 design | PR #8 review by Muhammad Ibrahim, 21 Nov: 8 findings logged as DEF-009 to DEF-016 | Any non-author member | Every PR |
 | Implementation | M2 code on `feature/delinquency-origination-import` | Independent code review | Review against the business rules, the M1 design and the concurrency strategy | 21 Nov: 6 findings logged as DEF-018 to DEF-023; 4 fixed in `6d30af9` (red `5541f0b`), 2 open | Reviewer independent of the code's author | Once at M2; again before M3 |
 | Implementation | Commits | TDD evidence: failing test committed before code | Commit convention `test(red)` / `feat(green)` / `refactor`; no squash (ruleset) | Git history of PR #8 and later PRs | Each author | Every item |
@@ -94,8 +84,8 @@ for module-level tasks; M2 document tasks are led by Muhammad Ibrahim as M2 Team
 
 Technique codes: EP, BVA, BP (basis path), INV (invariant), INSP (inspection), GOLD (golden file),
 SA (static analysis), CONC (concurrency test), FI (fault injection), DEMO (validation demo).
-Status is taken from `qa/rtm.md` v2.1 on 2026-11-21. "Implemented" means the tests pass in the
-local build of `4067d2f` and PR CI is pending.
+Status is from `qa/rtm.md` v2.1 (2026-11-21); "implemented" means the tests pass in the local
+build of `4067d2f` and PR CI is pending.
 
 | Req | Rule | Verification | Validation | Owner | Status |
 |---|---|---|---|---|---|
@@ -143,12 +133,10 @@ local build of `4067d2f` and PR CI is pending.
 
 ## 6. Anomaly reporting and CAPA
 
-Every anomaly found by any V&V task (inspection, static analysis, failing test on `develop`,
-review comment that requires a change, validation disagreement) is recorded in
-`qa/defect-log.md` with: ID, date, source activity, artifact and location, requirement ID,
-description, type, severity, phase injected and phase found, corrective action, preventive
-action, owner, status, and the commit that closed it. The log records the defect, not who
-wrote it (SQAP 4.4 quality-culture statement).
+Anomalies from any V&V task (inspection, static analysis, failing test on `develop`, review
+comment requiring a change, validation disagreement) go into `qa/defect-log.md` with severity,
+corrective and preventive action, owner, status and closing commit. The log records the defect,
+not who wrote it (SQAP 4.4).
 
 | Severity | Meaning in MicroLend | Required response |
 |---|---|---|
@@ -156,9 +144,8 @@ wrote it (SQAP 4.4 quality-culture statement).
 | Major | Business rule violated in an edge case, missing validation at a module boundary, unhandled exception | Fix in the current milestone or defer with a stated reason and owner |
 | Minor | Standards, naming, Javadoc, readability, complexity above target | Fix or justify; may be batched |
 
-CAPA loop: corrective action fixes the instance; preventive action changes the process
-(a checklist item, a Checkstyle rule, a test pattern) so the class of defect does not recur.
-CAPA items opened at M2 are reviewed in the M3 final audit and closed, or kept open with a reason.
+Preventive actions change the process (a checklist item, a Checkstyle rule, a test pattern).
+M2 CAPA items are reviewed in the M3 final audit.
 
 ## 7. V&V reporting and exit criteria
 
@@ -170,12 +157,8 @@ CAPA items opened at M2 are reviewed in the M3 final audit and closed, or kept o
 | Static-analysis report | Findings and triage | M2, refreshed M3 |
 | V&V summary | Results against this plan, open anomalies, residual risk | M3 |
 
-**M2 exit criteria (verification baseline):** CI green on `develop` with all module PRs merged;
-Fagan inspection held with an external inspector and its defects logged; static-analysis
-findings triaged; EP/BVA and basis-path designs traced to RTM IDs; coverage measured and
-reported (no threshold); RTM, risk register and defect log updated; `m2-baseline` tag on `main`.
-
-Status of each M2 exit criterion on 21 Nov 2026, the day before submission:
+**M2 exit criteria (verification baseline)**, status on 21 Nov 2026 (coverage has no threshold
+at M2):
 
 | Criterion | Status | Evidence |
 |---|---|---|
@@ -184,23 +167,19 @@ Status of each M2 exit criterion on 21 Nov 2026, the day before submission:
 | Static-analysis findings triaged | Met | `qa/static-analysis-report.md`: 100 PMD findings at `4067d2f`, each with a disposition; Checkstyle 0 |
 | EP/BVA and basis-path designs traced to RTM IDs | Met for every module with code | `qa/test-design/black-box.md` (186 cases, 152 automated); `qa/test-design/white-box.md` (6 methods) |
 | Coverage measured and reported | Met | 95.2% lines, 88.8% branches, 98.7% methods at `4067d2f` |
-| RTM, risk register and defect log updated | Met | `qa/rtm.md` v2.1; `qa/risk-register.md` (21 Nov update); `qa/defect-log.md` (DEF-009 to DEF-023, CAPA-004 to CAPA-008) |
+| RTM, risk register and defect log updated | Met | `qa/rtm.md` v2.1; `qa/risk-register.md` (21 Nov update); `qa/defect-log.md` (DEF-009 to DEF-023, CAPA-004 to CAPA-009) |
 | `m2-baseline` tag on `main` | **Final submission step** | Annotated tag on the merge commit of the `develop` -> `main` pull request that carries these documents; `git rev-list -n 1 m2-baseline` gives the commit |
 
-**M3 exit criteria (acceptance):** the SQAP 5.1.3 gate in section 4 above; designed tests
-executed with results recorded against RTM IDs; QR-01, QR-03 and QR-06 evidenced; all M2 CAPA
-items closed or justified; `m3-baseline` tag on `main`.
+**M3 exit criteria (acceptance):** the SQAP 5.1.3 gate (section 4); designed tests executed
+with results recorded against RTM IDs; QR-01, QR-03 and QR-06 evidenced; all M2 CAPA items
+closed or justified; `m3-baseline` tag on `main`.
 
-**Known gaps in the plan as of 2026-11-21:**
-- CI does not yet run `coverageGate`, only `jacocoTestReport` (DEF-008, deferred to M3).
-- The scheduled 50-run concurrency job for QR-06 does not exist yet. The engine and its test
-  are built, and the test runs once in every build (owner: Ibrahim).
-- PMD runs from `config/pmd-init.gradle` on demand and is not yet a CI step. The M2 findings
-  are triaged in `qa/static-analysis-report.md`, and wiring PMD into CI is recommended for M3.
-- `products` and `reporting` have no code to verify yet. Their rows above stay *planned*.
-- INS-01 is not held (no external inspector assigned).
-- The account lock covers one process only. Until DEF-022 is fixed, bank-statement imports
-  are run with the web server stopped.
+**Known gaps (2026-11-21):**
+- CI runs `jacocoTestReport` but not `coverageGate` (DEF-008, deferred to M3).
+- PMD runs on demand from `config/pmd-init.gradle`, not in CI; wiring it in is recommended for M3.
+- Still open (sections 4 and 5): the 50-run QR-06 job, INS-01, the *planned* `products` and
+  `reporting` rows, and DEF-022 (until fixed, bank-statement imports run with the web server
+  stopped).
 
 ## 8. Responsibilities
 
