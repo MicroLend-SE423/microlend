@@ -40,7 +40,8 @@ class ArchitectureTest {
     @Test
     @DisplayName("domain modules do not depend on persistence or web (DIP, section 4.5)")
     void domainDoesNotDependOnInfrastructure() {
-        noClasses().that().resideInAnyPackage(ROOT + ".common..", ROOT + ".ledger..")
+        noClasses().that().resideInAnyPackage(ROOT + ".common..", ROOT + ".ledger..",
+                ROOT + ".origination..", ROOT + ".delinquency..")
             .should().dependOnClassesThat()
             .resideInAnyPackage(ROOT + ".persistence..", ROOT + ".web..")
             .check(production);
@@ -51,7 +52,26 @@ class ArchitectureTest {
     void commonIsTheKernel() {
         noClasses().that().resideInAPackage(ROOT + ".common..")
             .should().dependOnClassesThat()
-            .resideInAnyPackage(ROOT + ".ledger..", ROOT + ".persistence..", ROOT + ".web..")
+            .resideInAnyPackage(ROOT + ".ledger..", ROOT + ".origination..",
+                ROOT + ".delinquency..", ROOT + ".persistence..", ROOT + ".web..")
+            .check(production);
+    }
+
+    @Test
+    @DisplayName("the ledger knows nothing of origination or delinquency (M1 section 3.3)")
+    void ledgerDoesNotDependOnItsClients() {
+        noClasses().that().resideInAPackage(ROOT + ".ledger..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage(ROOT + ".origination..", ROOT + ".delinquency..")
+            .check(production);
+    }
+
+    @Test
+    @DisplayName("origination depends only on the shared kernel (and products, once it exists)")
+    void originationDependsOnlyOnTheKernel() {
+        noClasses().that().resideInAPackage(ROOT + ".origination..")
+            .should().dependOnClassesThat()
+            .resideInAnyPackage(ROOT + ".ledger..", ROOT + ".delinquency..")
             .check(production);
     }
 }
