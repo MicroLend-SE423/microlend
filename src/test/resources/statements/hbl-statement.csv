@@ -1,0 +1,4 @@
+Txn Date,Reference No,Loan Ref,Narration,Amount (Paisa),Dr/Cr
+04102026,HBL-7781,LN-0001,IBFT from customer,254900,CR
+05102026,HBL-7782,LN-0002,Cash deposit at branch,100000,CR
+05102026,HBL-7783,,SMS alert charges,2500,DR
