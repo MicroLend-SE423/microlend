@@ -21,6 +21,8 @@ These are the most complex methods on the money path. The four ledger methods ar
 | `DelinquencyClassifier.classify(int)` | FR-23 (BR-30); feeds FR-24 (BR-31) and FR-27 (BR-34) | Puts every loan in a bucket each night. A wrong boundary misstates the provision and raises or misses classification alerts (section 6) |
 | `EndOfDayEngine.collect(LocalDate, Map)` | FR-26, FR-27, FR-25 (BR-32, BR-33, BR-34); QR-06 | Turns the results of the concurrent tasks into the run's report: recorded, already recorded, failed, changed classification, due for write-off (section 7) |
 
+The SE431 PDF prints the four methods with a drawn CFG (sections 2, 5, 6 and 7); the two guard-run methods, `LoanAccount.restore` and `LedgerEntry.requireValid` (sections 3 and 4, basis paths and V(G) in the table below), are in this file only.
+
 ### Complexity summary
 
 | Method | P (simple decisions) | E | N | V(G) = E - N + 2 | JaCoCo | PMD 7.7.0 | Branch coverage (JaCoCo) |
@@ -119,6 +121,7 @@ The BVA cases (0.00, 0.01, due - 0.01, exactly due, due + 0.01) are TC-LED-01 an
 
 ---
 
+<!-- pdf:skip -->
 ## 3. `LoanAccount.restore`
 
 Source: `src/main/java/pk/edu/giki/microlend/ledger/LoanAccount.java`.
@@ -169,6 +172,8 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/LedgerEntry.java`. Five sequ
 JaCoCo: 10 of 10 branches covered; the class as a whole 37 of 44 (gaps in `equals` and `reversalOf`, section 8).
 
 ---
+
+<!-- /pdf:skip -->
 
 ## 5. `CoreRepaymentPoster.post`
 
@@ -356,13 +361,13 @@ Baseline: one loan, recorded, no classification change, no write-off.
 
 ## 8. Coverage baseline and gaps (M2)
 
-`./gradlew clean build jacocoTestReport` on `4067d2f` (21 Nov 2026): 384 tests in 46 test classes, 0 failures, 0 skipped. Report-level counters of `jacocoTestReport.xml`:
+`./gradlew clean build jacocoTestReport` on the 22 Nov build (`develop` at `e7ecce6`, with `products` and `reporting`): 492 tests in 69 test classes, 0 failures, 0 skipped. Report-level counters of `jacocoTestReport.xml`:
 
 | Counter | Covered / total | % |
 |---|---|---|
-| Lines | 1,309 / 1,375 | 95.2 |
-| Branches | 437 / 492 | 88.8 |
-| Methods | 294 / 298 | 98.7 |
+| Lines | 1,680 / 1,761 | 95.4 |
+| Branches | 563 / 642 | 87.7 |
+| Methods | 390 / 394 | 99.0 |
 
 By package (lines; branches):
 
@@ -372,16 +377,18 @@ By package (lines; branches):
 | `delinquency` | 148 / 152 | 52 / 54 |
 | `ledger` | 440 / 451 | 155 / 178 |
 | `ledger.importing` | 99 / 102 | 30 / 32 |
-| `common` | 66 / 69 | 24 / 26 |
-| `persistence` | 239 / 264 | 62 / 72 |
+| `common` | 67 / 69 | 24 / 26 |
+| `products` | 211 / 221 | 90 / 110 |
+| `reporting` | 65 / 65 | 16 / 16 |
+| `persistence` | 308 / 338 | 78 / 92 |
 | `web` | 129 / 132 | 27 / 32 |
-| root (`CompositionRoot`, `MicroLendApplication`) | 29 / 46 | 3 / 8 |
+| root (`CompositionRoot`, `MicroLendApplication`, the two `products` adapters) | 54 / 72 | 7 / 12 |
 
-Earlier baselines: `7784a6a` (21 Nov), 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%), 286 / 290 methods (98.6%); `701c161`, 182 tests, 773 / 818 lines (94.5%), 244 / 282 branches (86.5%), 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. `products` and `reporting` have no code yet; the 60% target applies to core business logic at M3.
+Earlier baselines: `4067d2f` (21 Nov), 384 tests, 1,309 / 1,375 lines (95.2%), 437 / 492 branches (88.8%), 294 / 298 methods (98.7%); `7784a6a` (21 Nov), 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%), 286 / 290 methods (98.6%); `701c161`, 182 tests, 773 / 818 lines (94.5%), 244 / 282 branches (86.5%), 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. The 60% target applies to core business logic at M3.
 
 Open gaps (they feed `qa/defect-log.md` only if a test reveals a fault):
 - `LedgerEntry`: 7 unexecuted branches in `equals` and the null and blank checks of `reversalOf`.
 - `EndOfDayEngine.collect`: BP-2 and BP-4 have no test; BP-4's 3 lines are 3 of the 4 uncovered lines in `delinquency`. The fourth is the `EndOfDayEngine.process` branch where `record` reports that another writer stored the same loan and date between the engine's check and write.
 - `MicroLendApplication.main` (15 lines, 4 branches): no test; exercised by hand with `./gradlew run`.
-- `persistence`: most of the 25 uncovered lines are `catch (SQLException)` blocks translating storage failures into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
-- Hassan's schedule assembler gets its white-box design when its code exists.
+- `persistence`: most of the 30 uncovered lines are `catch (SQLException)` blocks translating storage failures into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
+- `products` and `reporting` arrived after this selection was made; `LoanProduct.generateSchedule` and `ScheduleAssembler.assemble` get white-box designs at M3.

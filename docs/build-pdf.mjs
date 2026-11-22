@@ -176,6 +176,9 @@ function build(key) {
   let md = readFileSync(doc.src, 'utf8').replace(/\r\n/g, '\n');
   md = md.replace(/^# .*\n/, '');                                   // the cover carries the title
   md = expandIncludes(md);
+  // Detail kept in the repository but left out of the submitted PDF sits between
+  // `<!-- pdf:skip -->` and `<!-- /pdf:skip -->`; each such block is replaced by its pointer line.
+  md = md.replace(/^<!-- pdf:skip -->\n[\s\S]*?^<!-- \/pdf:skip -->\n?/gm, '');
   md = separateLists(md);
   md = renderDiagrams(md, key);
   md = md.replace(/^\*\*(View \d+ — .*)\*\*\s*$/gm, '#### $1 {.view}'); // diagram titles start a page
