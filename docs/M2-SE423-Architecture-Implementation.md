@@ -34,10 +34,10 @@
 | `origination` | Muhammad Ibrahim | Done: eligibility rules BR-01 to BR-08, risk grade and amount cap BR-09 and BR-10. Creating the loan row and schedule (I-03) waits for `products` | PR #9 |
 | `persistence` | Tughral Hussain; `SqliteDailyResultStore`, `SqlitePaymentReferences` and schema v2 by Muhammad Ibrahim | Done: schema v1 (7 tables) and v2 (`PENALTY_INCOME`, one reversal per entry, an eighth table `payment_reference`), `SqliteLedgerRepository`, `SqliteLoanRepository`, `SqliteDailyResultStore`, `SqlitePaymentReferences` | PR #8, PR #9 |
 | `web` and composition root | Tughral Hussain; end-of-day page, `LockingPoster` wiring and statement import by Muhammad Ibrahim | Done: teller page and end-of-day page on `127.0.0.1:8080`, four request threads, `CompositionRoot` wiring both chains, the engine and the import | PR #8, PR #9 |
-| `products` (Factory Method) | Hassan Khalid | Only `DueDateCalculator` and its test, in PR #6 | PR #6 |
-| `reporting` | Hassan Khalid | Not started | - |
+| `products` (Factory Method) | Hassan Khalid | Implemented on branch `feature/products-m2`: due dates, three interest calculators, `LoanProduct` and its ConcreteCreators, schedule assembly, grace period, golden schedules, SQLite schedule and product storage, early-settlement rebate, `InstalmentsDueSource` (build and CI pending) | branch, PR pending |
+| `reporting` | Hassan Khalid | Statement only (H-09): `StatementRenderer`; portfolio reports (H-10) are M3 | branch `feature/reporting-statement`, PR pending |
 
-Sections 2.2 and the `products` parts of 1.2 remain Hassan Khalid's to complete.
+Hassan Khalid's `products` and `reporting` code is written but not yet merged; its Gradle build, coverage figures and CI result must be added to section 2.2 once the pull requests run.
 
 ## 1. Working core architecture
 
@@ -97,7 +97,7 @@ Three paths run through the production wiring:
 | Statement import | `MicroLendApplication` -> `CompositionRoot.importStatement` -> `HblStatementAdapter` or `McbStatementAdapter` (over `CSVParser`) -> `StatementImportJob` -> `IdempotencyGuardPoster` -> `TimingPoster` -> `LockingPoster` -> `CoreRepaymentPoster` -> as above |
 | End of day | `TellerWebServer` (`POST /end-of-day`) -> `EndOfDayEngine.run` -> four pool threads, one task per active loan, each under its account lock -> `SqliteDailyResultStore.record` (snapshot and penalty pair in one `BEGIN IMMEDIATE` transaction) |
 
-Two inputs come from the unbuilt `products` module: the instalments owed per loan (`InstalmentsDueSource`, decision D-02, read by the allocator and the engine) and the early-settlement rebate (`EarlySettlementRebate`, decision D-03). `withPlaceholders` supplies lambdas that throw `ModuleNotAvailableException` naming the owner, so the running application refuses teller postings with that message and lists each end-of-day task under "Failed", writing nothing. Hassan Khalid's `InstalmentsDueSource` (H-08) and rebate (H-07) will replace them with no other change.
+Two inputs come from the unbuilt `products` module: the instalments owed per loan (`InstalmentsDueSource`, decision D-02, read by the allocator and the engine) and the early-settlement rebate (`EarlySettlementRebate`, decision D-03). `withPlaceholders` supplies lambdas that throw `ModuleNotAvailableException` naming the owner, so the running application refuses teller postings with that message and lists each end-of-day task under "Failed", writing nothing. Hassan Khalid's `InstalmentsDueSource` (H-08) and rebate (H-07) will replace them with no other change. (Update 22 Nov: both are written on branch `feature/products-m2`, where `CompositionRoot.production` replaces `withPlaceholders`; this paragraph describes `develop` until that branch merges.)
 
 Each path runs end to end on a real SQLite file, with a test double only for the instalments owed, in `CompositionRootTest` (section 2.1), `StatementImportWiringTest` (2.3), `ConcurrentTellerAndEndOfDayTest` (4.3) and `TellerWebServerTest` (the end-of-day page runs the engine for a business date and shows its report).
 
@@ -129,7 +129,7 @@ Each path runs end to end on a real SQLite file, with a test double only for the
 |---|---|---|---|
 | Decorator (`RepaymentPoster` pipeline) | Structural | Tughral Hussain (`LockingPoster`: Muhammad Ibrahim) | Implemented, integrated in both production chains, tested |
 | Adapter (bank statement adapters) | Structural | Muhammad Ibrahim | Implemented, reachable from the application through `CompositionRoot.importStatement`, tested against the production import chain |
-| Factory Method (`LoanProduct`) | Creational | Hassan Khalid | Not yet implemented (section 2.2) |
+| Factory Method (`LoanProduct`) | Creational | Hassan Khalid | Implemented on a branch, pull request pending (section 2.2) |
 
 ### 2.1 Decorator: the repayment posting pipeline
 
@@ -203,12 +203,32 @@ M1 design (section 5.1):
 - **Products:** `InterestCalculator` and its three concrete calculators.
 - **Rejected:** a Simple Factory `create(type)` switch, which is not the GoF pattern, as well as Abstract Factory and Singleton.
 
-**Status at writing (16 Nov 2026): not yet implemented. Owner to complete this subsection (Hassan Khalid).** It should give:
-- the classes and their commit hashes;
-- a class diagram;
-- the test showing the workflow never names a concrete calculator;
-- the shared `InterestCalculator` contract test (LSP evidence, M1 section 4.3);
-- how `products.Instalment` is mapped to `ledger.InstalmentDue` (see 1.3).
+**As built (22 Nov 2026), on branch `feature/products-m2`, pull request pending.**
+
+| GoF role | Class | Notes |
+|---|---|---|
+| Creator | `LoanProduct` (abstract) | `generateSchedule(Money, int, LocalDate)` is the stable workflow; `protected abstract InterestCalculator createInterestCalculator()` is the factory method |
+| ConcreteCreators | `FlatRateProduct`, `ReducingBalanceProduct`, `BulletProduct` | each overrides only the factory method (and its own early-settlement rule, BR-22) |
+| Product | `InterestCalculator` | contract in the Javadoc: non-negative `Money`, never null, HALF_EVEN at every step (BR-15) |
+| ConcreteProducts | `FlatRateCalculator`, `ReducingBalanceCalculator`, `BulletCalculator` | |
+| Supporting | `Schedule`, `Instalment` (immutable), `ScheduleAssembler`, `DueDateCalculator`, `GracePeriodPolicy` | the assembler puts the rounding residue in the last instalment (BR-14) and guarantees exactly `tenureMonths` instalments (BR-16) |
+
+**Why this shape.** Only one step of the workflow varies, the interest calculation. The workflow in `LoanProduct` never writes `new` on a calculator, so a fourth product is a new subclass and `LoanProduct` is not reopened. The storage layer (`persistence.SqliteProductCatalogue`) turns the stored `product_type` into a ConcreteCreator through a lookup table, so no type switch exists inside `products`.
+
+**Rejected alternatives.**
+- *Simple Factory (`create(type)` switch):* not the GoF pattern, and the switch must be edited for every new product.
+- *Abstract Factory:* there is one varying object, not a family of related objects.
+- *Singleton:* a product holds its own rate and limits, so there are several instances; a global instance would also hide the dependency from tests.
+
+**Evidence.**
+- Shared contract test `InterestCalculatorContract`, run by all three calculator tests (LSP, M1 section 4.3).
+- `LoanProductTest`: one schedule per product, instalments sum to principal plus total interest, tenure 1, 6 and 36.
+- `GoldenScheduleTest`: one hand-derived schedule per product under `src/test/resources/golden/` (QR-02; 30 are an M3 target).
+- Red and green commit pairs per item are in the branch history. Their hashes change when the patches are applied, so insert the final hashes here after the pull requests merge.
+
+**Mapping to the ledger (D-02, D-03).** `ScheduleInstalmentsDueSource` and `ProductEarlySettlementRebate` sit in the root package next to `CompositionRoot`, because `products` may not depend on `ledger`. The source maps each `products.Instalment` with `dueDate <= businessDate` to `ledger.InstalmentDue`, fees zero. Penalty comes from a constructor-supplied lookup, zero until Ibrahim plugs one in. Nothing is treated as paid until T-01.
+
+**Still to fill in by the owner.** The test and coverage numbers from `.\gradlew.bat build`, the JaCoCo figure for `products` and `reporting`, the class diagram, and the CI result. They have not been measured: the build could not be run in the session that wrote this code.
 
 ### 2.3 Adapter: bank statement adapters
 
