@@ -1,10 +1,10 @@
 # INS-01 - Forms: preparation logs, meeting minutes, follow-up
 
-Fill these in during the real inspection. Do not pre-fill names, times or defects.
+Completed at the real inspection; names, times and defects are not pre-filled.
 
 ## 1. Individual preparation log
 
-Copy this block once per inspector.
+One copy per inspector.
 
 **Inspector:** ______  **Team:** ______  **Role:** ______
 **Commit inspected:** ______
@@ -47,13 +47,13 @@ Copy this block once per inspector.
 
 **Defects raised**
 
-Each defect is entered in `qa/defect-log.md` with the ID given here.
+Each goes into `qa/defect-log.md` under the ID given here.
 
 | Defect ID | File:line | Checklist ID | Description | Type | Severity | Raised by |
 |---|---|---|---|---|---|---|
 | | | | | | | |
 
-**Open issues** (questions that are not yet defects, with owner):
+**Open issues** (questions not yet defects):
 
 | # | Issue | Owner | Due |
 |---|---|---|---|
@@ -92,7 +92,7 @@ Each defect is entered in `qa/defect-log.md` with the ID given here.
 
 ## 4. Sign-off
 
-To be completed by the participants themselves after follow-up.
+Completed by the participants after follow-up.
 
 | Role | Name | Date | Signature / GitHub handle |
 |---|---|---|---|

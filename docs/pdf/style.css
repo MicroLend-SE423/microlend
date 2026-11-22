@@ -175,6 +175,29 @@ pre .fu { color: #FFCB6B; }
 pre .op { color: #8BD8F2; }
 pre .at { color: #FF8FA3; }
 
+/* ---------- At-a-glance panel (raw HTML in the markdown) ---------- */
+/* Every value it shows is also in a table of the same document (the table view). */
+.glance { break-inside: avoid; margin: 12pt 0 16pt; padding: 11pt 12pt 12pt; border: 1px solid var(--line); border-radius: 9pt; background: #fff; }
+.glance p { margin: 0; }
+.glance-title { font-size: 7pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; color: var(--gold); margin-bottom: 8pt; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7pt; }
+.tile { background: var(--tint); border-radius: 7pt; padding: 8pt 10pt 9pt; }
+.tile .v { font-size: 19pt; font-weight: 800; color: var(--navy); line-height: 1.05; letter-spacing: -.02em; }
+.tile .l { font-size: 7.6pt; font-weight: 650; color: var(--ink); margin-top: 3pt; line-height: 1.3; }
+.tile .s { font-size: 6.9pt; color: var(--muted); margin-top: 1.5pt; line-height: 1.35; }
+.segs { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; margin-top: 11pt; }
+.segs.one { grid-template-columns: 1fr; }
+.seg-head { display: flex; justify-content: space-between; font-size: 7.6pt; font-weight: 650; color: var(--ink); margin-bottom: 4pt; }
+.seg-head .t { color: var(--muted); font-weight: 500; }
+.seg-bar { display: flex; gap: 2px; height: 20pt; }
+.seg-bar > span { display: flex; align-items: center; padding-left: 6pt; border-radius: 4px; font-size: 7.8pt; font-weight: 700; min-width: 0; }
+.seg-legend { display: flex; flex-wrap: wrap; gap: 3pt 11pt; font-size: 6.9pt; color: var(--muted); margin-top: 5pt; }
+.seg-legend i { display: inline-block; width: 7pt; height: 7pt; border-radius: 2pt; margin-right: 4pt; vertical-align: -.5pt; }
+/* Categorical slots, validated together (lightness, chroma, colour-blind separation): indigo, gold, periwinkle */
+.k1 { background: #3B4BA8; color: #fff; }
+.k2 { background: #C9A24D; color: #1C2033; }
+.k3 { background: #7A86C8; color: #1C2033; }
+
 /* ---------- Diagrams ---------- */
 figure.diagram { margin: 6pt 0 10pt; padding: 10pt; border: 1px solid var(--line); border-radius: 9pt; background: #fff; text-align: center; break-inside: avoid; }
 figure.diagram img { max-width: 100%; max-height: 232mm; }   /* a tall diagram (a CFG) may use most of the page */

@@ -2,44 +2,34 @@
 
 **Milestone:** M2 (SE431) - Black-box test design
 **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Version:** 0.3, 2026-11-21 (refreshed against the M2 integrated build on `feature/delinquency-origination-import`, code head `4067d2f`, 384 tests; version 0.2 of 2026-11-16 was checked against `701c161`, 182 tests)
+**Version:** 0.3, 2026-11-21, against code head `4067d2f` on `feature/delinquency-origination-import`; 0.2 (2026-11-16) used `701c161`
 **Sources:** `docs/business-rules.md` v1.1 (BR-01 to BR-43), `qa/rtm.md` (FR, QR and TC IDs),
-`docs/M1-SE431-Quality-Requirements-RTM-SQAP.md`, and the test code under `src/test/java`.
+`docs/M1-SE431-Quality-Requirements-RTM-SQAP.md`, and the tests under `src/test/java`.
 
 ## 1. Purpose and method
 
-This document designs black-box test cases from the business rules alone, without reference
-to the code structure. White-box design (CFG, cyclomatic complexity, basis paths) is in
-`qa/test-design/white-box.md`.
-
-Two techniques are used:
-
-- **Equivalence partitioning (EP).** Each input domain is split into classes the system must
-  treat the same way. Every class gets at least one test case. Valid classes are `EC-xx`
-  with a `V` tag, invalid ones with an `I` tag.
-- **Boundary value analysis (BVA).** Cases are placed at, just below and just above each
-  edge a rule states. Integer inputs (ages, days, counts) use min-1 / min / min+1 /
-  max-1 / max / max+1. Money uses the smallest unit, PKR 0.01, as the step.
-  Percentages use 0.01 percentage points.
+Cases come from the business rules alone; white-box design is in `qa/test-design/white-box.md`.
+Equivalence partitioning (EP) gives each real input valid (`V`) and invalid (`I`) classes
+`EC-xx`, each covered by at least one case. Boundary value analysis (BVA) tests each stated edge
+at min-1 / min / min+1 / max-1 / max / max+1 for integers (ages, days, counts), in steps of
+PKR 0.01 for money and 0.01 percentage points for percentages.
 
 ### Conventions
 
-- **Test case IDs** keep the RTM prefix: `TC-LED-02.3` is the third case of RTM test
-  `TC-LED-02`. Money and LoanId cases, which have no RTM row of their own, use `TC-CMN-xx`
-  and trace to BR-40, BR-43 and C-01.
-- **Money** is written with 2 decimal places, as `Money` holds it (`BigDecimal`, scale 2,
-  HALF_EVEN). No case uses `double` or `float` (C-01).
-- **Status** is either *automated* with the JUnit class and method, or *designed* (not yet
-  automated). Several cases are designed for modules owned by other members. They are the
-  test basis for those owners and are not implemented here.
-- **"Rule silent"** marks an input whose boundary the business rules do not state. The
-  team must decide it; this document does not invent one.
+- **Test case IDs** keep the RTM prefix (`TC-LED-02.3` is the third case of `TC-LED-02`), so
+  each case traces to its FR or QR and BR. Money and LoanId cases use `TC-CMN-xx`, tracing to
+  BR-40, BR-43 and C-01.
+- **Money** has scale 2, HALF_EVEN, as `Money` holds it; no case uses `double` or `float` (C-01).
+- **Status** is *automated* (JUnit class and method) or *designed* (not yet automated);
+  designed cases in other members' modules are their owners' test basis.
+- **"Rule silent"** marks a boundary the rules do not state; the team decides it, and this
+  design does not invent one.
 
 ### Decisions this design depends on
 
 | Decision | Effect on test design | Status |
 |---|---|---|
-| **BR-18/BR-19, tier by tier.** All penalties are settled oldest instalment first, then all fees oldest first, then all interest oldest first, then all principal oldest first. | Expected results of TC-LED-01 and TC-LED-02 | Adopted by the team on 2026-11-16 (recorded by Tughral Hussain) as decision D-01, and noted under BR-19 in `docs/business-rules.md`. The expected allocations in section 4.1 follow this reading. |
+| **BR-18/BR-19, tier by tier.** All penalties are settled oldest instalment first, then all fees oldest first, then all interest oldest first, then all principal oldest first. | Expected results of TC-LED-01 and TC-LED-02 | Adopted by the team on 2026-11-16 as decision D-01 (recorded by Tughral Hussain), noted under BR-19 in `docs/business-rules.md`; section 4.1 follows it. |
 | Fees tier is always zero at M1 (BR-18) | A non-zero fee is an untestable class until a fee type is introduced by a recorded deviation | Frozen rule |
 | Product amount and tenure bands are per product (BR-06, BR-07) | Boundaries are written relative to `min` and `max`; concrete values come from the product table | Product values not yet fixed in code |
 
@@ -47,7 +37,7 @@ Two techniques are used:
 
 ### 2.1 Money - BR-40, BR-43, C-01
 
-**Input:** a decimal amount passed to `Money.of(BigDecimal)`.
+**Input:** the amount passed to `Money.of(BigDecimal)`.
 
 | EC | Class | Type |
 |---|---|---|
@@ -82,7 +72,7 @@ Two techniques are used:
 
 ### 2.2 LoanId
 
-**Input:** the identifier string passed to `LoanId.of(String)`.
+**Input:** the string passed to `LoanId.of(String)`.
 
 | EC | Class | Type |
 |---|---|---|
@@ -91,7 +81,7 @@ Two techniques are used:
 | EC-08 | blank or empty string | I |
 | EC-09 | null | I |
 
-The rules do not state a maximum length or character set (rule silent), so there is no upper boundary.
+Length and character set are rule silent: no upper boundary.
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
@@ -104,9 +94,9 @@ The rules do not state a maximum length or character set (rule silent), so there
 
 ### 3.1 FR-01 - age at disbursement and at maturity (BR-01, BR-02) - TC-ORG-01
 
-**Inputs:** age in completed years at disbursement; age in completed years at maturity. The
-rules use whole years; whether "65 at maturity" means 65 years and 0 days or any day before
-the 66th birthday is rule silent. Completed years is assumed here.
+Ages are completed years (`Applicant.ageOn`, `LoanApplicationTest#ageInCompletedYears`).
+Whether "65 at maturity" means 65 years and 0 days or any day before the 66th birthday is rule
+silent.
 
 | EC | Class | Type |
 |---|---|---|
@@ -125,12 +115,9 @@ the 66th birthday is rule silent. Completed years is assumed here.
 | TC-ORG-01.6 | maturity age 66 | rejected, maturity-age reason | EC-13, max + 1 | automated `AgeRuleTest#ageAtMaturity` (row TC-ORG-01.6) |
 | TC-ORG-01.7 | age 40 at application, 66 at maturity | rejected (age is tested at maturity, not application) | EC-13 | automated `AgeRuleTest#ageIsTestedAtMaturityNotApplication` |
 
-Completed years is what the code implements (`Applicant.ageOn`, `LoanApplicationTest#ageInCompletedYears`).
-
 ### 3.2 FR-02 - active-loan limit (BR-03) - TC-ORG-02
 
-**Input:** number of the applicant's existing active loans, not counting the one applied for.
-A loan in arrears counts as active. A written-off loan does not.
+**Input:** existing active loans, excluding the one applied for.
 
 | EC | Class | Type |
 |---|---|---|
@@ -150,14 +137,14 @@ A loan in arrears counts as active. A written-off loan does not.
 
 ### 3.3 FR-03 - instalment burden (BR-04) - TC-ORG-03
 
-**Input:** total monthly instalments including the new loan, at the product base rate on the
-requested amount, divided by declared monthly income. Income 100,000.00 is used throughout.
+**Input:** monthly instalments including the new loan (base rate, requested amount) over
+declared monthly income, 100,000.00 throughout.
 
 | EC | Class | Type |
 |---|---|---|
 | EC-18 | burden <= 40.00% | V |
 | EC-19 | burden > 40.00% | I |
-| EC-20 | declared income 0.00 | rule silent (division by zero); must be decided. The code refuses it when the applicant is created (`LoanApplicationTest#rejectsZeroIncome`); a recorded team decision is still owed (rule gap 1) |
+| EC-20 | declared income 0.00 | rule silent (division by zero). The code refuses it at applicant creation (`LoanApplicationTest#rejectsZeroIncome`); a recorded team decision is still owed (rule gap 1) |
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
@@ -166,7 +153,7 @@ requested amount, divided by declared monthly income. Income 100,000.00 is used 
 | TC-ORG-03.3 | instalments 40,010.00 (40.01%) | rejected, burden reason | EC-19, max + 0.01 pp | automated `BurdenRatioRuleTest#burdenAtTheLimit` (row TC-ORG-03.3); one paisa over 40% in `#onePaisaOverTheLimit`, rounded up in `LoanApplicationTest#burdenRoundsUp` |
 | TC-ORG-03.4 | Grade C applicant, burden 40.00% at base rate | passes; the spread does not count (BR-04 uses the base rate) | EC-18 | automated `EligibilityEvaluatorTest#gradeCAtTheBurdenLimit` |
 
-The new loan's instalment is supplied to the rule as a function, because schedules belong to `products`. The tests supply a fixed amount.
+The new loan's instalment reaches the rule as a function (schedules belong to `products`); the tests supply a fixed amount.
 
 ### 3.4 FR-04 - prior write-off (BR-05) - TC-ORG-04
 
@@ -184,8 +171,6 @@ The new loan's instalment is supplied to the rule as a function, because schedul
 
 ### 3.5 FR-05 - typed rejection reason in rule order (BR-08) - TC-ORG-05
 
-**Input:** an application failing one or more of BR-01 to BR-07.
-
 | EC | Class | Type |
 |---|---|---|
 | EC-24 | passes all rules | V (approved) |
@@ -198,11 +183,9 @@ The new loan's instalment is supplied to the rule as a function, because schedul
 | TC-ORG-05.8 | age 17 and a prior write-off | reason names BR-01 (evaluated first) | EC-26 | automated `EligibilityEvaluatorTest#ageBeforeWriteOff` |
 | TC-ORG-05.9 | 2 active loans and burden 45% | reason names BR-03 | EC-26 | automated `EligibilityEvaluatorTest#activeLoansBeforeBurden` |
 
-EC-24 (approved) is automated in `EligibilityEvaluatorTest#approvesEligibleApplication`. `#stopsAtFirstFailure` shows that a rule after the first failure is not evaluated.
+EC-24 is automated in `EligibilityEvaluatorTest#approvesEligibleApplication`; `#stopsAtFirstFailure` shows later rules are skipped.
 
 ### 3.6 FR-06 - risk grade (BR-09, BR-10) - TC-ORG-06
-
-**Inputs:** burden ratio; worst days past due on any earlier loan; whether there is an earlier loan.
 
 | EC | Class | Type |
 |---|---|---|
@@ -220,8 +203,7 @@ EC-24 (approved) is automated in `EligibilityEvaluatorTest#approvesEligibleAppli
 | TC-ORG-06.6 | burden 35.01%, worst DPD 0 | C | EC-29, burden B max + 0.01 | automated `RiskGradeTest#assignsGrade` (row TC-ORG-06.6) |
 | TC-ORG-06.7 | burden 20.00%, worst DPD 61 | C, +3.00%, up to 60% | EC-29, DPD B max + 1 | automated `RiskGradeTest#assignsGrade` (row TC-ORG-06.7); spread and cap in `#spreadAndCap` |
 
-**Capped amount (BR-10).** Product minimum 10,000.00 is assumed for the example. The real
-value comes from the product table. The tests use a product band of 10,000.00 to 100,000.00.
+**Capped amount (BR-10)**, test product band 10,000.00 to 100,000.00:
 
 | TC | Input | Expected | Covers | Status |
 |---|---|---|---|---|
@@ -230,14 +212,12 @@ value comes from the product table. The tests use a product band of 10,000.00 to
 | TC-ORG-06.10 | Grade C, requested 16,666.00, min 10,000.00 | cap 9,999.60, rejected `BELOW_PRODUCT_MINIMUM` | cap just below minimum | automated `EligibilityEvaluatorTest#capBelowProductMinimum` |
 | TC-ORG-06.11 | Grade C, requested 16,666.67, min 10,000.00 | cap 10,000.00, approved | cap at minimum | automated `EligibilityEvaluatorTest#capAtProductMinimum` |
 
-The decision carries the grade and the capped amount. Applying the spread to a loan's rate
-happens when the loan is created (queue item I-03), which is not built because it needs the
-`products` module.
+Applying the grade's spread at loan creation (queue item I-03) waits for `products`.
 
 ### 3.7 FR-07 - product amount and tenure bands (BR-06, BR-07) - TC-ORG-07
 
-**Inputs:** requested amount; requested tenure in months. The bands are per product and
-inclusive. The concrete minimum and maximum are product data, not rules.
+Bands are per product and inclusive; the test product's are 10,000.00 to 100,000.00 and 6 to
+24 months.
 
 | EC | Class | Type |
 |---|---|---|
@@ -258,28 +238,18 @@ inclusive. The concrete minimum and maximum are product data, not rules.
 | TC-ORG-07.6 | tenure band min, band max | passes | EC-33 | automated `ProductBandRuleTest#tenureBand` (rows TC-ORG-07.6: 6 and 24 months) |
 | TC-ORG-07.7 | tenure band max + 1 | rejected, tenure reason | EC-35 | automated `ProductBandRuleTest#tenureBand` (row TC-ORG-07.7: 25 months) |
 
-The test product's band is 10,000.00 to 100,000.00 and 6 to 24 months. A band whose minimum
-exceeds its maximum is refused when the `ProductBand` is created
-(`LoanApplicationTest#rejectsInvalidAmountBand`, `#rejectsInvalidTenureBand`).
-
-The schema half of BR-06/BR-07 (a product row whose minimum exceeds its maximum is refused) is
-automated in `SchemaMigratorTest#productBands`.
+A band whose minimum exceeds its maximum is refused by `ProductBand`
+(`LoanApplicationTest#rejectsInvalidAmountBand`, `#rejectsInvalidTenureBand`) and by the schema
+(`SchemaMigratorTest#productBands`).
 
 ## 4. Ledger (owner: Tughral Hussain)
 
 ### 4.1 FR-13 - allocation waterfall, oldest first (BR-18, BR-19) - TC-LED-01
 
-**Inputs:** payment amount; the list of unpaid instalments, each with outstanding penalty,
-fees, interest and principal.
-
-**Reading used:** tier by tier, adopted by the team on 2026-11-16, decision D-01 (section 1).
-The fees tier is always 0.00 at M1 in real data; the allocator still orders it, so one case
-uses a non-zero fee to show the order. The input type is the ledger-owned `InstalmentDue`
-record (sequence, due date, penalty, fees, interest, principal).
-
-The cases below use the inputs of the automated tests in `RepaymentAllocatorTest`, so each
-expected result is the one the test asserts. Dates: I1 due 2026-01-15, I2 2026-02-15,
-I3 2026-03-15.
+**Inputs:** payment and the unpaid instalments as `InstalmentDue` records (sequence, due date,
+penalty, fees, interest, principal), read tier by tier (D-01). Fees are always 0.00 at M1 but
+still ordered, so TC-LED-01.2 uses a non-zero fee. Values are those `RepaymentAllocatorTest`
+asserts; I1 is due 2026-01-15, I2 2026-02-15, I3 2026-03-15.
 
 | EC | Class | Type |
 |---|---|---|
@@ -306,7 +276,7 @@ I3 2026-03-15.
 | TC-LED-01.8 | null payment; null list; list with a null element | 1.00 | `InvalidAllocationException` | EC-47 | automated `RepaymentAllocatorTest#rejectsMissingInput` |
 | TC-LED-01.9 | two instalments, both sequence 1 | 1.00 | `InvalidAllocationException` | EC-82 | automated `RepaymentAllocatorTest#rejectsDuplicateSequence` |
 
-**Supporting value objects.** `Allocation` holds the four tiers; `InstalmentDue` is the allocator's input.
+**Supporting value objects** (`Allocation` holds the four tiers):
 
 | TC | Input | Expected | Status |
 |---|---|---|---|
@@ -318,7 +288,7 @@ I3 2026-03-15.
 
 ### 4.2 FR-14 - partial payment (BR-20) - TC-LED-02
 
-**Input:** payment amount against two overdue instalments due 2,230.00 in total
+**Input:** a payment against two overdue instalments due 2,230.00 in total
 (I1 10.00 / 0.00 / 100.00 / 1,000.00; I2 20.00 / 0.00 / 100.00 / 1,000.00), as in
 `RepaymentAllocatorTest.PartialPayment`.
 
@@ -340,8 +310,7 @@ I3 2026-03-15.
 
 ### 4.3 FR-15 - overpayment and early settlement (BR-21, BR-22) - TC-LED-03
 
-**Inputs:** payment amount; total amount currently due; total payoff amount; product type.
-Due now is 460.00 and the payoff is 2,000.00.
+**Inputs:** payment; amount due now (460.00); payoff (2,000.00); product type.
 
 | EC | Class | Type |
 |---|---|---|
@@ -361,14 +330,12 @@ Due now is 460.00 and the payoff is 2,000.00.
 | TC-LED-03.5 | 2,000.00, bullet | settled; unaccrued monthly interest refunded | EC-52, EC-56 | designed (rebate amount from `products`) |
 | TC-LED-03.6 | 2,000.01 | policy reports 0.01 excess (not advance credit); the poster refuses the payment with `InvalidRepaymentException` and writes nothing | EC-53, payoff + 0.01 | automated `SettlementPolicyTest#payoffPlusOneIsExcess`, `CoreRepaymentPosterTest#excessOverPayoffIsRefused` |
 
-The per-product rebate amounts are product knowledge owned by Hassan Khalid. The ledger asks
-for them through `EarlySettlementRebate`, so TC-LED-03.4 and .5 need his calculators to
-provide expected values.
+TC-LED-03.4 and .5 need Hassan Khalid's calculators behind `EarlySettlementRebate` for
+expected values.
 
 ### 4.4 FR-16 - balanced posting (BR-23) - TC-LED-04
 
-This is an invariant over every posting path, not an input domain. EP is applied to the
-posting paths instead.
+BR-23 is an invariant, not an input domain, so EP partitions the posting paths.
 
 | EC | Posting path | Type |
 |---|---|---|
@@ -388,8 +355,6 @@ posting paths instead.
 | TC-LED-04.6 | ledger write fails; last line of a batch is invalid | loan not saved; no line of the batch written | EC-60 | automated `CoreRepaymentPosterTest#failedWriteDoesNotSaveLoan`, `SqliteLedgerRepositoryTest#appendAllIsAtomic` |
 
 ### 4.5 FR-17 - immutable entries and compensating reversals (BR-24, BR-43) - TC-LED-05
-
-**Inputs:** the entry to correct and the reason; the amount of a new ledger line.
 
 | EC | Class | Type |
 |---|---|---|
@@ -413,8 +378,6 @@ posting paths instead.
 
 ### 4.6 FR-18 - duplicate (bank, reference) rejected (BR-25) - TC-LED-06
 
-**Inputs:** payment source (cash or bank); bank; reference.
-
 | EC | Class | Type |
 |---|---|---|
 | EC-67 | cash payment, no reference | V |
@@ -434,9 +397,9 @@ posting paths instead.
 | TC-LED-06.6 | HBL / REF-1 posting fails, then is retried | retry accepted | EC-86 | automated `IdempotencyGuardPosterTest#failedPostingReleasesReference`; on SQLite `SqlitePaymentReferencesTest#failedPostingReleasesTheStoredPair`, `#releaseFreesThePair` |
 | TC-LED-06.7 | 8 threads post HBL / REF-1 at the same moment | forwarded exactly once; 7 duplicates refused | EC-69 under concurrency | automated `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce`; on SQLite `SqlitePaymentReferencesTest#concurrentClaimsHaveOneWinner` (8 threads, one winner) |
 
-Known limitation (M3): if the process stops between the claim and the posting, the pair stays
-claimed, so a later import of that row is refused as a duplicate. Writing the `payment` row
-inside the posting transaction removes it.
+Known limitation (M3): a process stop between claim and posting leaves the pair claimed, so a
+later import of that row is refused; writing the `payment` row in the posting transaction fixes
+it.
 
 ### 4.7 FR-19 - payment against closed or written-off loan (BR-26) - TC-LED-07
 
@@ -457,7 +420,7 @@ inside the posting transaction removes it.
 
 ### 4.8 FR-20 - bank statement import - TC-LED-08
 
-No business rule fixes the statement formats, so the boundaries are rule silent. EP only.
+No business rule fixes the statement formats (rule silent), so EP only.
 
 | EC | Class | Type |
 |---|---|---|
@@ -472,8 +435,8 @@ No business rule fixes the statement formats, so the boundaries are rule silent.
 | TC-LED-08.3 | unknown format | typed rejection, nothing posted | EC-77 | automated `HblStatementAdapterTest#otherBanksFormat`, `McbStatementAdapterTest#otherBanksFormat` (each refuses the other bank's file), `StatementImportWiringTest#unknownBank` (no adapter for the bank), `HblStatementAdapterTest#missingColumn` |
 | TC-LED-08.4 | malformed row | row rejected with its line number | EC-78 | automated `HblStatementAdapterTest#malformedRow` (9 rows: bad or zero or negative amount, bad date, wrong date format, unknown direction, blank reference, blank loan, missing values), `McbStatementAdapterTest#malformedRow` (6 rows), `HblStatementAdapterTest#brokenQuoting`; the physical line is named even after blank lines (`#physicalLineNumbers` in both adapter tests, DEF-019); nothing from the file is posted in `StatementImportJobTest#malformedFilePostsNothing` |
 
-A valid statement that starts with a UTF-8 byte-order mark is accepted (`#byteOrderMark` in both
-adapter tests, DEF-020). That is a further EC-75/EC-76 case.
+Also EC-75/EC-76: a leading UTF-8 byte-order mark is accepted (`#byteOrderMark` in both adapter
+tests, DEF-020).
 
 ### 4.9 FR-31 - audit line (no BR) - TC-LED-09
 
@@ -496,17 +459,14 @@ adapter tests, DEF-020). That is a further EC-75/EC-76 case.
 
 ### 5.1 FR-08 - three products (BR-11, BR-17) - TC-PRD-01
 
-EP over product type: flat-rate, reducing-balance and bullet (three valid classes). Any other
-type is invalid. The expected schedules are golden files (QR-02), so BVA does not apply.
-Rate is fixed for the life of the loan (BR-17), which is an invariant with no boundary.
+EP: flat-rate, reducing-balance and bullet are valid; any other type is invalid. No BVA:
+schedules are golden files (QR-02) and the fixed rate (BR-17) has no boundary.
 
 | TC | Input | Expected | Status |
 |---|---|---|---|
 | TC-PRD-01.1 to .3 | 100,000.00, 12 months, one per product | matches golden schedule | designed |
 
 ### 5.2 FR-09 - due dates (BR-12) - TC-PRD-02
-
-**Input:** disbursement date.
 
 | EC | Class | Type |
 |---|---|---|
@@ -524,8 +484,8 @@ Rate is fixed for the life of the loan (BR-17), which is an invariant with no bo
 | TC-PRD-02.5 | 2028-01-31 | 2028-02-29 | EC-92 | designed |
 | TC-PRD-02.6 | 2028-01-29 | 2028-02-29 | EC-92 | designed |
 
-Hassan's open PR #6 adds `DueDateCalculator` with a test. Its cases should be mapped to these
-IDs once it merges into `develop`.
+The test in Hassan's open PR #6 (`DueDateCalculator`) maps to these IDs once it merges into
+`develop`.
 
 ### 5.3 FR-10 - grace period (BR-13) - TC-PRD-03
 
@@ -566,10 +526,9 @@ The schema side, one row per (loan, sequence), is automated in `SchemaMigratorTe
 
 ### 6.1 FR-21 - penalty accrual and cap (BR-27, BR-28) - TC-DEL-01
 
-**Inputs:** overdue principal; overdue interest; days overdue. Overdue principal is 10,000.00.
-At 0.05% a day that is 5.00 a day. The cap is 10% of the overdue amount, 1,000.00, reached
-on day 200. Simple, non-compounding accrual is assumed, because the rule accrues on
-principal only.
+Overdue principal 10,000.00 accrues 5.00 a day (0.05%) up to the cap of 10% of the overdue
+amount, 1,000.00, reached on day 200. Accrual is assumed simple (non-compounding), as the rule
+accrues on principal only.
 
 | EC | Class | Type |
 |---|---|---|
@@ -587,16 +546,14 @@ principal only.
 | TC-DEL-01.6 | 201 days | 1,000.00 (capped) | EC-101, cap + 1 day | automated `PenaltyAccruerTest#accruedUpToTheCap` (row 201); the daily amount on day 201 is 0.00 in `#noAccrualPastTheCap` |
 | TC-DEL-01.7 | interest 500.00 overdue, principal 0.00 | 0.00 | EC-102 | automated `PenaltyAccruerTest#interestOnlyAccruesNothing` |
 
-Further automated cases in `PenaltyAccruerTest`: 0 days gives 0.00 (row 0 of `#accruedUpToTheCap`),
-negative days are rejected (`#negativeDaysRejected`), an instalment due today is not yet
-overdue (`#dueTodayIsNotOverdue`), each overdue instalment adds its own day
-(`#oneDayPerOverdueInstalment`), and 210 daily amounts on 333.33 add up exactly to the
-cumulative penalty, rounding included (`#dailyAmountsSumToCumulative`). Days skipped between
-runs are caught up: a loan never processed accrues every overdue day
-(`#firstRunAccruesEveryOverdueDay`), and a run after a gap accrues the days since the previous
-run (`#catchesUpSkippedDates`; at engine level `EndOfDayEngineTest#catchesUpSkippedDates`:
-10,000.00 overdue, one run then a run four days later, 25.00 in all per loan; DEF-018). On end of day the
-daily penalty is posted as a balanced `PENALTY_ACCRUAL` / `PENALTY_INCOME` pair
+Also automated in `PenaltyAccruerTest`: 0 days gives 0.00 (row 0 of `#accruedUpToTheCap`);
+negative days are rejected (`#negativeDaysRejected`); due today is not overdue
+(`#dueTodayIsNotOverdue`); each overdue instalment adds its own day
+(`#oneDayPerOverdueInstalment`); 210 daily amounts on 333.33 sum exactly to the cumulative
+penalty (`#dailyAmountsSumToCumulative`); skipped days are caught up on a first run
+(`#firstRunAccruesEveryOverdueDay`) and after a gap (`#catchesUpSkippedDates`; at engine level
+`EndOfDayEngineTest#catchesUpSkippedDates`: 10,000.00 overdue, runs four days apart, 25.00 in
+all per loan; DEF-018). End of day posts a balanced `PENALTY_ACCRUAL` / `PENALTY_INCOME` pair
 (`EndOfDayEngineTest#processesEveryLoan`, `SqliteDailyResultStoreTest#recordsSnapshotAndPenalty`).
 
 ### 6.2 FR-22 - days past due (BR-29) - TC-DEL-02
@@ -607,13 +564,13 @@ daily penalty is posted as a balanced `PENALTY_ACCRUAL` / `PENALTY_INCOME` pair
 | TC-DEL-02.2 | 2027-03-10 (due date) | 0 | automated `DaysPastDueCalculatorTest#countedFromTheDayAfterTheDueDate` (row 2027-03-10) |
 | TC-DEL-02.3 | 2027-03-11 (due + 1) | 1 | automated `DaysPastDueCalculatorTest#countedFromTheDayAfterTheDueDate` (row 2027-03-11; also 2027-04-09 gives 30) |
 
-Further automated cases: the oldest instalment still owing principal or interest sets the
-count (`#oldestUnpaidInstalmentDrives`), an instalment with only penalty left does not
-(`#penaltyOnlyIsNotPastDue`), and nothing owing gives 0 (`#nothingOwing`).
+Also automated: the oldest instalment owing principal or interest sets the count
+(`#oldestUnpaidInstalmentDrives`), penalty alone does not (`#penaltyOnlyIsNotPastDue`), and
+nothing owing gives 0 (`#nothingOwing`).
 
 ### 6.3 FR-23 - buckets and classification (BR-30) - TC-DEL-03
 
-Five valid classes, one per bucket. Negative days past due are invalid.
+EP: one valid class per bucket (five); negative DPD is invalid.
 
 | TC | DPD | Expected | Status |
 |---|---|---|---|
@@ -624,7 +581,7 @@ Five valid classes, one per bucket. Negative days past due are invalid.
 | TC-DEL-03.5 | 61 / 90 | Doubtful | automated `DelinquencyClassifierTest#bucketBoundaries` (rows 61, 90) |
 | TC-DEL-03.6 | 91 | Loss | automated `DelinquencyClassifierTest#bucketBoundaries` (rows 91, 400) |
 
-The basis paths of `classify` map to these inputs in `qa/test-design/white-box.md`, section 6.
+Basis paths of `classify` for these inputs: `qa/test-design/white-box.md`, section 6.
 
 ### 6.4 FR-24 - provisioning (BR-31) - TC-DEL-04
 
@@ -636,8 +593,7 @@ The basis paths of `classify` map to these inputs in `qa/test-design/white-box.m
 | TC-DEL-04.4 | Doubtful | 5,000.00 (50%) | automated `ProvisioningAndWriteOffTest#provisionByClassification` (row DOUBTFUL) |
 | TC-DEL-04.5 | Loss | 10,000.00 (100%) | automated `ProvisioningAndWriteOffTest#provisionByClassification` (row LOSS) |
 
-`ProvisioningPolicy` is not yet called by end of day or by a report. Its first caller will be
-the provision-coverage ratio of FR-29 (`reporting`).
+`ProvisioningPolicy` has no caller yet; the first will be the FR-29 provision-coverage ratio.
 
 ### 6.5 FR-25 - automatic write-off (BR-32) - TC-DEL-05
 
@@ -655,8 +611,7 @@ the provision-coverage ratio of FR-29 (`reporting`).
 | TC-DEL-06.2 | run it again for 2027-03-11 | no additional effect | automated `EndOfDayEngineTest#idempotentPerBusinessDate`; an earlier date run after a later one also records nothing (`#earlierDateAfterALaterRunIsSkipped`); `SqliteDailyResultStoreTest#secondRecordIsANoOp`, `#concurrentRecordsForTheSameDate` (two connections at once, exactly one wins); the unique key in `SchemaMigratorTest#snapshotPerLoanPerDate` |
 | TC-DEL-06.3 | run for 2027-03-12 | new accrual for the new date | automated `EndOfDayEngineTest#idempotentPerBusinessDate` (the next date records all 5 loans again) |
 
-`SqliteDailyResultStoreTest#oneTransaction` shows that a failing ledger line rolls the snapshot
-back with it.
+In `SqliteDailyResultStoreTest#oneTransaction` a failing ledger line rolls the snapshot back too.
 
 ### 6.7 FR-27 - classification-change alert (BR-34) - TC-DEL-07
 
@@ -666,18 +621,16 @@ back with it.
 | TC-DEL-07.2 | Substandard to Watch | one alert | automated `EndOfDayEngineTest#classificationChangeEvents` (30 days after Substandard) |
 | TC-DEL-07.3 | Watch to Watch | no alert | automated `EndOfDayEngineTest#classificationChangeEvents` (30 days after Watch) |
 
-The earlier classification is read from the loan's last snapshot
-(`SqliteDailyResultStoreTest#lastSnapshot`). The alert is a `ClassificationChangeEvent`
-in the end-of-day report, shown on the end-of-day page (`TellerWebServerTest#endOfDayRuns`). A run
-that fails as a whole is shown as a 503 page naming the cause
-(`TellerWebServerTest#endOfDayFailureIsReported`, DEF-021).
+The earlier classification comes from the last snapshot (`SqliteDailyResultStoreTest#lastSnapshot`).
+The alert, a `ClassificationChangeEvent` in the end-of-day report, is shown on the end-of-day
+page (`TellerWebServerTest#endOfDayRuns`); a run that fails as a whole shows a 503 page naming
+the cause (`TellerWebServerTest#endOfDayFailureIsReported`, DEF-021).
 
 ## 7. Reporting (owner: Hassan Khalid)
 
 ### 7.1 FR-28 - statement (BR-35) - TC-REP-01
 
-Whether the range is inclusive at both ends is rule silent; inclusive is assumed and must be
-confirmed.
+Both ends inclusive is assumed until confirmed (rule silent).
 
 | TC | Input | Expected | Status |
 |---|---|---|---|
@@ -703,8 +656,8 @@ confirmed.
 
 ## 8. Quality requirements
 
-These are verified by measurement or invariant tests rather than input partitioning. They are
-listed so every RTM row has a test basis.
+Verified by measurement or invariant tests, not partitioning; listed so every RTM row has a
+test basis.
 
 | QR | Black-box check | Status |
 |---|---|---|
@@ -712,19 +665,16 @@ listed so every RTM row has a test basis.
 | QR-02 | 30 golden schedules, 0 discrepancies | designed (`GoldenScheduleTest`) |
 | QR-03 | failure at >= 10 injected points leaves the ledger balanced | automated: 14 points in `PostingFaultInjectionTest#failureLeavesLedgerBalancedWithNoOrphans` (TC-LED-04.4), plus `SqliteLedgerRepositoryTest#appendAllIsAtomic`; the demonstration half of the verification method is still owed |
 | QR-05 | 0 mutators; 0 `UPDATE`/`DELETE` on `ledger_entry` | automated in part: `LedgerEntryTest#noMutators`, `LedgerImmutabilityTest#writerCanOnlyAppend`, `SqliteLedgerRepositoryTest#noMutatingSqlAgainstLedger`; the Fagan checklist item (INS-01) is still owed |
-| QR-06 | 50 concurrent runs: 0 lost updates, 0 double accruals | automated, one run per build: `ConcurrentTellerAndEndOfDayTest#tellersAndEndOfDayTogether`. Four teller threads each post 10.00 five times to each of 5 loans while end of day runs on the same loans, all through the production wiring on one SQLite file. It asserts that every loan's principal equals the expected figure (no posting lost), total debits equal total credits, there are 5 snapshots, and there is exactly one penalty pair per loan (no double accrual). With `LockingPoster` removed it failed in 3 of 3 runs with lost postings. The 50-run repetition is not yet set up. Supporting checks: `EndOfDayEngineTest#runsFourTasksInParallel`, `#workRunsUnderTheAccountLock`, `LockingPosterTest`, `LockRegistryTest#concurrentRequestsShareOneLock`, `SqliteDailyResultStoreTest#concurrentRecordsForTheSameDate`, `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce`, `SqliteLoanRepositoryTest#saveWaitsForConcurrentWriter` |
+| QR-06 | 50 concurrent runs: 0 lost updates, 0 double accruals | automated, one run per build: `ConcurrentTellerAndEndOfDayTest#tellersAndEndOfDayTogether`. Four teller threads each post 10.00 five times to each of 5 loans while end of day runs on them, through the production wiring on one SQLite file. It asserts each loan's expected principal (no posting lost), total debits = total credits, 5 snapshots and exactly one penalty pair per loan (no double accrual). With `LockingPoster` removed it failed 3 of 3 runs with lost postings. The 50-run repetition is not yet set up. Supporting checks: `EndOfDayEngineTest#runsFourTasksInParallel`, `#workRunsUnderTheAccountLock`, `LockingPosterTest`, `LockRegistryTest#concurrentRequestsShareOneLock`, `SqliteDailyResultStoreTest#concurrentRecordsForTheSameDate`, `IdempotencyGuardPosterTest#concurrentDuplicatesForwardOnce`, `SqliteLoanRepositoryTest#saveWaitsForConcurrentWriter` |
 
-QR-04 (complexity limits) is an analysis requirement and belongs to the static-analysis report
-(`qa/static-analysis-report.md`). Constraint C-03 (no cycles between module packages) is not an
-input domain either; it is enforced on every build by `ArchitectureTest#noCyclesBetweenModules`.
+QR-04 (complexity limits) is verified by analysis (`qa/static-analysis-report.md`); C-03 (no
+package cycles) by `ArchitectureTest#noCyclesBetweenModules` on every build.
 
 ## 9. Coverage summary
 
-Counts are equivalence classes and BVA cases defined in this document. "Automated" counts
-test cases already implemented in JUnit at commit `4067d2f` (384 tests, all passing),
-including partial automation at the command or schema level. The "designed only" column
-includes TC-REP-02.4, which is blocked on a rule decision. At `701c161` (182 tests) the
-totals were 71 automated and 115 designed only.
+"Automated" means in JUnit at `4067d2f` (384 tests, all passing), partial command- or
+schema-level automation included; "designed only" includes TC-REP-02.4, blocked on a rule
+decision. At `701c161` (182 tests): 71 automated, 115 designed only.
 
 | Requirement | BR | EP classes | BVA cases | Test cases | Automated | Designed only |
 |---|---|---|---|---|---|---|
@@ -763,29 +713,24 @@ totals were 71 automated and 115 designed only.
 | FR-30, FR-32 | BR-39 | 2 | 0 | 2 | 0 | 2 |
 | **Total** | | **127** | **88** | **186** | **152** | **34** |
 
-The ledger module (sections 4.1 to 4.9) has 62 test cases, of which 58 are automated. The 4
-designed only are TC-LED-03.2, .4 and .5 (product rebates and the `products` instalment
-source, decision D-02) and TC-LED-09.3 (per-file import audit). TC-LED-08.1 to .4 (bank
-statement import) were automated on 21 Nov. All 47 cases in `origination` (sections 3.1 to
-3.7) and all 30 in `delinquency` (sections 6.1 to 6.7) are automated; TC-DEL-05.3 only in
-part. Every case in `products` and `reporting` is still designed only, because neither
-module is built on `develop` (Hassan's `DueDateCalculator` is in open PR #6). They are the
-test basis for their owner.
+By module: ledger (4.1 to 4.9) 58 of 62 automated, the other 4 being TC-LED-03.2, .4, .5
+(D-02, `products` rebates) and TC-LED-09.3, with TC-LED-08.1 to .4 automated on 21 Nov;
+origination (3.1 to 3.7) 47 of 47; delinquency (6.1 to 6.7) 30 of 30. `products` and
+`reporting` are designed only, as neither is built on `develop`.
 
 ### Rule gaps found while designing
 
-These are inputs the business rules do not cover. Each needs a team decision, recorded as a
-deviation under SQAP section 6.3, before its test can have an expected result:
+Each needs a team decision, recorded as a deviation (SQAP section 6.3), before its test has an
+expected result:
 
-1. Declared monthly income of 0.00 in the burden ratio (BR-04). The origination code refuses
-   such an applicant (`LoanApplicationTest#rejectsZeroIncome`, 21 Nov). The team decision and
-   the deviation record are still owed.
-2. Payment larger than the full payoff: the excess beyond settlement (BR-21, BR-22). Until a
-   rule exists, the poster refuses such a payment and writes nothing (TC-LED-03.6).
+1. Declared monthly income of 0.00 in the burden ratio (BR-04): the code refuses it
+   (`LoanApplicationTest#rejectsZeroIncome`, 21 Nov); team decision and deviation record still
+   owed.
+2. Payment above the full payoff (BR-21, BR-22): refused, with nothing written, until a rule
+   exists (TC-LED-03.6).
 3. Zero denominators in PAR30, provision coverage and collection efficiency (BR-36 to BR-38).
 4. Whether a statement date range includes both ends (BR-35).
-5. The BR-18/BR-19 reading. **Resolved:** tier by tier, adopted by the team on 2026-11-16
-   (decision D-01, recorded by Tughral Hussain).
+5. The BR-18/BR-19 reading. **Resolved:** tier by tier (decision D-01, 2026-11-16).
 6. Maximum length and character set of a loan ID.
-7. Resolved by decision D-02 (16 Nov): the instalment source passed to the allocator lists only instalments due by the
-   business date, not every remaining instalment (TC-LED-03.2).
+7. Resolved by decision D-02 (16 Nov): the allocator's instalment source lists only
+   instalments due by the business date (TC-LED-03.2).

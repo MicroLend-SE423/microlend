@@ -4,12 +4,12 @@
 **Code analysed:** main source set.
 - First run: `c80b9c9` on `feature/ledger-entry` (14 Nov 2026, part-way through the ledger queue).
 - Ledger run: `e0f9ecb` (whole ledger queue L-01 to L-19): `common`, `ledger`, `persistence`, `web`.
-- After fixes: `701c161`. A re-run on the merged ledger code (PR #8 merged into `develop` on 21 Nov) gives the same 62 findings.
+- After fixes: `701c161`; a re-run after PR #8 merged into `develop` (21 Nov) gives the same 62 findings.
 - M2 integrated runs on `feature/delinquency-origination-import`, 21 Nov 2026:
-  - `7784a6a` adds `origination`, `delinquency`, `ledger.importing`, `common.LockRegistry`, `ledger.LockingPoster`, `persistence.SqliteDailyResultStore`, schema version 2 in `SchemaMigrator`, and the end-of-day changes to `CompositionRoot`, `MicroLendApplication` and `TellerWebServer`.
-  - `4067d2f` is the code head triaged below. It adds the fixes from the independent code review (`delinquency.DailySnapshot`, `ledger.importing.StatementText`, and changes to `PenaltyAccruer`, `EndOfDayEngine`, `SqliteDailyResultStore`, both adapters and `TellerWebServer`) and the durable reference store (`persistence.SqlitePaymentReferences`, with its table in `SchemaMigrator` and its wiring in `CompositionRoot`).
+  - `7784a6a` adds `origination`, `delinquency`, `ledger.importing`, `common.LockRegistry`, `ledger.LockingPoster`, `persistence.SqliteDailyResultStore`, schema version 2 in `SchemaMigrator`, and end-of-day changes to `CompositionRoot`, `MicroLendApplication` and `TellerWebServer`.
+  - `4067d2f`, the code head triaged below, adds the independent code-review fixes (`delinquency.DailySnapshot`, `ledger.importing.StatementText`; changes to `PenaltyAccruer`, `EndOfDayEngine`, `SqliteDailyResultStore`, both adapters and `TellerWebServer`) and the durable reference store `persistence.SqlitePaymentReferences` (table in `SchemaMigrator`, wiring in `CompositionRoot`).
 
-Finding IDs stay stable between runs; new findings get new IDs (SA-15 onward for the 21 Nov runs).
+Finding IDs are stable between runs; the 21 Nov runs add SA-15 onward.
 
 ## 1. Tools and configuration
 
@@ -23,9 +23,7 @@ Finding IDs stay stable between runs; new findings get new IDs (SA-15 onward for
 # reports: build/reports/pmd/main.xml|html, build/reports/checkstyle/main.xml|test.xml
 ```
 
-`config/pmd-init.gradle` applies the `pmd` plugin with `toolVersion = '7.7.0'`, the six rule categories above and `ignoreFailures = true`.
-
-Checkstyle is the gate that is already enforced. PMD was added for M2 because Checkstyle only checks form, while PMD finds error-prone and design problems.
+`config/pmd-init.gradle` sets `toolVersion = '7.7.0'`, the six categories and `ignoreFailures = true`. PMD was added for M2 because Checkstyle, the existing gate, checks only form; PMD finds error-prone and design problems.
 
 ## 2. Results
 
@@ -37,7 +35,7 @@ Checkstyle is the gate that is already enforced. PMD was added for M2 because Ch
 | M2 integrated build | `7784a6a` | 0 | 98 |
 | M2 integrated build after the review fixes | `4067d2f` | 0 | **100** |
 
-How the 66 findings on the ledger code were dispositioned:
+Disposition of the 66 ledger-code findings:
 
 | Disposition | Findings |
 |---|---|
@@ -46,7 +44,7 @@ How the 66 findings on the ledger code were dispositioned:
 | Deferred | 12 |
 | False positive | 48 |
 
-**21 Nov runs.** Going from 62 to 100 findings means 39 new findings in the new code, and 1 old finding no longer reported. That one was an SA-07 literal in the old `TellerWebServer.endOfDay`, and it disappeared when that handler was rewritten to run the engine. Of the 39, 37 were reported at `7784a6a`. The other 2 appeared at `4067d2f`: the `CLAIM` and `RELEASE` constants of `SqlitePaymentReferences` (SA-17). The review fixes added no other finding and removed none; only line numbers moved. The 39 new findings are triaged as SA-15 to SA-28 below:
+**21 Nov runs.** The rise from 62 to 100 is 39 new findings less 1 old SA-07 literal in `TellerWebServer.endOfDay` that is no longer reported (see SA-07). 37 of the 39 appeared at `7784a6a`; the other 2 are the `CLAIM` and `RELEASE` constants of `SqlitePaymentReferences` at `4067d2f` (SA-17). The review fixes added or removed nothing else; only line numbers moved. Triage of the 39 (SA-15 to SA-28):
 
 | Disposition (new findings, 21 Nov) | Findings |
 |---|---|
@@ -56,7 +54,7 @@ How the 66 findings on the ledger code were dispositioned:
 | False positive | 22 |
 | **Total new** | **39** |
 
-The 100 findings open at `4067d2f` are 61 carried over from the ledger triage plus the 39 new ones:
+Open at `4067d2f`: 61 carried over from the ledger triage plus the 39 new:
 
 | Disposition (open at `4067d2f`) | Findings |
 |---|---|
@@ -65,17 +63,13 @@ The 100 findings open at `4067d2f` are 61 carried over from the ledger triage pl
 | False positive | 48 + 22 = 70 |
 | **Total** | **100** |
 
-Checkstyle reports zero because it is a gate: `./gradlew build` on `4067d2f` passed `checkstyleMain` and `checkstyleTest` with `maxWarnings = 0`, and every commit on `feature/ledger-entry` passed it in CI (see `qa/scm-evidence.md`, section 3.2). In particular, constraint C-01 holds: there is no `double` or `float` in the code base, including the new modules.
+Checkstyle reports zero because it is a gate: `./gradlew build` on `4067d2f` passed `checkstyleMain` and `checkstyleTest` with `maxWarnings = 0`, as did every `feature/ledger-entry` commit in CI (`qa/scm-evidence.md` section 3.2), so C-01 holds: no `double` or `float`, new modules included.
 
-PMD reports no `CyclomaticComplexity` finding in the new code. The three it reports (SA-04, SA-05) are the ledger methods triaged earlier. The most complex new method by JaCoCo's count is the compact constructor of `origination.Applicant` (12): five validation guards and one conditional expression, 11 simple conditions in all. It is still below the QR-04 limit of 15.
+PMD reports no `CyclomaticComplexity` finding in the new code; its three (SA-04, SA-05) are ledger methods. The most complex new method by JaCoCo is the compact constructor of `origination.Applicant` (12: five validation guards and one conditional expression, 11 simple conditions), below the QR-04 limit of 15.
 
 ## 3. Triage
 
-Disposition key:
-- **Fixed**: a real defect or weakness, corrected through a CAPA in `qa/defect-log.md`.
-- **Accepted**: a real finding kept on purpose, with the reason recorded.
-- **Deferred**: real, but scheduled for a later change, which the finding is tracked to.
-- **False positive**: the rule does not apply to this design. The reason is recorded so the decision can be checked later.
+Disposition key: **Fixed**, a real defect or weakness corrected through a CAPA in `qa/defect-log.md`; **Accepted**, real but kept on purpose; **Deferred**, real and tracked to a later change; **False positive**, the rule does not apply to this design. Every row records its reason so the decision can be checked.
 
 | ID | PMD rule | Count | Location | Disposition | Reasoning / action |
 |---|---|---|---|---|---|
@@ -104,7 +98,7 @@ Disposition key:
 
 ### 3.1 New findings in the M2 integrated build (`4067d2f`, 21 Nov 2026)
 
-Paths are under `src/main/java/pk/edu/giki/microlend/`. Line numbers are from the PMD report at `4067d2f`.
+Paths under `src/main/java/pk/edu/giki/microlend/`; line numbers from the PMD report at `4067d2f`.
 
 | ID | PMD rule | Count | Location | Disposition | Reasoning / action |
 |---|---|---|---|---|---|
@@ -142,4 +136,4 @@ Paths are under `src/main/java/pk/edu/giki/microlend/`. Line numbers are from th
 
 ## 5. Not yet analysed
 
-`products` and `reporting` have no code on any branch except Hassan's `DueDateCalculator` in open PR #6. They will be analysed when they reach `develop`. `origination`, `delinquency` and `ledger.importing` were analysed for the first time on 21 Nov (section 3.1). Recommendation for M3: wire PMD into `build.gradle` as a CI step with an agreed rule set, so findings are triaged per pull request rather than once per milestone.
+`products` and `reporting` have no code on any branch except Hassan's `DueDateCalculator` in open PR #6; they are analysed when they reach `develop`. M3 recommendation: wire PMD into `build.gradle` as a CI step with an agreed rule set, so findings are triaged per pull request.

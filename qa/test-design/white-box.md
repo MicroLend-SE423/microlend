@@ -1,22 +1,16 @@
 # MicroLend - White-Box Test Design (M2)
 
 **Deliverable:** SE431 M2, "White-box test design" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Code baseline:** sections 2 to 5 were drawn on `feature/ledger-entry` at `701c161` (14 Nov 2026): the whole ledger queue (L-01 to L-19) plus the two static-analysis fixes. Sections 6 and 7 were drawn on `feature/delinquency-origination-import` at `7784a6a` (21 Nov 2026) and re-checked at the code head `4067d2f` the same day. On 21 Nov all six methods were re-checked against `4067d2f`: their source, JaCoCo complexity and branch coverage are unchanged. The review fixes changed `EndOfDayEngine.process`, not `collect`.
-**Tools:** control-flow graphs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
+**Code baseline:** sections 2 to 5 drawn on `feature/ledger-entry` at `701c161` (14 Nov 2026: ledger queue L-01 to L-19 plus the two static-analysis fixes); sections 6 and 7 on `feature/delinquency-origination-import` at `7784a6a` (21 Nov 2026). All six methods were re-checked at code head `4067d2f` on 21 Nov: source, JaCoCo complexity and branch coverage unchanged.
+**Tools:** CFGs drawn by hand from the source; complexity cross-checked with JaCoCo 0.8 (`build/reports/jacoco/test/jacocoTestReport.xml`, `COMPLEXITY` counter) and PMD 7.7.0 (`CyclomaticComplexity` rule).
 
 ## 1. Method
 
-1. Draw the control-flow graph (CFG) of the method. Each node is a block of statements with one entry and one exit. Compound conditions (`a || b`) are split into one decision node per simple condition, because each one is a separate branch in the bytecode and in the coverage report.
-2. Compute cyclomatic complexity three ways and check that they agree:
-   - `V(G) = E - N + 2` (edges, nodes, one connected component);
-   - `V(G) = P + 1`, where P is the number of simple decision nodes;
-   - JaCoCo's `COMPLEXITY` counter for the method.
-3. Derive V(G) linearly independent basis paths. Start from a typical baseline path, then flip one decision at a time.
-4. Give each feasible path a concrete test case, with inputs and the expected result, and name the automated test that executes it. Infeasible paths are stated and explained, not hidden.
+Compound conditions (`a || b`) are split into one decision node per simple condition, matching the bytecode branches JaCoCo counts. V(G) is computed as E - N + 2 and as P + 1, then cross-checked with JaCoCo.
 
 ### Selection of methods
 
-These methods were chosen because they are on the money path and have the highest complexity on it. The four ledger methods are also the Fagan inspection target (`qa/inspections/INS-01-repayment-path/`). `DelinquencyClassifier.classify` is the basis-path target that M1 named for `delinquency` (RTM FR-23). `EndOfDayEngine.collect` decides what the end-of-day report says about each loan's task.
+These are the most complex methods on the money path. The four ledger methods are also the Fagan inspection target (`qa/inspections/INS-01-repayment-path/`); `DelinquencyClassifier.classify` is the basis-path target M1 named for `delinquency` (RTM FR-23).
 
 | Method | Requirement | Why it is "key" |
 |---|---|---|
@@ -32,13 +26,13 @@ These methods were chosen because they are on the money path and have the highes
 | Method | P (simple decisions) | E | N | V(G) = E - N + 2 | JaCoCo | PMD 7.7.0 | Branch coverage (JaCoCo) |
 |---|---|---|---|---|---|---|---|
 | `RepaymentAllocator.allocate` | 9 | 26 | 18 | **10** | 10 | 13 | 18 / 18 |
-| `LoanAccount.restore` | 7 | 22 | 16 | **8** | 8 | 13 | 14 / 14 |
+| `LoanAccount.restore` | 7 | 20 | 14 | **8** | 8 | 13 | 14 / 14 |
 | `LedgerEntry.requireValid` | 5 | 16 | 12 | **6** | 6 | 11 | 10 / 10 |
 | `CoreRepaymentPoster.post` | 5 (4 are exception exits) | 16 | 12 | **6** | 2 | below threshold | 2 / 2 |
 | `DelinquencyClassifier.classify` | 5 | 16 | 12 | **6** | 6 | below threshold | 10 / 10 |
 | `EndOfDayEngine.collect` | 6 (2 are exception exits) | 17 | 12 | **7** | 5 | below threshold | 8 / 8 |
 
-PMD's figure is higher by exactly the number of `throw` statements in each method (3, 5 and 5). That is consistent with PMD counting each `throw` as an extra decision. The McCabe value from the graph, which JaCoCo confirms, is the one used for basis paths. The M1 RTM estimated "CC about 11" for the allocator, and the built method came in at 10. The M1 RTM estimate for `classify` was "about 6", and the built method is exactly 6. As with `post`, JaCoCo's figure for `collect` leaves out the two exception exits, because they are not bytecode branches.
+PMD's figure exceeds the graph value by each method's `throw` count (3, 5 and 5), consistent with PMD counting a `throw` as a decision; basis paths use the graph value. JaCoCo omits the exception exits of `post` and `collect` (section 5.1). M1 RTM estimates: allocator "CC about 11" (built: 10), `classify` "about 6" (built: 6).
 
 ---
 
@@ -106,7 +100,7 @@ E = 26, N = 18, so **V(G) = 26 - 18 + 2 = 10**, which equals P + 1 = 9 + 1.
 
 ### 2.3 Basis paths and test cases
 
-The baseline is BP-1: one instalment, and a payment that clears it exactly. Each later path flips one decision from a path already listed.
+Baseline BP-1: one instalment, paid exactly. Each later path flips one decision of a path already listed.
 
 | Path | Route | Decision flipped | Test input (money in PKR) | Expected result | Closest automated test in `RepaymentAllocatorTest` |
 |---|---|---|---|---|---|
@@ -121,7 +115,7 @@ The baseline is BP-1: one instalment, and a payment that clears it exactly. Each
 | BP-9 | as BP-8, but the list is passed newest first | sort order feeding P7 | 3 instalments given out of due-date order | paid by due date, not by list position (BR-19) | `threeOverdueOutOfOrder` |
 | BP-10 | N9F on first evaluation | P6 | none | **Infeasible.** `TIERS` is a constant list of 4 tiers, so the tier loop always runs 4 times | n/a (by inspection) |
 
-BVA cases for the same method (0.00, 0.01, due - 0.01, exactly due, due + 0.01) are in `qa/test-design/black-box.md`, TC-LED-01 and TC-LED-02. They are automated in the parameterised `boundaries` test and in `oneRupeeShortOnNewestPrincipal`.
+The BVA cases (0.00, 0.01, due - 0.01, exactly due, due + 0.01) are TC-LED-01 and TC-LED-02 in `qa/test-design/black-box.md`, automated in the parameterised `boundaries` test and `oneRupeeShortOnNewestPrincipal`.
 
 ---
 
@@ -142,7 +136,7 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/LoanAccount.java`.
 | N13 | `return new LoanAccount(...)` | |
 | N14 | exit | |
 
-There are 7 decision nodes, 7 other nodes and the exit. N4F and N5F both lead to N6, and N6F and N7F both lead to N13. Each throw node and N13 lead to the exit. E = 22, N = 16, **V(G) = 8**.
+There are 7 decision nodes, 5 throw nodes, the return and the exit (N = 14). N4F and N5F lead to N6; N6F and N7F lead to N13; each throw node and N13 lead to the exit. Each decision has two out-edges (14) and each throw and the return one (6), so E = 20 and **V(G) = 20 - 14 + 2 = 8**, which equals P + 1 = 7 + 1.
 
 | Path | Decisions | Input | Expected | Automated in `LoanAccountTest` |
 |---|---|---|---|---|
@@ -161,7 +155,7 @@ JaCoCo reports 14 of 14 branches covered.
 
 ## 4. `LedgerEntry.requireValid`
 
-Source: `src/main/java/pk/edu/giki/microlend/ledger/LedgerEntry.java`. There are five sequential guards (loan id, type, amount, posting time, zero amount), each leading to a throw. E = 16, N = 12, **V(G) = 6**.
+Source: `src/main/java/pk/edu/giki/microlend/ledger/LedgerEntry.java`. Five sequential guards (loan id, type, amount, posting time, zero amount) each lead to a throw. E = 16, N = 12, so **V(G) = 16 - 12 + 2 = 6**, which equals P + 1 = 5 + 1.
 
 | Path | Flipped guard | Input | Expected | Automated in `LedgerEntryTest` |
 |---|---|---|---|---|
@@ -172,23 +166,17 @@ Source: `src/main/java/pk/edu/giki/microlend/ledger/LedgerEntry.java`. There are
 | BP-5 | postedAt null | | `InvalidLedgerEntryException` | `rejectsNullFields` |
 | BP-6 | amount 0.00 | | `InvalidLedgerEntryException` ("must move money") | `rejectsZeroAmount` |
 
-JaCoCo reports 10 of 10 branches covered. The class as a whole is at 37 of 44 branches. The uncovered branches are in `equals` and `reversalOf`, which section 6 tracks.
+JaCoCo: 10 of 10 branches covered; the class as a whole 37 of 44 (gaps in `equals` and `reversalOf`, section 8).
 
 ---
 
 ## 5. `CoreRepaymentPoster.post`
 
-Source: `src/main/java/pk/edu/giki/microlend/ledger/CoreRepaymentPoster.java`. This is the concrete component that the Decorator chain wraps (M1 section 5.3).
+Source: `src/main/java/pk/edu/giki/microlend/ledger/CoreRepaymentPoster.java`, the concrete component the Decorator chain wraps (M1 section 5.3).
 
 ### 5.1 Why exception edges are drawn as decisions
 
-JaCoCo gives `post` a complexity of only **2**, because it counts bytecode branches, and `post` has just one `if` (payment above the payoff). Its other outcomes leave the method as exceptions thrown by collaborators:
-- `orElseThrow` for an unknown loan;
-- `ensureAcceptsPayment` for a closed loan;
-- `appendAll` failing;
-- `save` failing, which leads to the compensating reversal.
-
-These exits are the requirements this method exists to meet (BR-26, QR-03). So the CFG below draws each of them as a decision node, and the basis paths are derived from that graph.
+JaCoCo gives `post` complexity **2**: it counts only bytecode branches, and `post` has one `if` (payment above the payoff). Its other exits are collaborator exceptions (`orElseThrow` for an unknown loan, `ensureAcceptsPayment` for a closed loan, a failing `appendAll`, a failing `save` with its compensating reversal). BR-26 and QR-03 require those exits, so the CFG draws each as a decision node.
 
 | Node | Statement | Decision |
 |---|---|---|
@@ -205,7 +193,7 @@ These exits are the requirements this method exists to meet (BR-26, QR-03). So t
 | N11 | `return new PostingResult(...)` | |
 | N12 | exit | |
 
-Each of the 5 decision nodes has two out-edges (10 edges). N2, N4, N6, N8, N10 and N11 each have one edge to the exit (6 edges). E = 16, N = 12, **V(G) = 16 - 12 + 2 = 6** = P + 1.
+The 5 decision nodes have 2 out-edges each (10); N2, N4, N6, N8, N10 and N11 have 1 each to the exit (6). E = 16, N = 12, so **V(G) = 16 - 12 + 2 = 6**, which equals P + 1 = 5 + 1.
 
 ### 5.2 Basis paths
 
@@ -218,17 +206,17 @@ Each of the 5 decision nodes has two out-edges (10 edges). N2, N4, N6, N8, N10 a
 | BP-5 | P4 append fails | ledger writer that throws | exception propagates; loan not saved | `failedWriteDoesNotSaveLoan` |
 | BP-6 | P5 save fails | loan repository that throws on save | every posted line reversed (BR-24), then the failure is rethrown; the ledger nets to zero | `PostingFaultInjectionTest.failureLeavesLedgerBalancedWithNoOrphans` (loan-save failure points) |
 
-Variants of BP-1 cover BR-21 (`surplusBecomesAdvanceCredit`) and the BR-22 payoff (`exactPayoffClosesLoan`). These follow the same graph path with different data, so they are boundary cases, not extra basis paths.
+Variants of BP-1 cover BR-21 (`surplusBecomesAdvanceCredit`) and the BR-22 payoff (`exactPayoffClosesLoan`): same path, different data, so boundary cases rather than basis paths.
 
 ### 5.3 `requireBalanced` (BR-23)
 
-This method has one loop and one `if`, so V(G) = 3. JaCoCo agrees: complexity 3, with 4 of 4 branches covered. Its paths are: empty list (loop skipped, balanced), balanced lines, and unbalanced lines. `post` always builds balanced lines, so the unbalanced path cannot be reached through `post`. That is why `requireBalanced` is package-private and tested directly by `imbalanceDetected`. This is a guard against a future change to `linesFor`, not dead code.
+One loop and one `if` give V(G) = 3; JaCoCo agrees (4 of 4 branches). Paths: empty list (loop skipped, balanced), balanced lines, unbalanced lines. `post` always builds balanced lines, so only `imbalanceDetected`, calling the package-private method directly, reaches the unbalanced path. The method is a guard against a future change to `linesFor`, not dead code.
 
 ---
 
 ## 6. `DelinquencyClassifier.classify`
 
-Source: `src/main/java/pk/edu/giki/microlend/delinquency/DelinquencyClassifier.java`. BR-30 buckets: 0 Standard, 1-30 Watch, 31-60 Substandard, 61-90 Doubtful, 91 or more Loss. The three upper limits are the constants `WATCH_MAX = 30`, `SUBSTANDARD_MAX = 60` and `DOUBTFUL_MAX = 90`.
+Source: `src/main/java/pk/edu/giki/microlend/delinquency/DelinquencyClassifier.java`. BR-30 buckets: 0 Standard, 1-30 Watch, 31-60 Substandard, 61-90 Doubtful, 91 or more Loss, with upper limits `WATCH_MAX = 30`, `SUBSTANDARD_MAX = 60` and `DOUBTFUL_MAX = 90`.
 
 ### 6.1 Nodes
 
@@ -272,14 +260,14 @@ flowchart TD
 
 ### 6.3 Cyclomatic complexity, computed two ways
 
-- **From the graph:** the 5 decision nodes have 2 out-edges each (10 edges), and N2, N4, N6, N8, N10 and N11 have 1 edge each to the exit (6 edges). E = 16, N = 12, so **V(G) = 16 - 12 + 2 = 6**.
+- **From the graph:** the 5 decision nodes have 2 out-edges each (10); N2, N4, N6, N8, N10 and N11 have 1 each to the exit (6). E = 16, N = 12, so **V(G) = 16 - 12 + 2 = 6**.
 - **From the decisions:** P = 5 simple decisions (P1 to P5, none compound), so **V(G) = P + 1 = 6**.
 
-JaCoCo's `COMPLEXITY` counter for `classify` is also 6, with 10 of 10 branches covered. PMD 7.7.0 does not report it (below its threshold of 10).
+JaCoCo agrees (6; 10 of 10 branches). PMD 7.7.0 does not report it (below its threshold of 10).
 
 ### 6.4 Basis paths and test cases
 
-The baseline is the path on which every decision is false (a Loss loan). Each later path flips one decision of the baseline, so the six paths are linearly independent, and together they cover all 10 branches.
+Baseline: every decision false (a Loss loan). Each other path flips one baseline decision, so the six are linearly independent and cover all 10 branches.
 
 | Path | Route | Decision flipped | Test input (days past due) | Expected result | Automated in `DelinquencyClassifierTest` |
 |---|---|---|---|---|---|
@@ -290,13 +278,13 @@ The baseline is the path on which every decision is false (a Loss loan). Each la
 | BP-5 | N1F N3F N5F N7T N8 | P4 | 31 (also 60) | `SUBSTANDARD` | `bucketBoundaries` rows `31, SUBSTANDARD` and `60, SUBSTANDARD` |
 | BP-6 | N1F N3F N5F N7F N9T N10 | P5 | 61 (also 90) | `DOUBTFUL` | `bucketBoundaries` rows `61, DOUBTFUL` and `90, DOUBTFUL` |
 
-No path is infeasible. The second input on BP-1 and BP-4 to BP-6 is the other edge of the same bucket. Those inputs are the BVA cases of TC-DEL-03 in `qa/test-design/black-box.md` (section 6.3): they follow the same path with different data, so they add boundary coverage, not basis paths. The class has 10 test invocations: `negativeRejected` and the 9 rows of `bucketBoundaries`.
+No path is infeasible. The second inputs on BP-1 and BP-4 to BP-6 (other edge of each bucket) are TC-DEL-03 BVA cases (`qa/test-design/black-box.md` section 6.3), not basis paths. The class has 10 test invocations: `negativeRejected` and the 9 rows of `bucketBoundaries`.
 
 ---
 
 ## 7. `EndOfDayEngine.collect`
 
-Source: `src/main/java/pk/edu/giki/microlend/delinquency/EndOfDayEngine.java`. `run` submits one task per active loan to the four-thread pool, then calls `collect`, which waits for each task's `Future` in loan order and builds the `EodReport`. As in section 5, the two ways `Future.get()` can fail are drawn as decisions. They are the behaviour BR-33 and M1 section 3.6 ask for: a failing loan is reported without stopping the others, and an interrupted run stops cleanly.
+Source: `src/main/java/pk/edu/giki/microlend/delinquency/EndOfDayEngine.java`. `run` submits one task per active loan to the four-thread pool; `collect` waits for each `Future` in loan order and builds the `EodReport`. As in section 5, the two `Future.get()` failures are decisions, because BR-33 and M1 section 3.6 require that a failing loan is reported without stopping the others and that an interrupted run stops cleanly.
 
 ### 7.1 Nodes
 
@@ -344,13 +332,13 @@ Edge labels at N2: "value" when `get()` returns, P2 for `ExecutionException`, P3
 ### 7.3 Cyclomatic complexity, computed two ways
 
 - **From the graph:** N1, N5, N7 and N9 have 2 out-edges each (8), N2 has 3, and N3, N4, N6, N8, N10 and N11 have 1 each (6). E = 17, N = 12, so **V(G) = 17 - 12 + 2 = 7**.
-- **From the decisions:** the loop test, the three `if`s and the three-way node, which counts as 2 simple decisions, give P = 6, so **V(G) = P + 1 = 7**.
+- **From the decisions:** the loop test, three `if`s and the three-way node (2 simple decisions) give P = 6, so **V(G) = P + 1 = 7**.
 
-JaCoCo reports 5, with 8 of 8 branches covered. Its count leaves out P2 and P3, because a caught exception is not a bytecode branch: 7 - 2 = 5.
+JaCoCo reports 5, with 8 of 8 branches covered: it leaves out P2 and P3, since a caught exception is not a bytecode branch (7 - 2 = 5).
 
 ### 7.4 Basis paths and test cases
 
-The baseline is one loan, recorded, with no classification change and no write-off.
+Baseline: one loan, recorded, no classification change, no write-off.
 
 | Path | Decisions | Input | Expected | Automated in `EndOfDayEngineTest` |
 |---|---|---|---|---|
@@ -368,7 +356,7 @@ The baseline is one loan, recorded, with no classification change and no write-o
 
 ## 8. Coverage baseline and gaps (M2)
 
-Measured with `./gradlew clean build jacocoTestReport` on `4067d2f` (21 Nov 2026): 384 tests in 46 test classes, 0 failures, 0 skipped. Totals from the report-level counters of `jacocoTestReport.xml`:
+`./gradlew clean build jacocoTestReport` on `4067d2f` (21 Nov 2026): 384 tests in 46 test classes, 0 failures, 0 skipped. Report-level counters of `jacocoTestReport.xml`:
 
 | Counter | Covered / total | % |
 |---|---|---|
@@ -389,13 +377,11 @@ By package (lines; branches):
 | `web` | 129 / 132 | 27 / 32 |
 | root (`CompositionRoot`, `MicroLendApplication`) | 29 / 46 | 3 / 8 |
 
-At `7784a6a`, earlier on 21 Nov, the figures were 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%) and 286 / 290 methods (98.6%).
+Earlier baselines: `7784a6a` (21 Nov), 366 tests, 1,266 / 1,331 lines (95.1%), 422 / 474 branches (89.0%), 286 / 290 methods (98.6%); `701c161`, 182 tests, 773 / 818 lines (94.5%), 244 / 282 branches (86.5%), 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. `products` and `reporting` have no code yet; the 60% target applies to core business logic at M3.
 
-The earlier baseline, on `701c161` with 182 tests, was 773 / 818 lines (94.5%), 244 / 282 branches (86.5%) and 184 / 188 methods (97.9%), for `common`, `ledger`, `persistence` and `web` only. `products` and `reporting` have no code yet. The 60% target applies to core business logic at M3.
-
-Open gaps feed `qa/defect-log.md` only if a test reveals a fault:
-- `LedgerEntry`: 7 branches in `equals` and in the null and blank checks of `reversalOf` are not executed.
-- `EndOfDayEngine.collect`: basis paths BP-2 (no active loans) and BP-4 (interrupted while waiting) have no test. BP-4's 3 lines are 3 of the 4 uncovered lines in `delinquency`. The fourth is in `EndOfDayEngine.process`: the branch where `record` reports that another writer stored the same loan and date between the engine's check and its write.
-- `MicroLendApplication.main` (15 lines, 4 branches) is not run by any test. It is exercised by hand with `./gradlew run`.
-- `persistence`: most of the 25 uncovered lines are the `catch (SQLException)` blocks that translate a storage failure into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
+Open gaps (they feed `qa/defect-log.md` only if a test reveals a fault):
+- `LedgerEntry`: 7 unexecuted branches in `equals` and the null and blank checks of `reversalOf`.
+- `EndOfDayEngine.collect`: BP-2 and BP-4 have no test; BP-4's 3 lines are 3 of the 4 uncovered lines in `delinquency`. The fourth is the `EndOfDayEngine.process` branch where `record` reports that another writer stored the same loan and date between the engine's check and write.
+- `MicroLendApplication.main` (15 lines, 4 branches): no test; exercised by hand with `./gradlew run`.
+- `persistence`: most of the 25 uncovered lines are `catch (SQLException)` blocks translating storage failures into `PersistenceException`, plus `SqliteDatabase.closeQuietly`.
 - Hassan's schedule assembler gets its white-box design when its code exists.
