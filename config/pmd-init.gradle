@@ -1,0 +1,15 @@
+// PMD for the M2 static analysis report (qa/static-analysis-report.md).
+// Applied from outside build.gradle so the CI build is unchanged at M2:
+//   .\gradlew.bat --init-script config/pmd-init.gradle pmdMain
+// Report only (ignoreFailures); findings are triaged by hand in the report.
+allprojects {
+    apply plugin: 'pmd'
+    pmd {
+        toolVersion = '7.7.0'
+        ignoreFailures = true
+        consoleOutput = false
+        ruleSets = ['category/java/bestpractices.xml', 'category/java/errorprone.xml',
+                    'category/java/design.xml', 'category/java/multithreading.xml',
+                    'category/java/security.xml', 'category/java/performance.xml']
+    }
+}

@@ -97,9 +97,9 @@ img { max-width: 100%; }
 .cover-team { margin-top: auto; position: relative; }
 .members { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8pt; }
 .member { background: #2A3266; border: 1px solid #3A4277; border-radius: 10pt; padding: 10pt 11pt 11pt; }
-.member-name { font-weight: 700; font-size: 10pt; }
+.member-name { font-weight: 700; font-size: 10pt; display: flex; flex-wrap: wrap; align-items: center; gap: 3pt 6pt; }
 .member-meta { font-size: 7.6pt; color: #B9BDD6; margin-top: 3pt; }
-.badge { display: inline-block; margin-left: 6pt; font-size: 6pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--gold); color: #0E1440; padding: 1.5pt 5pt; border-radius: 10pt; vertical-align: 1.5pt; }
+.badge { display: inline-block; font-size: 6pt; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: var(--gold); color: #0E1440; padding: 1.5pt 5pt; border-radius: 10pt; vertical-align: 1.5pt; }
 .cover-foot { margin-top: 13pt; padding-top: 11pt; border-top: 1px solid #3D4579; display: flex; justify-content: space-between; font-size: 9pt; font-weight: 500; position: relative; }
 .cover-foot .label { margin-bottom: 3pt; }
 
@@ -115,6 +115,7 @@ img { max-width: 100%; }
 #TOC a { display: flex; align-items: baseline; }
 #TOC a::after { content: target-counter(attr(href), page); margin-left: auto; padding-left: 12pt; font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; font-size: 8.8pt; }
 #TOC .num { display: inline-block; min-width: 26pt; color: var(--gold); font-weight: 800; }
+#TOC .id { display: contents; }   /* a flex item of its own would lose the space after it */
 
 /* ---------- Headings ---------- */
 h1, h2, h3, h4 { break-after: avoid; font-family: var(--sans); }
@@ -139,21 +140,28 @@ blockquote { margin: 8pt 0; padding: 8pt 12pt; background: #FFF9EB; border-left:
 blockquote p { margin: 0; }
 
 /* ---------- Tables ---------- */
-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 8pt 0 14pt; font-size: 7.9pt; line-height: 1.45; border: 1px solid var(--line); border-radius: 7pt; }
-thead th { background: var(--navy); color: #fff; font-weight: 600; text-align: left; vertical-align: bottom; padding: 6pt 7pt; font-size: 7.4pt; letter-spacing: .02em; }
+/* No bottom margin: when only a table's margin overflowed a page, Paged.js moved the whole
+   table to the next page and stranded its heading. The space goes on the next block instead. */
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 8pt 0 0; font-size: 7.9pt; line-height: 1.45; border: 1px solid var(--line); border-radius: 7pt; }
+table + p, table + ul, table + ol, table + div, table + blockquote, table + figure, table + table { margin-top: 14pt; }  /* no :is(), Paged.js cannot parse it here */
+/* Sizes inside a table are relative (em), so the fit script in template.html can shrink a wide table as a whole */
+thead th { background: var(--navy); color: #fff; font-weight: 600; text-align: left; vertical-align: bottom; padding: .81em .95em; font-size: .94em; letter-spacing: .02em; }
 thead th:first-child { border-top-left-radius: 6pt; }
 thead th:last-child { border-top-right-radius: 6pt; }
-tbody td { padding: 5pt 7pt; vertical-align: top; border-top: 1px solid var(--line); }
+tbody td { padding: .63em .89em; vertical-align: top; border-top: 1px solid var(--line); }
 tbody tr:nth-child(even) td { background: var(--tint); }
 tbody tr { break-inside: avoid; }
 td strong { color: var(--navy); }
-td strong:only-child { white-space: nowrap; }   /* IDs such as FR-01 never wrap */
-td > code:only-child { overflow-wrap: normal; }
+td strong:only-child, .id { white-space: nowrap; }   /* IDs such as FR-01 never wrap */
+thead th code { background: #2C3570; color: #fff; }
 
 /* ---------- Code ---------- */
 code { font-family: var(--mono); font-size: .86em; }
 :not(pre) > code { background: var(--tint2); color: #2E3A8C; padding: .4pt 3.2pt; border-radius: 3.5pt; overflow-wrap: anywhere; }
-td :not(pre) > code { background: #E9ECF6; }
+td code { background: #E9ECF6; overflow-wrap: break-word; }  /* breaks after . / # (print.lua), not mid-name */
+/* .tight is set by the fit script in template.html on a table too wide for the page */
+table.tight td code { overflow-wrap: anywhere; }
+table.tight td, table.tight th { padding-left: .45em; padding-right: .45em; }
 div.sourceCode { margin: 8pt 0 10pt; }
 pre { background: #10173A; color: #E4E8F7; border-radius: 9pt; padding: 10pt 13pt; margin: 8pt 0 10pt; font-size: 7.7pt; line-height: 1.6; white-space: pre-wrap; break-inside: avoid; }
 pre code { background: none; color: inherit; padding: 0; font-size: 1em; }
@@ -167,6 +175,29 @@ pre .fu { color: #FFCB6B; }
 pre .op { color: #8BD8F2; }
 pre .at { color: #FF8FA3; }
 
+/* ---------- At-a-glance panel (raw HTML in the markdown) ---------- */
+/* Every value it shows is also in a table of the same document (the table view). */
+.glance { break-inside: avoid; margin: 12pt 0 16pt; padding: 11pt 12pt 12pt; border: 1px solid var(--line); border-radius: 9pt; background: #fff; }
+.glance p { margin: 0; }
+.glance-title { font-size: 7pt; letter-spacing: .14em; text-transform: uppercase; font-weight: 800; color: var(--gold); margin-bottom: 8pt; }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7pt; }
+.tile { background: var(--tint); border-radius: 7pt; padding: 8pt 10pt 9pt; }
+.tile .v { font-size: 19pt; font-weight: 800; color: var(--navy); line-height: 1.05; letter-spacing: -.02em; }
+.tile .l { font-size: 7.6pt; font-weight: 650; color: var(--ink); margin-top: 3pt; line-height: 1.3; }
+.tile .s { font-size: 6.9pt; color: var(--muted); margin-top: 1.5pt; line-height: 1.35; }
+.segs { display: grid; grid-template-columns: 1fr 1fr; gap: 16pt; margin-top: 11pt; }
+.segs.one { grid-template-columns: 1fr; }
+.seg-head { display: flex; justify-content: space-between; font-size: 7.6pt; font-weight: 650; color: var(--ink); margin-bottom: 4pt; }
+.seg-head .t { color: var(--muted); font-weight: 500; }
+.seg-bar { display: flex; gap: 2px; height: 20pt; }
+.seg-bar > span { display: flex; align-items: center; padding-left: 6pt; border-radius: 4px; font-size: 7.8pt; font-weight: 700; min-width: 0; }
+.seg-legend { display: flex; flex-wrap: wrap; gap: 3pt 11pt; font-size: 6.9pt; color: var(--muted); margin-top: 5pt; }
+.seg-legend i { display: inline-block; width: 7pt; height: 7pt; border-radius: 2pt; margin-right: 4pt; vertical-align: -.5pt; }
+/* Categorical slots, validated together (lightness, chroma, colour-blind separation): indigo, gold, periwinkle */
+.k1 { background: #3B4BA8; color: #fff; }
+.k2 { background: #C9A24D; color: #1C2033; }
+.k3 { background: #7A86C8; color: #1C2033; }
+
 /* ---------- Diagrams ---------- */
 figure.diagram { margin: 6pt 0 10pt; padding: 10pt; border: 1px solid var(--line); border-radius: 9pt; background: #fff; text-align: center; break-inside: avoid; }
-figure.diagram img { max-width: 100%; max-height: 210mm; }
+figure.diagram img { max-width: 100%; max-height: 232mm; }   /* a tall diagram (a CFG) may use most of the page */
