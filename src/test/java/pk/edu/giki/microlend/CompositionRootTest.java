@@ -27,6 +27,10 @@ import pk.edu.giki.microlend.ledger.RepaymentCommand;
 import pk.edu.giki.microlend.persistence.SqliteDatabase;
 import pk.edu.giki.microlend.persistence.SqliteLedgerRepository;
 import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
+import pk.edu.giki.microlend.persistence.SqliteScheduleRepository;
+import pk.edu.giki.microlend.products.Instalment;
+import pk.edu.giki.microlend.products.Schedule;
+import pk.edu.giki.microlend.products.ScheduleNotFoundException;
 
 /**
  * Tests for {@link CompositionRoot} (queue item L-17): the two production
@@ -100,12 +104,28 @@ class CompositionRootTest {
     }
 
     @Test
-    @DisplayName("without teammates' modules, posting fails naming the module that is missing")
-    void placeholdersNameTheMissingModules() {
-        final CompositionRoot root = CompositionRoot.withPlaceholders(database, () -> "teller.amina");
-        final ModuleNotAvailableException thrown = assertThrows(ModuleNotAvailableException.class,
+    @DisplayName("production wiring: a repayment is allocated from the schedule saved on SQLite")
+    void productionPostsFromTheSavedSchedule() {
+        new SqliteScheduleRepository(database).save(LOAN, new Schedule(List.of(
+            new Instalment(1, LocalDate.of(2026, 3, 1), money("1000.00"), money("100.00")))));
+        final CompositionRoot root = CompositionRoot.production(database, () -> "teller.amina");
+
+        root.tellerPoster().post(RepaymentCommand.cash(LOAN, money("150.00"), TODAY));
+
+        assertEquals(List.of(EntryType.PAYMENT_RECEIVED, EntryType.INTEREST_REPAYMENT,
+                EntryType.PRINCIPAL_REPAYMENT),
+            new SqliteLedgerRepository(database).entriesFor(LOAN).stream()
+                .map(entry -> entry.type()).toList());
+        assertEquals(money("2950.00"),
+            new SqliteLoanRepository(database).findById(LOAN).orElseThrow().outstandingPrincipal());
+    }
+
+    @Test
+    @DisplayName("production wiring: a loan with no saved schedule is refused and nothing is posted")
+    void productionRefusesALoanWithoutASchedule() {
+        final CompositionRoot root = CompositionRoot.production(database, () -> "teller.amina");
+        assertThrows(ScheduleNotFoundException.class,
             () -> root.tellerPoster().post(RepaymentCommand.cash(LOAN, money("1.00"), TODAY)));
-        assertTrue(thrown.getMessage().contains("products"), thrown.getMessage());
         assertTrue(new SqliteLedgerRepository(database).entriesFor(LOAN).isEmpty());
     }
 }

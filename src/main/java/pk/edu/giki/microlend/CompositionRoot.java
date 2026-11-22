@@ -32,6 +32,10 @@ import pk.edu.giki.microlend.persistence.SqliteDatabase;
 import pk.edu.giki.microlend.persistence.SqliteLedgerRepository;
 import pk.edu.giki.microlend.persistence.SqliteLoanRepository;
 import pk.edu.giki.microlend.persistence.SqlitePaymentReferences;
+import pk.edu.giki.microlend.persistence.SqliteProductCatalogue;
+import pk.edu.giki.microlend.persistence.SqliteScheduleRepository;
+import pk.edu.giki.microlend.products.ProductCatalogue;
+import pk.edu.giki.microlend.products.ScheduleRepository;
 
 /**
  * The one place that calls {@code new} on infrastructure and assembles the
@@ -51,10 +55,8 @@ import pk.edu.giki.microlend.persistence.SqlitePaymentReferences;
  * <p>The {@link EndOfDayEngine} shares one {@link LockRegistry} with both chains, so a
  * posting and the engine's work on the same loan never interleave (M1 section 3.6).</p>
  *
- * <p>Only components that exist are wired. What still comes from teammates'
- * modules is supplied through ledger role interfaces; {@link #withPlaceholders}
- * fills those with placeholders that fail with
- * {@link ModuleNotAvailableException}, see the TODOs below.</p>
+ * <p>What comes from other modules is supplied through ledger role interfaces;
+ * {@link #production} fills them from {@code products} (schedule and rebate).</p>
  */
 public final class CompositionRoot {
 
@@ -93,29 +95,27 @@ public final class CompositionRoot {
     }
 
     /**
-     * Wires both chains with placeholders for the modules not built yet.
+     * Wires both chains and the end-of-day engine to the real schedule and product data on
+     * SQLite (queue items H-07 and H-08, decisions D-02 and D-03).
+     *
+     * <p>Instalments owed come from {@link ScheduleInstalmentsDueSource} and the
+     * early-settlement rebate from {@link ProductEarlySettlementRebate}. The penalty is not
+     * wired yet: it stays zero until the delinquency side supplies a
+     * {@link ScheduleInstalmentsDueSource.PenaltyLookup}.</p>
      *
      * @param database the local SQLite database
      * @param operator the operator logged in at the teller screen
      * @return the composition root
+     * @throws NullPointerException if an argument is null
      */
-    public static CompositionRoot withPlaceholders(final SqliteDatabase database,
-                                                   final Supplier<String> operator) {
+    public static CompositionRoot production(final SqliteDatabase database,
+                                             final Supplier<String> operator) {
         Objects.requireNonNull(database, "database is required");
-        // TODO(products, Hassan Khalid; decision D-02): replace with the source that maps
-        //  products.Instalment and the accrued penalty to ledger.InstalmentDue. Until then
-        //  postings are refused and each end-of-day task reports this failure.
-        final InstalmentsDueSource instalmentsNotAvailable = (loan, date) -> {
-            throw new ModuleNotAvailableException("products", "Hassan Khalid",
-                "listing the instalments owed on " + loan);
-        };
-        // TODO(products, Hassan Khalid): replace with the per-product BR-22 rebate.
-        final EarlySettlementRebate rebateNotAvailable = (loan, date) -> {
-            throw new ModuleNotAvailableException("products", "Hassan Khalid",
-                "the early-settlement rebate for " + loan);
-        };
-        return new CompositionRoot(database, Clock.systemUTC(), instalmentsNotAvailable,
-            rebateNotAvailable, operator);
+        final ScheduleRepository schedules = new SqliteScheduleRepository(database);
+        final ProductCatalogue catalogue = new SqliteProductCatalogue(database);
+        return new CompositionRoot(database, Clock.systemUTC(),
+            new ScheduleInstalmentsDueSource(schedules),
+            new ProductEarlySettlementRebate(catalogue, schedules), operator);
     }
 
     /**

@@ -39,7 +39,7 @@ public final class MicroLendApplication {
      */
     public static void main(final String[] args) throws IOException {
         final OperatorContext operator = new OperatorContext();
-        final CompositionRoot root = CompositionRoot.withPlaceholders(
+        final CompositionRoot root = CompositionRoot.production(
             new SqliteDatabase("jdbc:sqlite:microlend.db"), operator);
         if (args.length == IMPORT_ARGUMENTS && "import".equals(args[0])) {
             final Path file = Path.of(args[2]);
