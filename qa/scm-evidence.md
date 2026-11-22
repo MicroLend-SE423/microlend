@@ -1,7 +1,7 @@
 # MicroLend - SCM Quality-Gate Evidence (M2)
 
 **Deliverable:** SE431 M2, "SCM quality-gate evidence" · **Document lead:** Muhammad Ibrahim (M2 Team Lead)
-**Evidence collected:** 21 Nov 2026, after PR #9 was merged, from the GitHub API (`gh api`, `gh pr`, `gh run`) and `git` on
+**Evidence collected:** 21 Nov 2026 after PR #9 merged, and brought up to date on 22 Nov after PRs #10 to #13 merged, from the GitHub API (`gh api`, `gh pr`, `gh run`) and `git` on
 `github.com/MicroLend-SE423/microlend` (supersedes the 14 Nov collection).
 
 Where the history departs from the documented strategy, it is recorded as a nonconformance with a CAPA
@@ -50,14 +50,18 @@ Source: `README.md` (Branching strategy, Baselines).
 | #7 | `docs/claude-handoff` -> `develop` | tughral1 | none | tughral1 | **No** (self-merge, no review) |
 | #8 | `feature/ledger-entry` -> `develop` | tughral1 | mIBRAHIM707: approved (21 Nov), with seven follow-ups | mIBRAHIM707, the reviewer | **Yes** |
 | #9 | `feature/delinquency-origination-import` -> `develop` | mIBRAHIM707 | tughral1: approved (21 Nov) | tughral1, the reviewer | **Yes** |
+| #10 | `docs/m2-final` -> `develop` | mIBRAHIM707 | tughral1: approved (22 Nov) | tughral1, the reviewer | **Yes** |
+| #11 | `feature/products-m2` -> `develop` | Hassan242-kk | mIBRAHIM707: approved with follow-ups DEF-024 to DEF-027 (22 Nov) | mIBRAHIM707, the reviewer | **Yes**, after retargeting from `main` and re-authoring (SCM-05) |
+| #12 | `feature/reporting-statement` -> `develop` | Hassan242-kk | mIBRAHIM707: approved with follow-up DEF-028 (22 Nov) | mIBRAHIM707, the reviewer | **Yes**, as for #11 |
+| #13 | `docs/hassan-m2-records` -> `develop` | Hassan242-kk | mIBRAHIM707: approved (22 Nov) | mIBRAHIM707, the reviewer | **Yes**, as for #11 |
 
 All six nonconforming merges (9 Oct to 4 Nov 2026) predate the ruleset's re-application with an empty
-bypass list on **4 Nov 2026 15:43 PKT**. Both later merges (PR #8, PR #9) had a non-author approval and
+bypass list on **4 Nov 2026 15:43 PKT**. All six later merges (PRs #8 to #13) had a non-author approval and
 were merged by the reviewer.
 
 ### 3.2 CI runs
 
-Workflow runs from 4 Oct 2026 (the first) to 21 Nov 2026: **81**; **78** succeeded, **3** failed.
+Workflow runs from 4 Oct 2026 (the first) to 22 Nov 2026: **97**; **94** succeeded, **3** failed.
 
 | Failed run | Branch | Cause | Resolution |
 |---|---|---|---|
@@ -66,8 +70,10 @@ Workflow runs from 4 Oct 2026 (the first) to 21 Nov 2026: **81**; **78** succeed
 
 Runs per branch: `feature/ledger-entry` 46, all passed (per-push evidence for PR #8);
 `feature/delinquency-origination-import` 2, both passed (push run 44930284914, pull-request run
-44930290499, at `9af3f31`); `develop` 22, the last 20 passed, including run 44931805244 at `ac14ba9`,
-the PR #9 merge.
+44930290499, at `9af3f31`); `feature/products-m2`, `feature/reporting-statement` and `docs/hassan-m2-records`
+all passed, before and after re-authoring (PR runs 45028938297, 45028943565, 45028949262); `develop` 26, the
+last 24 passed, including run 44931805244 at `ac14ba9` (the PR #9 merge) and run 45030126014 at `e7ecce6`
+(the PR #13 merge, the build the M2 documents describe).
 
 ### 3.3 TDD commit trail
 
@@ -75,26 +81,30 @@ the PR #9 merge.
 |---|---|---|---|
 | #8 (ledger, Tughral Hussain) | 19 | 19 `feat(green)` | One red/green pair per queue item L-01 to L-19; 2 `refactor:` and 1 `fix:` commit after them |
 | #9 (origination, delinquency, importing; Muhammad Ibrahim) | 9 | 8 `feat(green)` and 1 `fix:` | The `fix:` commit `6d30af9` is the green for red `5541f0b` (independent-review fixes); 2 `test:` commits change no assertion |
-| #6 (products, Hassan Khalid) | 0 | 1 `feat(green)` | No red commit precedes the code (noted in the PR #6 review) |
+| #11 (products, Hassan Khalid) | 8 | 8 `feat(green)` | One pair per item H-01 to H-08 (two for H-08); 1 `test:` commit adds the golden schedules. Every red commit contains test code only |
+| #12 (reporting, Hassan Khalid) | 1 | 1 `feat(green)` | H-09 `StatementRenderer` |
+| #6 (products, Hassan Khalid) | 0 | 1 `feat(green)` | No red commit precedes the code (noted in the PR #6 review); superseded by #11 |
 
 Each red commit precedes its green commit and names the same item. Re-count with:
 
 ```powershell
 git log --format=%s 10688c2..47c713e^2
 git log --format=%s 47c713e..ac14ba9^2
+git log --format=%s 0beed0f..318bad6^2
+git log --format=%s 318bad6..4309bf1^2
 ```
 
 ### 3.4 Attribution
 
-Commits on published branches, by author (`git shortlog -sn --remotes`, 21 Nov 2026):
+Commits on published branches, by author (`git shortlog -sn --remotes`, 22 Nov 2026):
 
 | Author | Commits |
 |---|---|
-| tughral1 | 72 |
-| mIBRAHIM707 / Muhammad Ibrahim | 64 |
-| Hassan242-kk | 1 |
+| tughral1 | 73 |
+| mIBRAHIM707 / Muhammad Ibrahim | 69 |
+| Hassan Khalid / Hassan242-kk | 21 |
 
-Hassan Khalid's only commit is on the open PR #6: an individual-evidence risk (risk register R6).
+Hassan Khalid's 20 commits on PRs #11 to #13 all date from 22 Nov, the submission day: the counts are uneven and late (risk register R6).
 
 ### 3.5 Baselines
 
@@ -117,12 +127,13 @@ GitHub's PR #7 and PR #8 pages still list the original hashes.
 
 ## 4. Nonconformances and CAPA
 
-In `qa/defect-log.md`: SCM-01 = DEF-006 (CAPA-001), SCM-02 = DEF-007, SCM-03 = DEF-008. SCM-04 is a controlled, approved change with no defect number.
+In `qa/defect-log.md`: SCM-01 = DEF-006 (CAPA-001), SCM-02 = DEF-007, SCM-03 = DEF-008. SCM-04 and SCM-05 are controlled changes with no defect number.
 
 | ID | Finding | Root cause | Corrective action | Preventive action | Status |
 |---|---|---|---|---|---|
 | SCM-01 | PRs #1, #3, #4, #5, #7 were self-merged with no review; #2 had no recorded approval | Ruleset bypass list let admins merge; the review rule was documented but not enforced | Ruleset re-applied 4 Nov 2026 with an empty bypass list, targeting `main` and `develop` | Every member reviews at least one PR per milestone; this table is re-collected at each milestone | Verified: PR #8 and PR #9 each waited for a non-author approval and were merged by the reviewer |
-| SCM-02 | PR #6 targets `main` instead of `develop` and fails CI | Branch created before the branching rules were circulated | Retarget PR #6 to `develop` and fix the failing check (owner: Hassan Khalid); requested in the review of 21 Nov | Branch naming and target checked in review | Open |
+| SCM-02 | PR #6 targets `main` instead of `develop` and fails CI; PRs #11 to #13 were also opened against `main` on 22 Nov | The member's branches are created from the GitHub default branch (`main`) | PRs #11 to #13 retargeted to `develop` before review; PR #6 to be closed as superseded by #11 (owner: Hassan Khalid) | Branch naming and target checked in review; add the base branch to the PR template checklist (M3) | Open until PR #6 is closed |
+| SCM-05 | PRs #11 to #13: all 20 commits were authored by the generating tool, with tool trailer lines, so the member had no author credit | The member committed through a tool that wrote itself as author | Before review, Muhammad Ibrahim re-authored the commits to Hassan Khalid on the feature branches (author and message only; every tree verified identical), force-pushed those branches with a lease, and then reviewed and merged. The reviewer therefore also made the last push; the push changed metadata only | Members commit under their own identity; add a commit-author and trailer check to the PR template checklist (M3) | Corrective action closed; preventive open |
 | SCM-03 | `coverageGate` (branch coverage >= 60%) exists in `build.gradle` but CI does not run it | Gate deferred because 60% is only required at M3 | Add `coverageGate` to CI before M3 | V&V plan lists it as an M3 exit criterion | Open, deferred to M3 |
 | SCM-04 | The ruleset was switched off once to force-push `develop` (section 3.6) | Commit messages carried trailer lines from an automated runner, which the team chose to remove before the baseline | Message-only rewrite with trees verified identical; ruleset switched back on at once; quoted hashes updated (`7784a6a`) | The runner scripts and their configuration were removed from the repository (`7784a6a`); no further rewrite is planned, and `main` was never rewritten | Closed |
 

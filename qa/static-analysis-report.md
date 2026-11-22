@@ -7,9 +7,10 @@
 - After fixes: `701c161`; a re-run after PR #8 merged into `develop` (21 Nov) gives the same 62 findings.
 - M2 integrated runs on `feature/delinquency-origination-import`, 21 Nov 2026:
   - `7784a6a` adds `origination`, `delinquency`, `ledger.importing`, `common.LockRegistry`, `ledger.LockingPoster`, `persistence.SqliteDailyResultStore`, schema version 2 in `SchemaMigrator`, and end-of-day changes to `CompositionRoot`, `MicroLendApplication` and `TellerWebServer`.
-  - `4067d2f`, the code head triaged below, adds the independent code-review fixes (`delinquency.DailySnapshot`, `ledger.importing.StatementText`; changes to `PenaltyAccruer`, `EndOfDayEngine`, `SqliteDailyResultStore`, both adapters and `TellerWebServer`) and the durable reference store `persistence.SqlitePaymentReferences` (table in `SchemaMigrator`, wiring in `CompositionRoot`).
+  - `4067d2f`, the code head triaged in section 3.1, adds the independent code-review fixes (`delinquency.DailySnapshot`, `ledger.importing.StatementText`; changes to `PenaltyAccruer`, `EndOfDayEngine`, `SqliteDailyResultStore`, both adapters and `TellerWebServer`) and the durable reference store `persistence.SqlitePaymentReferences` (table in `SchemaMigrator`, wiring in `CompositionRoot`).
+- M2 integrated build of 22 Nov 2026, the current code: `develop` with Hassan Khalid's PRs #11 to #13 merged (heads `297df8f`, `57ccdc6`, `6cb488a`). It adds `products`, `reporting`, the SQLite schedule and product storage, `ScheduleInstalmentsDueSource` and `CompositionRoot.production`; triaged in section 3.2.
 
-Finding IDs are stable between runs; the 21 Nov runs add SA-15 onward.
+Finding IDs are stable between runs; the 21 Nov runs add SA-15 onward and the 22 Nov run SA-29 onward.
 
 ## 1. Tools and configuration
 
@@ -33,7 +34,8 @@ Finding IDs are stable between runs; the 21 Nov runs add SA-15 onward.
 | Ledger code | `e0f9ecb` | 0 | 66 |
 | After fixes | `701c161` | 0 | 62 |
 | M2 integrated build | `7784a6a` | 0 | 98 |
-| M2 integrated build after the review fixes | `4067d2f` | 0 | **100** |
+| M2 integrated build after the review fixes | `4067d2f` | 0 | 100 |
+| M2 integrated build with `products` and `reporting` (22 Nov) | `develop` + PRs #11 to #13 | 0 | **122** |
 
 Disposition of the 66 ledger-code findings:
 
@@ -63,9 +65,18 @@ Open at `4067d2f`: 61 carried over from the ledger triage plus the 39 new:
 | False positive | 48 + 22 = 70 |
 | **Total** | **100** |
 
-Checkstyle reports zero because it is a gate: `./gradlew build` on `4067d2f` passed `checkstyleMain` and `checkstyleTest` with `maxWarnings = 0`, as did every `feature/ledger-entry` commit in CI (`qa/scm-evidence.md` section 3.2), so C-01 holds: no `double` or `float`, new modules included.
+**22 Nov run.** The rise from 100 to 122 is 22 new findings, all in Hassan Khalid's code: 21 in `products` and `reporting`, 1 in `persistence.SqliteScheduleRepository`. The 100 already triaged are all still reported. None is fixed, because this report does not change code. Triage of the 22 (SA-29 to SA-34) and the current totals:
 
-PMD reports no `CyclomaticComplexity` finding in the new code; its three (SA-04, SA-05) are ledger methods. The most complex new method by JaCoCo is the compact constructor of `origination.Applicant` (12: five validation guards and one conditional expression, 11 simple conditions), below the QR-04 limit of 15.
+| Disposition | New, 22 Nov | Open in the 22 Nov build (current) |
+|---|---|---|
+| Accepted | 0 | 10 + 0 = 10 |
+| Deferred | 8 | 20 + 8 = 28 |
+| False positive | 14 | 70 + 14 = 84 |
+| **Total** | **22** | **122** |
+
+Checkstyle reports zero because it is a gate: `./gradlew build` on `4067d2f` passed `checkstyleMain` and `checkstyleTest` with `maxWarnings = 0`, as did every `feature/ledger-entry` commit in CI (`qa/scm-evidence.md` section 3.2) and the CI runs on the PR #11 to #13 heads, so C-01 holds: no `double` or `float`, new modules included.
+
+PMD reports no `CyclomaticComplexity` finding in the 21 Nov code; its three (SA-04, SA-05) are ledger methods. The 22 Nov code adds two, both in `products.LoanProduct` (SA-31). The most complex method by JaCoCo is still the compact constructor of `origination.Applicant` (12: five validation guards and one conditional expression, 11 simple conditions), below the QR-04 limit of 15; next are `RepaymentAllocator.allocate` (10) and the `LoanProduct` constructor (9).
 
 ## 3. Triage
 
@@ -124,6 +135,26 @@ Paths under `src/main/java/pk/edu/giki/microlend/`; line numbers from the PMD re
 | False positive | SA-17, SA-19, SA-20, SA-21, SA-24, SA-27, SA-28 | 10 + 1 + 2 + 6 + 1 + 1 + 1 = 22 |
 | **Total new** | | **39** |
 
+### 3.2 New findings in the 22 Nov integrated build (`develop` with PRs #11 to #13)
+
+Paths under `src/main/java/pk/edu/giki/microlend/`; line numbers from the PMD report of that build.
+
+| ID | PMD rule | Count | Location | Disposition | Reasoning / action |
+|---|---|---|---|---|---|
+| SA-29 | CheckResultSet | 1 | `persistence/SqliteScheduleRepository.countFor`, line 98 | **Deferred** to M3 | The defect type of SA-02 (DEF-002), now occurring a second time. `row.next()` is ignored on a `SELECT COUNT(*)`, which always returns one row, so it cannot fail today. If no row came back, `getLong` would read an empty cursor and `save` would report a driver error instead of the cause. Fix it the way DEF-002 was fixed: check `next()` and throw `PersistenceException`. CAPA-002's preventive action covers it: the milestone PMD run found it, and the INS-01 checklist item on result-set handling applies once INS-01 is held. One more occurrence reaches the defect-log threshold of 3 for a CAPA |
+| SA-30 | AvoidLiteralsInIfCondition | 4 | `products/DueDateCalculator.dueDates` 45, 50 (`firstOffsetMonths < 1`, `count < 1`); `products/Instalment` 25 (`sequence < 1`); `products/Rounding.requireValid` 65 (`tenureMonths < 1`) | **Deferred** to M3, with SA-07 and SA-16 | All four are lower bounds of 1, the case deferred in SA-16, and `Instalment`'s `sequence < 1` is the `InstalmentDue` literal of SA-07. Name them in the same M3 refactoring pass |
+| SA-31 | CyclomaticComplexity | 2 | `products/LoanProduct` constructor, line 46 (PMD 12; McCabe 9), `LoanProduct.validate`, line 188 (PMD 10; McCabe 7) | **Deferred** to M3, with SA-05 | Sequential guard clauses, each with its own message, as in SA-05; PMD again counts each `throw` as a decision. Both check the product's amount and tenure bands: extract one band check in the M3 refactoring and measure before and after |
+| SA-32 | TooManyMethods | 1 | `products/LoanProduct`, line 22 | **Deferred** to M3, with SA-06 | As with `LedgerEntry` in SA-06, half of the 12 methods are accessors (code, rate, amount and tenure bands); the rest are the Factory Method workflow. Re-assessed with SA-31 |
+| SA-33 | AvoidFieldNameMatchingMethodName | 13 | `products/LoanProduct` 24 to 29 (`code`, `annualRateBp`, `minAmount`, `maxAmount`, `minTenureMonths`, `maxTenureMonths`); `products/Schedule` 14 (`instalments`); `reporting/Statement` 16 to 21 (`loanId`, `from`, `to`, `openingBalance`, `lines`, `closingBalance`) | **False positive** | Record-style accessors, the project convention described in SA-08 |
+| SA-34 | DataClass | 1 | `reporting/Statement`, line 14 | **False positive** | An immutable value object: `StatementRenderer` computes it, and a printer or page reads it. Accessors with no business logic are the intended design, as for SA-14 |
+
+| Disposition (22 Nov) | IDs | Findings |
+|---|---|---|
+| Accepted | none | 0 |
+| Deferred | SA-29 to SA-32 | 1 + 4 + 2 + 1 = 8 |
+| False positive | SA-33, SA-34 | 13 + 1 = 14 |
+| **Total new** | | **22** |
+
 ## 4. Significant findings linked to corrective action
 
 | Finding | Defect | CAPA | Owner | Due | Verification |
@@ -133,7 +164,9 @@ Paths under `src/main/java/pk/edu/giki/microlend/`; line numbers from the PMD re
 | SA-03 | DEF-003 | CAPA-003: stub replaced by L-17/L-18 | Tughral Hussain | M2 build | Done in `9db0657`: SystemPrintln went from 9 to 1, and the remaining line is accepted |
 | SA-05 to SA-07 | DEF-004, DEF-005 | CAPA-003: M3 refactoring with before/after metrics | Tughral Hussain | M3 (Week 13) | PMD and JaCoCo complexity before and after; tests unchanged and passing |
 | SA-16, SA-18 | DEF-017 | CAPA-003: named constants and the `TellerWebServer` split, in the same M3 refactoring | Muhammad Ibrahim (SA-16), Tughral Hussain (SA-18, `web` owner) | M3 (Week 13) | PMD re-run shows 0 findings for SA-16 and SA-18; tests unchanged and passing |
+| SA-29 | DEF-029 | CAPA-002 preventive action (PMD each milestone, INS-01 result-set item); fix as for DEF-002: check `next()`, throw `PersistenceException` | Hassan Khalid | M3 (Week 13) | PMD re-run shows 0 CheckResultSet; `SqliteScheduleRepositoryTest` passes |
+| SA-30 to SA-32 | DEF-030 | Named constants and one band check, in the M3 refactoring of CAPA-003, with before/after metrics | Hassan Khalid | M3 (Week 13) | PMD re-run shows 0 findings for SA-30 to SA-32; tests unchanged and passing |
 
 ## 5. Not yet analysed
 
-`products` and `reporting` have no code on any branch except Hassan's `DueDateCalculator` in open PR #6; they are analysed when they reach `develop`. M3 recommendation: wire PMD into `build.gradle` as a CI step with an agreed rule set, so findings are triaged per pull request.
+Nothing: `products` and `reporting` joined the analysis on 22 Nov (section 3.2). M3 recommendation, also CAPA-002's preventive action: wire PMD into `build.gradle` as a CI step with an agreed rule set, so findings are triaged per pull request.
